@@ -62,8 +62,8 @@ git submodule update --init --recursive
 
 First, install all other dependencies required by the CPSL_ROS_Sensors package
 ```
-cd ~/catkin_ws
-rosdep install --from-paths ~/catkin_ws/src/CPSL_ROS_Sensors/ --ignore-src -y --rosdistro=noetic
+cd ~/CPSL_ROS2_Sensors
+rosdep install --from-paths src -y --rosdistro=jazzy
 ```
 Note: we build this package for ROS noetic, if you are using a different ROS distribution, some of the above packages may have changed
 
