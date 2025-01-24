@@ -5,10 +5,10 @@ Set of ROS packages for various sensors developed and utilized by Duke's CPSL la
 * Vicon motion capture system (to be added soon)
 * TI-IWRXXX and DCA1000 radar development boards
 
-## Installation:
+## Installation [Built on ROS2 Jazzy, Ubuntu 24.04]:
 
-### 1. Install ROS [UPDATE to ROS2 Instructions]
-1. Follow the instructions on the [ROS installation instructions](http://wiki.ros.org/noetic/Installation) website to install ROS. If you are unfamiliar with ROS, its worth taking some of the [ROS Tutorials](http://wiki.ros.org/ROS/Tutorials). We use ROS noetic developed for Ubuntu 20.04. Using other ROS versions may require some changes
+### 1. Install ROS
+1. Follow the instructions on the [ROS2 installation instructions](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html) website to install ROS2. If you are unfamiliar with ROS, its worth taking some of the [ROS2 Jazzy Tutorials](https://docs.ros.org/en/jazzy/Tutorials.html). We use ROS jazzy developed for Ubuntu 24.04. Using other ROS versions may require some changes
 
 ### 2. Install pre-requisites for CPSL_TI_Radar module
 
@@ -37,66 +37,58 @@ cmake -DCMAKE_C_COMPILER=/usr/bin/gcc-9 -DCMAKE_CXX_COMPILER=/usr/bin/g++-9 ..
 make
 sudo make install
 ```
-## Adding CPSL_ROS_Sensors packages to catkin workspace
+## Installing CPSL_ROS2_Sensors as ROS2 package
 
-If you haven't done so already, creat a catkin workspace. In the following steps, replace "catkin_ws" with the name of your catkin workspace
+1. To install the CPSL_ROS2_Sensors ROS2 workspace perform the following commands
 ```
-mkdir -p ~/catkin_ws/src
-cd ~/catkin_ws
-catkin_make
+git clone --recurse-submodules https://github.com/cpsl-research/CPSL_ROS2_Sensors
 ```
-
-1. To add the two packages to the catkin workspace, perform the following commands
-```
-cd catkin_ws/src/
-git clone --recurse-submodules https://github.com/cpsl-research/CPSL_ROS_Sensors.git
-```
-Here, catkin_ws is the path to your catkin workspace
 
 If you forgot to perform the --recurse-submodules when cloning the repository, you can use the following command to load the necessary submodules
 ```
+cd CPSL_ROS2_Sensors
 git submodule update --init --recursive
 ```
 
 2. Next, install all of the required ros dependencies using the following commands.
 
-First, install all other dependencies required by the CPSL_ROS_Sensors package
-```
-cd ~/CPSL_ROS2_Sensors
-rosdep install --from-paths src -y --rosdistro=jazzy
-```
-Note: we build this package for ROS noetic, if you are using a different ROS distribution, some of the above packages may have changed
+    - First, install all other dependencies required by the CPSL_ROS2_Sensors package
+    ```
+    cd CPSL_ROS2_Sensors
+    rosdep install --from-paths src -y --rosdistro=jazzy
+    ```
+    Note: we build this package for ROS2 jazzy, if you are using a different ROS distribution, some of the above packages may have changed
 
-Next,configure the livox lidar ROS driver correctly by running the following commands. Note: this step only needs to be done when first installing the CPSL_ROS_Sensors Module
-```
-cd ~/catkin_ws/src/CPSL_ROS_Sensors/CPSL_ROS_livox_ros_driver2
-./build_CPSL_ROS_Sensors.sh ROS1
-```
+    - Next,configure the livox lidar ROS driver correctly by running the following commands. Note: this step only needs to be done when first installing the CPSL_ROS_Sensors Module
+    ```
+    cd CPSL_ROS2_Sensors/src/CPSL_ROS_livox_ros_driver2
+    ./build_CPSL_ROS2_Sensors.sh jazzy
+    ```
 
 3. Next, build the ROS nodes in your catkin workspace using the following commands:
 ```
-cd ~/catkin_ws
-catkin_make
+cd CPSL_ROS2_Sensors
+colcon build --symlink-install
 ```
 
 4. Finally, source the setup.bash file so that ROS can find the nodes and the messages
 ```
-source devel/setup.bash
+source install/setup.bash
 ```
 
 # Tutorials
 
-## 1. Using a velodyne lidar
-To obtain measurements from a velodyn lidar, use the following command. The will publish a [sensor/msgs/PointCloud2](https://docs.ros.org/en/jade/api/sensor_msgs/html/msg/PointCloud2.html) message on the topic "/velodyne_points".
+
+## 1. Using a Livox Mid360 lidar
+1. [FIRST TIME ONLY] - the first time you utilize the livox Mid360 lidar, you must set the ip address of your system to have a static ipv4 address of ```192.168.1.50``` and a netmask of ```255.255.255.0```.
+
+2. To obtain measurements from the lidar, use the following command. The will publish a [sensor/msgs/PointCloud2](https://docs.ros.org/en/jade/api/sensor_msgs/html/msg/PointCloud2.html) message on the topic "/livox/lidar".
 ```
-roslaunch velodyne_pointcloud VLP16_points.launch
+ros2 launch livox_ros_driver2 rviz_MID360_launch.py rviz_enable:=true
 ```
 
-## 2. Using a Livox lidar
-To obtain measurements from a velodyn lidar, use the following command. The will publish a [sensor/msgs/PointCloud2](https://docs.ros.org/en/jade/api/sensor_msgs/html/msg/PointCloud2.html) message on the topic "/livox/lidar".
-```
-roslaunch livox_ros_driver2 rviz_MID360.launch rviz_enable:=false
-```
+## To be updated 
+Everything below this point needs to be updated
 
 ## 3.Lidar Odometry/Localization using livox lidar sensor
 
