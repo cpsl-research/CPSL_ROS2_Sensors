@@ -15,7 +15,7 @@ Set of ROS packages for various sensors developed and utilized by Duke's CPSL la
 This repo additionally includes the CPSL_TI_Radar_ROS and CPSL_TI_Radar repositories for integrating with the TI IWR (and DCA1000) radar hardware. To ensure that all of the pre-requisites are installed for these code bases, perform the following steps:
 1. Install all of the required C++ pre-requisites by following the "Pre-requisite packages" instructions in the "Pre-requisite packages" instructions in the [CPSL_TI_Radar_cpp github installation instructions](https://github.com/davidmhunt/CPSL_TI_Radar/tree/main/CPSL_TI_Radar_cpp).
 
-### 2. Install Livox-SDK
+### 3. Install Livox-SDK
 
 In order to use the Livox Lidar ROS nodes, you will also need to install the Livox-SDK. To do so, follow these instructions:
 1. Install gcc 9.4.0 to allow for correct compilation:
