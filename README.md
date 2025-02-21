@@ -79,11 +79,38 @@ source install/setup.bash
 # Tutorials
 
 
+## 1. Starting LivoxMid360 and TI-Radar's simultaneously
+
+1. **Radar Setup**. See the insructions in [CPSL_TI_Radar_ROS2](./src/CPSL_TI_Radar_ROS2/README.md) to ensure that each radar is setup correctly. For this code bases, each Radar should have the  mmWaveSDK3.6 demo installed.
+
+2. **Radar connection setup** Follow these steps to connect the radars in the correct order.
+
+- Connect the front radar, then check to confirm that the first radar connects successfully
+    ```
+    ls /dev/ttyACM* #should return /ttyACM0 /ttyACM1
+    ```
+- If it connects successfully, then connect the back radar, then check to confirm that the second radar connects successfully
+    ```
+    ls /dev/ttyACM* #should return /ttyACM0 /ttyACM1 /ttyACM2 /ttyACM3
+    ```
+- If you have trouble connecting the radar successfully, or the radars fail to connect in later steps, try running the following commands (you may have to login and then log out for changes to apply)
+    ```
+    sudo usermod -a -G dialout $USER
+    ```
+
+3. **Radar .json file** Next, setup the radar_0_IWR1843_nav.json and radar_1_IWR1843_nav.json configuration files in the [/src/CPSL_TI_Radar_ROS2/src/ti_radar_connect/include/CPSL_TI_Radar/CPSL_TI_Radar_cpp/configs](./src/CPSL_TI_Radar_ROS2/src/ti_radar_connect/include/CPSL_TI_Radar/CPSL_TI_Radar_cpp/configs). Note, that this only need to be performed the first time you use the radar on your system. 
+
+4. **Configure the LivoxMid360**:  [FIRST TIME ONLY] - the first time you utilize the livox Mid360 lidar, you must set the ip address of your system to have a static ipv4 address of ```192.168.1.50``` and a netmask of ```255.255.255.0```. Then replace the last two digits of the IP address of the lidar with the last two digits of the serial number (located on the side of the LiDAR, under the QR code). Update this in the JSON file located at `~/CPSL_ROS2_Sensors/install/livox_ros_driver2/share/livox_ros_driver2/config/MID360_config.json` and at `~/CPSL_ROS2_Sensors/src/CPSL_ROS_livox_ros_driver2/config/MID360_config.json`
+
+
+
 ## 1. Using a Livox Mid360 lidar
-1. [FIRST TIME ONLY] - the first time you utilize the livox Mid360 lidar, you must set the ip address of your system to have a static ipv4 address of ```192.168.1.50``` and a netmask of ```255.255.255.0```. Then replace the last two digits of the IP address of the lidar with the last two digits of the serial number (located on the side of the LiDAR, under the QR code). Update this in the JSON file located at `~/CPSL_ROS2_Sensors/install/livox_ros_driver2/share/livox_ros_driver2/config/MID360_config.json`.
+1. [FIRST TIME ONLY] - the first time you utilize the livox Mid360 lidar, you must set the ip address of your system to have a static ipv4 address of ```192.168.1.50``` and a netmask of ```255.255.255.0```. Then replace the last two digits of the IP address of the lidar with the last two digits of the serial number (located on the side of the LiDAR, under the QR code). Update this in the JSON file located at `~/CPSL_ROS2_Sensors/install/livox_ros_driver2/share/livox_ros_driver2/config/MID360_config.json` and at `~/CPSL_ROS2_Sensors/src/CPSL_ROS_livox_ros_driver2/config/MID360_config.json`
 
 2. To obtain measurements from the lidar, use the following command. The will publish a [sensor/msgs/PointCloud2](https://docs.ros.org/en/jade/api/sensor_msgs/html/msg/PointCloud2.html) message on the topic "/livox/lidar".
 ```
+cd CPSL_ROS2_Sensors
+source install/setup.bash
 ros2 launch livox_ros_driver2 rviz_MID360_launch.py rviz_enable:=true
 ```
 
