@@ -26,6 +26,10 @@ ARGUMENTS = [
                           default_value='true',
                           choices=['true','false'],
                           description='Launch the livox lidar'),
+    DeclareLaunchArgument('lidar_scan_enable',
+                          default_value='false',
+                          choices=['true','false'],
+                          description='If lidar is enabled, additionally publish a /LaserScan message on the /scan topic'),
     DeclareLaunchArgument('radar_enable',
                           default_value='true',
                           choices=['true','false'],
@@ -45,6 +49,7 @@ def launch_setup(context, *args, **kwargs):
     #load parameters
     namespace = LaunchConfiguration('namespace')
     lidar_enable = LaunchConfiguration('lidar_enable')
+    lidar_scan_enable = LaunchConfiguration('lidar_scan_enable')
     radar_enable = LaunchConfiguration('radar_enable')
     platform_description_enable = LaunchConfiguration('platform_description_enable')
     rviz = LaunchConfiguration('rviz')
@@ -89,7 +94,8 @@ def launch_setup(context, *args, **kwargs):
             PythonLaunchDescriptionSource(launch_radar),
             launch_arguments=[
                 ('config_file','radar_0_IWR1843_nav.json'),
-                ('frame_id','radar_0')
+                ('frame_id','radar_0'),
+                ('stamp_delay_sec','0.1'),
             ],
             condition=IfCondition(radar_enable)
         ),
@@ -98,7 +104,8 @@ def launch_setup(context, *args, **kwargs):
             PythonLaunchDescriptionSource(launch_radar),
             launch_arguments=[
                 ('config_file','radar_1_IWR1843_nav.json'),
-                ('frame_id','radar_1')
+                ('frame_id','radar_1'),
+                ('stamp_delay_sec','0.1'),
             ],
             condition=IfCondition(radar_enable)
         ),
@@ -109,6 +116,33 @@ def launch_setup(context, *args, **kwargs):
                 ('urdf_file','create_3.urdf.xml')
             ],
             condition=IfCondition(platform_description_enable)
+        ),
+        
+        #Launch laserscan topic
+        Node(
+            package='pointcloud_to_laserscan',
+            executable='pointcloud_to_laserscan_node',
+            name='pointcloud_to_laserscan_node',
+            output='screen',
+            parameters=[
+                {'min_height':-0.1},
+                {'max_height':0.25},
+                {'angle_min':-3.141592653589793},
+                {'angle_max':3.141592653589793},
+                {'angle_increment':0.0174532925}, #pi/180
+                {'queue_size':10},
+                {'scan_time':1.0/20.0},
+                {'range_min':0.25},
+                {'range_max':5.0},
+                {'target_frame':''}, #use lidar's point cloud frame
+                {'transform_tolerance':0.01},
+                {'use_inf':True},
+            ],
+            condition=IfCondition(lidar_scan_enable),
+            remappings=[
+                ('cloud_in', 'livox/lidar'),  # Remap input point cloud topic
+                ('scan', 'livox/scan')  # Remap output laser scan topic
+            ],
         ),
 
         # Launch RViz

@@ -103,6 +103,11 @@ source install/setup.bash
 4. **Configure the LivoxMid360**:  [FIRST TIME ONLY] - the first time you utilize the livox Mid360 lidar, you must set the ip address of your system to have a static ipv4 address of ```192.168.1.50``` and a netmask of ```255.255.255.0```. Then replace the last two digits of the IP address of the lidar with the last two digits of the serial number (located on the side of the LiDAR, under the QR code). Update this in the JSON file located at `~/CPSL_ROS2_Sensors/install/livox_ros_driver2/share/livox_ros_driver2/config/MID360_config.json` and at `~/CPSL_ROS2_Sensors/src/CPSL_ROS_livox_ros_driver2/config/MID360_config.json`
 
 
+5. Finally, run the bringup 
+
+```
+ros2 launch cpsl_ros2_sensors_bringup ugv_sensor_bringup.launch.py namespace:=/cpslCreate3 lidar_enable:=false lidar_scan_enable:=true radar_enable:=false platform_description_enable:=false rviz:=false
+```
 
 ## 1. Using a Livox Mid360 lidar
 1. [FIRST TIME ONLY] - the first time you utilize the livox Mid360 lidar, you must set the ip address of your system to have a static ipv4 address of ```192.168.1.50``` and a netmask of ```255.255.255.0```. Then replace the last two digits of the IP address of the lidar with the last two digits of the serial number (located on the side of the LiDAR, under the QR code). Update this in the JSON file located at `~/CPSL_ROS2_Sensors/install/livox_ros_driver2/share/livox_ros_driver2/config/MID360_config.json` and at `~/CPSL_ROS2_Sensors/src/CPSL_ROS_livox_ros_driver2/config/MID360_config.json`
