@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 import os
 from glob import glob
 
-package_name = 'CPSL_ROS2_Sensors_bringup'
+package_name = 'platform_descriptions'
 
 setup(
     name=package_name,
@@ -13,7 +13,7 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share', package_name, 'launch'), glob(os.path.join('launch', '*launch.[pxy][yma]*'))),
-        (os.path.join('share', package_name, 'rviz_cfgs'), glob(os.path.join('rviz_cfgs', '*'))),
+        (os.path.join('share', package_name,'urdf'), glob('urdf/*')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

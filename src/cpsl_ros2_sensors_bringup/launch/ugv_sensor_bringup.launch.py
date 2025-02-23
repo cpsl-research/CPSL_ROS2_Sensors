@@ -15,6 +15,8 @@ from launch_ros.actions import PushRosNamespace, SetRemap, Node
 #locating other packages
 pkg_livox_ros_driver2 = get_package_share_directory('livox_ros_driver2')
 pkg_ti_radar_connect = get_package_share_directory('ti_radar_connect')
+pkg_platform_descriptions = get_package_share_directory('platform_descriptions')
+pkg_cpsl_ros2_sensors_bringup = get_package_share_directory('cpsl_ros2_sensors_bringup')
 
 #ROS2 launch arguments
 ARGUMENTS = [
@@ -28,10 +30,14 @@ ARGUMENTS = [
                           default_value='true',
                           choices=['true','false'],
                           description='Launch the ti radars (front and back) lidar'),
+    DeclareLaunchArgument('platform_description_enable',
+                          default_value='true',
+                          choices=['true','false'],
+                          description='publish the robot description corresponding to the sensor locations'),
     DeclareLaunchArgument('rviz',
                           default_value='false',
                           choices=['true','false'],
-                          description='Display an RViz window with navigation')
+                          description='Display an RViz window with all odometry displayed')
 ]
 
 def launch_setup(context, *args, **kwargs):
@@ -40,6 +46,7 @@ def launch_setup(context, *args, **kwargs):
     namespace = LaunchConfiguration('namespace')
     lidar_enable = LaunchConfiguration('lidar_enable')
     radar_enable = LaunchConfiguration('radar_enable')
+    platform_description_enable = LaunchConfiguration('platform_description_enable')
     rviz = LaunchConfiguration('rviz')
 
     #updating paths
@@ -56,13 +63,17 @@ def launch_setup(context, *args, **kwargs):
         [pkg_ti_radar_connect,'launch','connect_ti_radar_launch.py']
     )
 
-    # rviz_config_file = PathJoinSubstitution([pkg_cpsl_navigation, 'rviz_cfgs', 'slam.rviz'])
+    launch_platform_description = PathJoinSubstitution(
+        [pkg_platform_descriptions,'launch','publish_platform_description.launch.py']
+    )
+
+    rviz_config_file = PathJoinSubstitution([pkg_cpsl_ros2_sensors_bringup, 'rviz_cfgs', 'ugv_view.rviz'])
 
     # Apply the following re-mappings only within this group
     bringup_group = GroupAction([
         PushRosNamespace(namespace),
 
-        # SetRemap('/tf', namespace_str + '/tf'),
+        SetRemap('/tf', namespace_str + '/tf'),
         # SetRemap('/tf_static', namespace_str + '/tf_static'),
         # SetRemap('/scan', namespace_str + '/scan'),
         # SetRemap('/map', namespace_str + '/map'),
@@ -78,7 +89,7 @@ def launch_setup(context, *args, **kwargs):
             PythonLaunchDescriptionSource(launch_radar),
             launch_arguments=[
                 ('config_file','radar_0_IWR1843_nav.json'),
-                ('namespace','radar_0')
+                ('frame_id','radar_0')
             ],
             condition=IfCondition(radar_enable)
         ),
@@ -87,22 +98,30 @@ def launch_setup(context, *args, **kwargs):
             PythonLaunchDescriptionSource(launch_radar),
             launch_arguments=[
                 ('config_file','radar_1_IWR1843_nav.json'),
-                ('namespace','radar_1')
+                ('frame_id','radar_1')
             ],
             condition=IfCondition(radar_enable)
-        )
+        ),
+
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(launch_platform_description),
+            launch_arguments=[
+                ('urdf_file','create_3.urdf.xml')
+            ],
+            condition=IfCondition(platform_description_enable)
+        ),
 
         # Launch RViz
-        # Node(
-        #     package='rviz2',
-        #     executable='rviz2',
-        #     name='rviz2',
-        #     namespace=namespace,
-        #     arguments=['-d', rviz_config_file],
-        #     output='screen',
-        #     parameters=[{'use_sim_time': use_sim_time}],
-        #     condition=IfCondition(rviz)
-        # )
+        Node(
+            package='rviz2',
+            executable='rviz2',
+            name='rviz2',
+            namespace=namespace,
+            arguments=['-d', rviz_config_file],
+            output='screen',
+            parameters=[],
+            condition=IfCondition(rviz)
+        )
     ])
 
     return [bringup_group]
