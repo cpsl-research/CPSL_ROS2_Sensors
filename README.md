@@ -65,6 +65,12 @@ git submodule update --init --recursive
     ./build_CPSL_ROS2_Sensors.sh jazzy
     ```
 
+    - Finally, install the remaining ROS2 dependencies for the livox_ros_driver2
+    ```
+    cd CPSL_ROS2_Sensors
+    rosdep install --from-paths src -y --rosdistro=jazzy
+    ```
+
 3. Next, build the ROS nodes in your catkin workspace using the following commands:
 ```
 cd CPSL_ROS2_Sensors
