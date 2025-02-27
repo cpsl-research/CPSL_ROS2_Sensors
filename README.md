@@ -122,11 +122,10 @@ The parameters that can be used here are as follows:
 |-----------|--------------------------|---------------------------------------------|  
 | `namespace`   | ''  | the namespace of the robot |  
 | `lidar_enable`| true | on True, starts the livox lidar node
-| `lidar_scan_enable`| false | on True, publishes a laserscan version of the livox's PC2 topic on /livox/lidar
+| `lidar_scan_enable`| false | on True, publishes a laserscan version of the livox's PC2 topic on /livox/scan
 | `radar_enable`| true | On True, launch the (front and back) TI radars
 | `platform_description_enable`| true | On true, publishes the UGV robot description tf tree
 | `rviz`| true | On True, displays an RViz window of sensor data
-
 
 ## 1. Using a Livox Mid360 lidar
 1. [FIRST TIME ONLY] - the first time you utilize the livox Mid360 lidar, you must set the ip address of your system to have a static ipv4 address of ```192.168.1.50``` and a netmask of ```255.255.255.0```. Then replace the last two digits of the IP address of the lidar with the last two digits of the serial number (located on the side of the LiDAR, under the QR code). Update this in the JSON file located at `~/CPSL_ROS2_Sensors/install/livox_ros_driver2/share/livox_ros_driver2/config/MID360_config.json` and at `~/CPSL_ROS2_Sensors/src/CPSL_ROS_livox_ros_driver2/config/MID360_config.json`
