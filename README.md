@@ -103,6 +103,10 @@ source install/setup.bash
     ```
     sudo usermod -a -G dialout $USER
     ```
+- If the problem persists, try running the following command to give access to the serial port:
+    ```
+    sudo chmod 666 /dev/ttyACM0 # or whatever port you need to specify
+    ```
 
 3. **Radar .json file** Next, setup the radar_0_IWR1843_nav.json and radar_1_IWR1843_nav.json configuration files in the [/src/CPSL_TI_Radar_ROS2/src/ti_radar_connect/include/CPSL_TI_Radar/CPSL_TI_Radar_cpp/configs](./src/CPSL_TI_Radar_ROS2/src/ti_radar_connect/include/CPSL_TI_Radar/CPSL_TI_Radar_cpp/configs). Note, that this only need to be performed the first time you use the radar on your system. 
 
