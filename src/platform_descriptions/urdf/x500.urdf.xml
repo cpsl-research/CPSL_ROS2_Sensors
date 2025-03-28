@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<robot name="create_3">
+
+
+    <!-- Robot's base link (cylindrical) -->
+    <link name="base_link">
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <!-- TurtleBot4 -->
+                <cylinder radius="0.171" length="0.192"/>
+            </geometry>
+            <material name="white">
+                <color rgba="1.0 1.0 1.0 0.5"/>
+            </material>
+        </visual>
+    </link>
+
+    <!-- Lidar link (Livox Mid360) -->
+    <link name="livox_frame">
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <!-- Livox Mid360 -->
+                <cylinder radius="0.0385" length="0.081"/>
+            </geometry>
+            <material name="black">
+                <color rgba="0.0 0.0 0.0 0.5"/>
+            </material>
+        </visual>
+    </link>
+
+    <!-- Fixed joint to attach lidar to base_link -->
+    <joint name="lidar_joint" type="fixed">
+        <origin xyz="0.0 0.0 -0.1" rpy="3.141592653589793 0.0 0.0"/>
+        <parent link="base_link"/>
+        <child link="livox_frame"/>
+    </joint>
+
+    <!-- Radar 0 link (front radar)-->
+    <link name="radar_0">
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <box size="0.0005 0.02 0.05"/>
+            </geometry>
+            <material name="red">
+                <color rgba="1.0 0.0 0.0 1.0"/>
+            </material>
+        </visual>
+    </link>
+
+    <!-- Fixed joint to attach radar to base_link -->
+    <joint name="radar_0_joint" type="fixed">
+        <origin xyz="0.095 0.0 0.05" rpy="0.0 0.0 -1.57079633"/>
+        <parent link="base_link"/>
+        <child link="radar_0"/>
+    </joint>
+
+    <!-- Radar 1 link -->
+    <link name="radar_1">
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <box size="0.0005 0.02 0.05"/>
+            </geometry>
+            <material name="red">
+                <color rgba="1.0 0.0 0.0 1.0"/>
+            </material>
+        </visual>
+    </link>
+
+    <!-- Fixed joint to attach radar to base_link -->
+    <joint name="radar_1_joint" type="fixed">
+        <origin xyz="-0.105 0.0 0.05" rpy="0.0 0.0 1.57079633"/>
+        <parent link="base_link"/>
+        <child link="radar_1"/>
+    </joint>
+
+</robot>
