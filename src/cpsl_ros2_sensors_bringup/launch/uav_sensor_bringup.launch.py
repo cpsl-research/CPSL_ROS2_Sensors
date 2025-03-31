@@ -123,7 +123,7 @@ def launch_setup(context, *args, **kwargs):
             output='screen',
             parameters=[
                 {'min_height':-0.1},
-                {'max_height':0.25},
+                {'max_height':0.1},
                 {'angle_min':-3.141592653589793},
                 {'angle_max':3.141592653589793},
                 {'angle_increment':0.0174532925}, #pi/180

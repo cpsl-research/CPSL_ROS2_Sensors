@@ -32,7 +32,7 @@
 
     <!-- Fixed joint to attach lidar to base_link -->
     <joint name="lidar_joint" type="fixed">
-        <origin xyz="0.0 0.0 -0.1" rpy="3.141592653589793 0.0 0.0"/>
+        <origin xyz="0.0 0.0 0.1" rpy="0.0 0.0 0.0"/>
         <parent link="base_link"/>
         <child link="livox_frame"/>
     </joint>
@@ -52,7 +52,7 @@
 
     <!-- Fixed joint to attach radar to base_link -->
     <joint name="radar_0_joint" type="fixed">
-        <origin xyz="0.095 0.0 0.05" rpy="0.0 0.0 -1.57079633"/>
+        <origin xyz="0.095 0.0 -0.05" rpy="0.0 3.141592653589793 -1.57079633"/>
         <parent link="base_link"/>
         <child link="radar_0"/>
     </joint>
@@ -72,7 +72,7 @@
 
     <!-- Fixed joint to attach radar to base_link -->
     <joint name="radar_1_joint" type="fixed">
-        <origin xyz="-0.105 0.0 0.05" rpy="0.0 0.0 1.57079633"/>
+        <origin xyz="-0.105 0.0 -0.05" rpy="0.0 3.141592653589793 1.57079633"/>
         <parent link="base_link"/>
         <child link="radar_1"/>
     </joint>
