@@ -5,13 +5,12 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /TF1
-        - /TF1/Frames1
         - /RobotModel1/Description Topic1
+        - /lidar1
+        - /lidar1/Status1
         - /radar_11/Topic1
         - /LaserScan1/Topic1
         - /combined_pc1/Topic1
-        - /RadarScan1
         - /RadarScan1/Topic1
       Splitter Ratio: 0.5
     Tree Height: 327
@@ -61,30 +60,34 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        base_link:
+        cpsl_uav_1/base_link:
           Value: true
-        livox_frame:
+        cpsl_uav_1/livox_frame:
           Value: false
-        odom:
+        cpsl_uav_1/odom:
           Value: true
-        radar_0:
+        cpsl_uav_1/radar_0:
           Value: false
-        radar_1:
+        cpsl_uav_1/radar_1:
           Value: false
+        map:
+          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Tree:
-        odom:
-          base_link:
-            livox_frame:
+        cpsl_uav_1/odom:
+          cpsl_uav_1/base_link:
+            cpsl_uav_1/livox_frame:
               {}
-            radar_0:
+            cpsl_uav_1/radar_0:
               {}
-            radar_1:
+            cpsl_uav_1/radar_1:
               {}
+        map:
+          {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -125,10 +128,10 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 237
+      Max Intensity: 210
       Min Color: 0; 0; 0
       Min Intensity: 0
       Name: lidar
@@ -142,10 +145,10 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /livox/lidar
+        Value: /cpsl_uav_1/livox/lidar
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: false
       Autocompute Value Bounds:
@@ -242,7 +245,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Best Effort
-        Value: /livox/scan
+        Value: /cpsl_uav_1/livox/scan
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
@@ -363,7 +366,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: odom
+    Fixed Frame: cpsl_uav_1/odom
     Frame Rate: 30
   Name: root
   Tools:
@@ -406,7 +409,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 10.751775741577148
+      Distance: 15.964491844177246
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
