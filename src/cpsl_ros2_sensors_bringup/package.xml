@@ -13,6 +13,7 @@
   <test_depend>python3-pytest</test_depend>
 
   <depend>pointcloud_to_laserscan</depend>
+  <depend>usb_cam</depend>
 
   <export>
     <build_type>ament_python</build_type>

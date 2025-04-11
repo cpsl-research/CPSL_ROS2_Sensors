@@ -34,6 +34,10 @@ ARGUMENTS = [
                           default_value='true',
                           choices=['true','false'],
                           description='Launch the ti radars (front and back) lidar'),
+    DeclareLaunchArgument('camera_enable',
+                          default_value='true',
+                          choices=['true','false'],
+                          description='Launch the cameras'),
     DeclareLaunchArgument('platform_description_enable',
                           default_value='true',
                           choices=['true','false'],
@@ -50,6 +54,7 @@ def launch_setup(context, *args, **kwargs):
     namespace = LaunchConfiguration('namespace')
     lidar_enable = LaunchConfiguration('lidar_enable')
     lidar_scan_enable = LaunchConfiguration('lidar_scan_enable')
+    camera_enable = LaunchConfiguration('camera_enable')
     radar_enable = LaunchConfiguration('radar_enable')
     platform_description_enable = LaunchConfiguration('platform_description_enable')
     rviz = LaunchConfiguration('rviz')
@@ -92,7 +97,7 @@ def launch_setup(context, *args, **kwargs):
             launch_arguments=[
                 ('config_file','radar_0_IWR1843_nav.json'),
                 ('frame_id','radar_0'),
-                ('stamp_delay_sec','0.1'),
+                ('stamp_delay_sec','0.0'),
             ],
             condition=IfCondition(radar_enable)
         ),
@@ -102,7 +107,7 @@ def launch_setup(context, *args, **kwargs):
             launch_arguments=[
                 ('config_file','radar_1_IWR1843_nav.json'),
                 ('frame_id','radar_1'),
-                ('stamp_delay_sec','0.1'),
+                ('stamp_delay_sec','0.0'),
             ],
             condition=IfCondition(radar_enable)
         ),
@@ -140,6 +145,14 @@ def launch_setup(context, *args, **kwargs):
                 ('cloud_in', 'livox/lidar'),  # Remap input point cloud topic
                 ('scan', 'livox/scan')  # Remap output laser scan topic
             ],
+        ),
+        
+        #start the camera
+        Node(
+            package="usb_cam",
+            executable="usb_cam_node_exe",
+            name="usb_cam",
+            output='screen'
         ),
 
         # Launch RViz
