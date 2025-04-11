@@ -18,7 +18,9 @@ pkg_platform_descriptions = get_package_share_directory('platform_descriptions')
 
 ARGUMENTS = [
     DeclareLaunchArgument('urdf_file', default_value='create_3.urdf.xml',
-                          description='the urdf file representing the robot description')
+                          description='the urdf file representing the robot description'),
+    DeclareLaunchArgument('tf_prefix', default_value='',
+                          description='tf_prefix to apply to frame id')
 ]
 
 
@@ -26,11 +28,19 @@ def launch_setup(context, *args, **kwargs):
 
     #load parameters
     urdf_file = LaunchConfiguration('urdf_file')
+    tf_prefix = LaunchConfiguration('tf_prefix')
 
     #updating paths
     urdf_path = os.path.join(
         pkg_platform_descriptions,'urdf',urdf_file.perform(context)
     )
+
+    #get the prefex string for the tf frames
+    tf_prefex_str = tf_prefix.perform(context)
+    if (tf_prefex_str):
+        tf_prefex_str = "{}/".format(tf_prefex_str)
+    else:
+        tf_prefex_str = ""
 
     #read the urdf file
     with open(urdf_path, 'r') as infp:
@@ -45,7 +55,11 @@ def launch_setup(context, *args, **kwargs):
             executable='robot_state_publisher',
             name='robot_state_publisher',
             output='screen',
-            parameters=[{'robot_description': robot_desc}]
+            parameters=[
+                {
+                    'robot_description': robot_desc,
+                    'frame_prefix':tf_prefex_str
+                }]
         ),
         Node(
             package='joint_state_publisher',

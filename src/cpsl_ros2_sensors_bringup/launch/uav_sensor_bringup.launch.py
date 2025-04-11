@@ -61,8 +61,14 @@ def launch_setup(context, *args, **kwargs):
 
     #updating paths
     namespace_str = namespace.perform(context)
-    if (namespace_str and not namespace_str.startswith('/')):
-        namespace_str = '/' + namespace_str
+    if (namespace_str):
+        if not namespace_str.startswith('/'):
+            namespace_str = '/' + namespace_str
+        tf_prefix = namespace_str.strip("/")
+        laser_scan_target_frame = '{}/base_link'.format(tf_prefix)
+    else:
+        tf_prefix = ""
+        laser_scan_target_frame = "base_link"
 
     #locating other launch files
     launch_livox = PathJoinSubstitution(
@@ -83,12 +89,14 @@ def launch_setup(context, *args, **kwargs):
     bringup_group = GroupAction([
         PushRosNamespace(namespace),
 
-        SetRemap('/tf', namespace_str + '/tf'),
-        SetRemap('/tf_static', namespace_str + '/tf_static'),
+        # SetRemap('/tf', namespace_str + '/tf'),
+        # SetRemap('/tf_static', namespace_str + '/tf_static'),
 
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(launch_livox),
-            launch_arguments=[],
+            launch_arguments=[
+                ('tf_prefix',tf_prefix)
+            ],
             condition=IfCondition(lidar_enable)
         ),
 
@@ -97,6 +105,7 @@ def launch_setup(context, *args, **kwargs):
             launch_arguments=[
                 ('config_file','radar_0_IWR1843_nav.json'),
                 ('frame_id','radar_0'),
+                ('tf_prefix',tf_prefix),
                 ('stamp_delay_sec','0.0'),
             ],
             condition=IfCondition(radar_enable)
@@ -107,6 +116,7 @@ def launch_setup(context, *args, **kwargs):
             launch_arguments=[
                 ('config_file','radar_1_IWR1843_nav.json'),
                 ('frame_id','radar_1'),
+                ('tf_prefix',tf_prefix),
                 ('stamp_delay_sec','0.0'),
             ],
             condition=IfCondition(radar_enable)
@@ -115,7 +125,8 @@ def launch_setup(context, *args, **kwargs):
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(launch_platform_description),
             launch_arguments=[
-                ('urdf_file','x500.urdf.xml')
+                ('urdf_file','x500.urdf.xml'),
+                ('tf_prefix',tf_prefix)
             ],
             condition=IfCondition(platform_description_enable)
         ),
@@ -136,7 +147,7 @@ def launch_setup(context, *args, **kwargs):
                 {'scan_time':1.0/20.0},
                 {'range_min':0.25},
                 {'range_max':5.0},
-                {'target_frame':'base_link'}, #use lidar's point cloud frame
+                {'target_frame':laser_scan_target_frame}, #use lidar's point cloud frame
                 {'transform_tolerance':0.01},
                 {'use_inf':True},
             ],
@@ -152,7 +163,8 @@ def launch_setup(context, *args, **kwargs):
             package="usb_cam",
             executable="usb_cam_node_exe",
             name="usb_cam",
-            output='screen'
+            output='screen',
+            condition=IfCondition(camera_enable)
         ),
 
         # Launch RViz
