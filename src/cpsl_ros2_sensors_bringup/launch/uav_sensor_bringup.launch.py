@@ -65,10 +65,10 @@ def launch_setup(context, *args, **kwargs):
         if not namespace_str.startswith('/'):
             namespace_str = '/' + namespace_str
         tf_prefix = namespace_str.strip("/")
-        laser_scan_target_frame = '{}/base_link'.format(tf_prefix)
+        laser_scan_target_frame = '{}/base_footprint'.format(tf_prefix)
     else:
         tf_prefix = ""
-        laser_scan_target_frame = "base_link"
+        laser_scan_target_frame = "base_footprint"
 
     #locating other launch files
     launch_livox = PathJoinSubstitution(
@@ -138,8 +138,10 @@ def launch_setup(context, *args, **kwargs):
             name='pointcloud_to_laserscan_node',
             output='screen',
             parameters=[
-                {'min_height':-0.1},
-                {'max_height':0.1},
+                # {'min_height':-0.1},
+                # {'max_height':0.1},
+                {'min_height':0.1},
+                {'max_height':0.3},
                 {'angle_min':-3.141592653589793},
                 {'angle_max':3.141592653589793},
                 {'angle_increment':0.0174532925}, #pi/180

@@ -12,6 +12,7 @@ Panels:
         - /LaserScan1/Topic1
         - /combined_pc1/Topic1
         - /RadarScan1/Topic1
+        - /Image1
       Splitter Ratio: 0.5
     Tree Height: 327
   - Class: rviz_common/Selection
@@ -60,6 +61,10 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
+        clsp_uav_1/base_link:
+          Value: true
+        clsp_uav_1/odom:
+          Value: true
         cpsl_uav_1/base_link:
           Value: true
         cpsl_uav_1/livox_frame:
@@ -70,14 +75,15 @@ Visualization Manager:
           Value: false
         cpsl_uav_1/radar_1:
           Value: false
-        map:
-          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Tree:
+        clsp_uav_1/odom:
+          clsp_uav_1/base_link:
+            {}
         cpsl_uav_1/odom:
           cpsl_uav_1/base_link:
             cpsl_uav_1/livox_frame:
@@ -86,8 +92,6 @@ Visualization Manager:
               {}
             cpsl_uav_1/radar_1:
               {}
-        map:
-          {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -131,7 +135,7 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 210
+      Max Intensity: 238
       Min Color: 0; 0; 0
       Min Intensity: 0
       Name: lidar
@@ -361,7 +365,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /image_raw
+        Value: /cpsl_uav_1/image_raw
       Value: true
   Enabled: true
   Global Options:
