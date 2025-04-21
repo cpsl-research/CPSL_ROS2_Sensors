@@ -125,8 +125,7 @@ def launch_setup(context, *args, **kwargs):
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(launch_platform_description),
             launch_arguments=[
-                ('urdf_file','x500.urdf.xml'),
-                ('tf_prefix',tf_prefix)
+                ('urdf_file','cpsl_uav_1.urdf.xml'),
             ],
             condition=IfCondition(platform_description_enable)
         ),

@@ -3,7 +3,7 @@
 
 
     <!-- Robot's base link (cylindrical) -->
-    <link name="base_link">
+    <link name="cpsl_ugv_1/base_link">
         <visual>
             <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
             <geometry>
@@ -17,7 +17,7 @@
     </link>
 
     <!-- Lidar link (Livox Mid360) -->
-    <link name="livox_frame">
+    <link name="cpsl_ugv_1/livox_frame">
         <visual>
             <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
             <geometry>
@@ -33,12 +33,12 @@
     <!-- Fixed joint to attach lidar to base_link -->
     <joint name="lidar_joint" type="fixed">
         <origin xyz="0.0 0.0 0.1" rpy="0.0 0.0 0.0"/>
-        <parent link="base_link"/>
-        <child link="livox_frame"/>
+        <parent link="cpsl_ugv_1/base_link"/>
+        <child link="cpsl_ugv_1/livox_frame"/>
     </joint>
 
     <!-- Radar 0 link (front radar)-->
-    <link name="radar_0">
+    <link name="cpsl_ugv_1/radar_0">
         <visual>
             <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
             <geometry>
@@ -53,12 +53,12 @@
     <!-- Fixed joint to attach radar to base_link -->
     <joint name="radar_0_joint" type="fixed">
         <origin xyz="0.095 0.0 -0.05" rpy="0.0 3.141592653589793 -1.57079633"/>
-        <parent link="base_link"/>
-        <child link="radar_0"/>
+        <parent link="cpsl_ugv_1/base_link"/>
+        <child link="cpsl_ugv_1/radar_0"/>
     </joint>
 
     <!-- Radar 1 link -->
-    <link name="radar_1">
+    <link name="cpsl_ugv_1/radar_1">
         <visual>
             <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
             <geometry>
@@ -73,8 +73,8 @@
     <!-- Fixed joint to attach radar to base_link -->
     <joint name="radar_1_joint" type="fixed">
         <origin xyz="-0.105 0.0 -0.05" rpy="0.0 3.141592653589793 1.57079633"/>
-        <parent link="base_link"/>
-        <child link="radar_1"/>
+        <parent link="cpsl_ugv_1/base_link"/>
+        <child link="cpsl_ugv_1/radar_1"/>
     </joint>
 
 </robot>
