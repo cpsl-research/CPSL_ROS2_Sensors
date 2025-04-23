@@ -104,7 +104,7 @@ def launch_setup(context, *args, **kwargs):
             PythonLaunchDescriptionSource(launch_radar),
             launch_arguments=[
                 ('config_file','radar_0_IWR1843_nav.json'),
-                ('frame_id','radar_0'),
+                ('radar_name','radar_0'),
                 ('tf_prefix',tf_prefix),
                 ('stamp_delay_sec','0.0'),
             ],
@@ -115,7 +115,7 @@ def launch_setup(context, *args, **kwargs):
             PythonLaunchDescriptionSource(launch_radar),
             launch_arguments=[
                 ('config_file','radar_1_IWR1843_nav.json'),
-                ('frame_id','radar_1'),
+                ('radar_name','radar_1'),
                 ('tf_prefix',tf_prefix),
                 ('stamp_delay_sec','0.0'),
             ],
