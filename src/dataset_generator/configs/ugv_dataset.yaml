@@ -1,16 +1,16 @@
 dataset_generator:
   ros__parameters:
     radar_enable: True
-    lidar_enable: False
+    lidar_enable: True
     lidar_topic: "livox/lidar"
     camera_enable: False
     camera_topic: usb_cam/image_raw
-    imu_enable: False
-    imu_topic: "imu/data"
+    imu_enable: True
+    imu_topic: "imu"
     vicon_enable: False
-    vehicle_odom_enable: False
+    vehicle_odom_enable: True
     vehicle_odom_topic: "odom"
     base_frame: "cpsl_ugv_1/base_link"
-    frame_rate_save_data: 10.0
+    frame_rate_save_data: 5.0
     frame_rate_high_speed_sensors: 20.0
-    dataset_path: "/home/david/Downloads/datasets/CPSL_TEST_1"
+    dataset_path: "/home/cpsl/Downloads/datasets/CPSL_TEST_1"

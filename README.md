@@ -142,65 +142,49 @@ The parameters that can be used here are as follows:
 | `platform_description_enable`| true | On true, publishes the UGV robot description tf tree
 | `rviz`| true | On True, displays an RViz window of sensor data
 
+## 2.Recording a Dataset (UGV)
+Once a dataset has been captured the ```dataset_generator``` package can be used to capture datasets of time synchronized datasets from all of the sensors. The data that is currently available is as follows:
 
-## 1. Using a Livox Mid360 lidar
-1. [FIRST TIME ONLY] - the first time you utilize the livox Mid360 lidar, you must set the ip address of your system to have a static ipv4 address of ```192.168.1.50``` and a netmask of ```255.255.255.0```. Then replace the last two digits of the IP address of the lidar with the last two digits of the serial number (located on the side of the LiDAR, under the QR code). Update this in the JSON file located at `~/CPSL_ROS2_Sensors/install/livox_ros_driver2/share/livox_ros_driver2/config/MID360_config.json` and at `~/CPSL_ROS2_Sensors/src/CPSL_ROS_livox_ros_driver2/config/MID360_config.json`
+| **Data** | **Format** | **Description** |  
+|-----------|--------------------------|---------------------------------------------|  
+| `radar_pc`   | Nx4 np array with [x,y,z,vel] points  | radar point cloud data | 
+| `radar_adc`   |  rx_antennas x samples_per_chirp x chirps_per_frame np array of complex int16s | adc data cubes | 
+| `lidar`| Nx4 aray with [x,y,z,intensity] | full 3D lidar point cloud |
+| `camera`| .png | image recorded from a camera |
+| `imu_data`| Nx7 array with [time,w_x,w_y,w_z,a_x,a_y,a_z] |imu measurements (recorded at higher rate) |
+| `vicon`| Nx7 array with [trans_x, trans_y, trans_z, quat_w, quat_x, quat_y, quat_z] |vicon poses for an object (recorded for each object) |
+| `vehicle_odom`| Nx14 array with [time,x,y,z,quat_w,quat_x,quat_y,quat_z,vx,vy,vz,wx,wy,wz] |vehicle odometry measurements (recorded at higher rate) |
+| `vehicle_vel`| Nx3 array with [time,vx,wz] |vehicle velocity measurements (recorded at higher rate) |
 
-2. To obtain measurements from the lidar, use the following command. The will publish a [sensor/msgs/PointCloud2](https://docs.ros.org/en/jade/api/sensor_msgs/html/msg/PointCloud2.html) message on the topic "/livox/lidar".
+1. **Define .yaml file** To record a dataset, first update or create a new .yaml configuration file in `~/CPSL_ROS2_Sensors/src/dataset_generator/configs`. An example configuration file is shown below. Note, when specifying the topics, you should not put a "/" (e.g.; "/topic_name") as this will specify an absolute path and prevent dynamic namespacing.
+```
+dataset_generator:
+  ros__parameters:
+    radar_enable: True
+    lidar_enable: True
+    lidar_topic: "livox/lidar"
+    camera_enable: False
+    camera_topic: usb_cam/image_raw
+    imu_enable: True
+    imu_topic: "imu"
+    vicon_enable: False
+    vehicle_odom_enable: True
+    vehicle_odom_topic: "odom"
+    base_frame: "cpsl_ugv_1/base_link"
+    frame_rate_save_data: 5.0
+    frame_rate_high_speed_sensors: 20.0
+    dataset_path: "/home/cpsl/Downloads/datasets/CPSL_TEST_1"
+```
+2. **Launch the dataset_generator** : Once the .yaml configuration file has been generatoed, use the following code to launch dataset generation:
 ```
 cd CPSL_ROS2_Sensors
+colcon build --symlink-install
 source install/setup.bash
-ros2 launch livox_ros_driver2 rviz_MID360_launch.py rviz_enable:=true
+ros2 launch dataset_generator record_dataset.launch.py
 ```
 
-## To be updated 
-Everything below this point needs to be updated
-
-## 3.Lidar Odometry/Localization using livox lidar sensor
-
-### Setup
-In addition to installing the above package, localizing the lidar using the livox sensor also requires the map_serve package. We have used the ROS1 navigation package which can be accessed at [CPSL_ROS_Navigation_and_Mapping](https://github.com/cpsl-research/CPSL_ROS_Navigation_and_Mapping) and using the following terminal commands:
-```
-cd ~/catkin_ws/src/
-git clone --recurse-submodules https://github.com/cpsl-research/CPSL_ROS_Navigation_and_Mapping.git
-rosdep install --from-paths ~/catkin_ws/src/CPSL_ROS_Navigation_and_Mapping/ --ignore-src -y --rosdistro=noetic
-```
-
-### Configure Lidar Localization Pipeline
-Lidar locatlization is performed using the [cpsl_ros_lidar_odometry](./CPSL_ROS_Lidar_Odometry/) ROS package. The odometry is then launched by using the [lidar_odometry.launch](./CPSL_ROS_Lidar_Odometry/launch/lidar_odometry.launch) file. To configure the lidar odometry, you must provide the launch file with a .json odometry file located in the [configs_odometry](./CPSL_ROS_Lidar_Odometry/configs_odometry/) folder. The key parameters for the configuration file are as follows:
-* **map/load_method**: the localizatino pipeline can either manually load a file or use a map server. In this tutorial we use a map server. Be sure to set the "load_method" to "server"
-* **odometry_config/start_pose/**: Here, specify the approximate position (translation and heading) of the lidar in the global map. While this doesn't have to be exact (the localization pipeline can handle small errors), it needs to be quite accurate. This may take a little bit of time to get right when starting in a new environment.
-* **subscriptions/point_cloud**: this is the topic that the pipeline will listen to for the lidar's point cloud. In this case, set it to "/livox/lidar" to use the livox MID360's lidar point cloud
-* **/publishers/point_cloud**: The localization pipeline currently publishes a 2D slice of the lidar's 3D point cloud. By modifying the  frame_id and topic_name parameter's here, you specify the tf frame_id and topic name that the re-published point cloud will be published on.
-* **/publishers/odometry_pose**: Since the pipeline was initially developed for localization, there is an "odometry frame" which is used to describe the position of the lidar sensor within the global map. By setting the topic_name, frame_id, and child_frame_id, you can specify the name of the ROS topic used to publish a tf tree transformation between the "odometry" frame and the "child" frame (i.e., the lidar's base frame). Make sure that the child_frame_id matches the point_cloud/frame_id so that the tf frame lines up
-* **/publishers/tf_tree** Finally, set the map_frame_id, odom_frame_id, and base_frame_id parameters here to set up the full tf tree. the odom_frame_id should be the same as the odometry_pose/frame_id and the base_frame_id should be the same as the point_cloud/frame_id. The map_frame_id should be the name of the global map's frame id (usually just "map"). 
-
-### Running the pipeline (with velodyne lidar)
-To run the lidar's localization pipeline, perform the following commands. Note that you must run this code in multiple terminals. We recommend using [tmux](https://github.com/tmux/tmux/wiki/Installing) or a similar multi-terminal viewer
-
-1. Start by running the velodyne ROS driver. We've disabled rviz here, but to see the raw point cloud anyways (before localization), set rviz_enable to true.
-
-```
-cd ~/[catkin_ws]/
-catkin_make
-source devel/setup.bash
-roslaunch velodyne_pointcloud VLP16_points.launch
-```
-
-2. Next, in a new terminal window (with the 1st terminal still running), start the map server. Below, replace [full_path_to_map].yaml with the full path to the global map you wish to use (e.g.; /home/cpsl/data/maps/wilkinson.yaml). For more resources, check out the tutorials for the [CPSL_ROS_Navigation_and_Mapping](https://github.com/cpsl-research/CPSL_ROS_Navigation_and_Mapping)
-```
-cd ~/[catkin_ws]/
-source devel/setup.bash
-roslaunch map_server map_server_sensor_updates.launch map_path:=/home/locobot/data/maps/cpsl_full.yaml
-```
-
-3. Finally, in a 3rd terminal window, run the terminal command. You may need to change lidar-odometry_wilkinson.json to be your custom configuration if you created one during the setup.
-```
-cd ~/[catkin_ws]/
-source devel/setup.bash
-roslaunch cpsl_ros_lidar_odometry lidar_odometry.launch config_file:=lidar_odometry_cpsl.json verbose:=false rviz:=true
-```
-
-## 4. Collecting Datasets with the TI DCA1000
-
-If you want to collect a dataset which includes raw Radar data from a DCA1000 board, follow the instructions available at the [CPSL_TI_Radar_ROS](https://github.com/davidmhunt/CPSL_TI_Radar_ROS) github page under the tutorials section. **NOTE: ONLY THE IWR1443 + DCA1000 is supported. Future updates will support the IWR1843 and IWR6843**
+The parameters that can be used by using the ```parameter:=value``` notation: 
+| **Parameter** | **Default** | **Description** |  
+|-----------|--------------------------|---------------------------------------------|  
+| `namespace`   | ''  | the namespace of the robot |  
+| `param_file`| 'ugv_dataset.yaml' | the .yaml config file in the configs directory of the dataset_generator package.

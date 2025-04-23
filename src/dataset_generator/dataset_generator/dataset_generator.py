@@ -430,7 +430,7 @@ class DatasetGenerator(Node):
             self.radar_pc_msgs_latest.append(None) #append empty message for now
         
         #initialize raw adc data subscribers
-        for i in range(len(self.radar_pc_topics)):
+        for i in range(len(self.radar_raw_adc_topics)):
             sub = self.create_subscription(
                 msg_type=ADCDataCube,
                 topic=self.radar_raw_adc_topics[i],
@@ -753,7 +753,7 @@ class DatasetGenerator(Node):
 
             if msg:
                 #convert to np array
-                data = self.pointcloud2_to_np(msg)
+                data = self.pointcloud2_to_np_radar(msg)
 
                 path = os.path.join(self.dataset_path,folder,file_name)
                 np.save(path,data)
@@ -819,7 +819,7 @@ class DatasetGenerator(Node):
 
         if msg:
             #convert to np array
-            data:np.ndarray = self.pointcloud2_to_np(msg)
+            data:np.ndarray = self.pointcloud2_to_np_lidar(msg)
 
             file_name = "{}_{}.npy".format(self.save_file_name,self.sample_idx)
             path = os.path.join(self.dataset_path,self.lidar_data_folder,file_name)
@@ -961,6 +961,42 @@ class DatasetGenerator(Node):
         point_cloud = pc2.read_points_numpy(
             cloud=msg,
             skip_nans=True,
+            reshape_organized_cloud=True
+        )
+
+        return point_cloud
+    
+    def pointcloud2_to_np_radar(self,msg:PointCloud2)->np.ndarray:
+        """Converts a PointCloud2 array  from a radar into a numpy array
+
+        Args:
+            msg (PointCloud2): The pointCloud2 object to convert to a numpy array
+
+        Returns:
+            np.ndarray: Numpy array of points from the PointCloud2 array
+        """
+        point_cloud = pc2.read_points_numpy(
+            cloud=msg,
+            skip_nans=True,
+            field_names=['x','y','z','vel'],
+            reshape_organized_cloud=True
+        )
+
+        return point_cloud
+    
+    def pointcloud2_to_np_lidar(self,msg:PointCloud2)->np.ndarray:
+        """Converts a PointCloud2 array  from a radar into a numpy array
+
+        Args:
+            msg (PointCloud2): The pointCloud2 object to convert to a numpy array
+
+        Returns:
+            np.ndarray: Numpy array of points from the PointCloud2 array
+        """
+        point_cloud = pc2.read_points_numpy(
+            cloud=msg,
+            skip_nans=True,
+            field_names=['x','y','z','intensity'],
             reshape_organized_cloud=True
         )
 
