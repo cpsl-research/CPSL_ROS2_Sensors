@@ -55,6 +55,8 @@ git submodule update --init --recursive
     - First, install all other dependencies required by the CPSL_ROS2_Sensors package
     ```
     cd CPSL_ROS2_Sensors
+    colcon build --packages-select raw_radar_msgs
+    source install/setup.bash
     rosdep install --from-paths src -y --rosdistro=jazzy
     ```
     Note: we build this package for ROS2 jazzy, if you are using a different ROS distribution, some of the above packages may have changed
@@ -125,17 +127,21 @@ source install/setup.bash
 Finally, launch all of the sensors with the given bringup file
 
 ```
-ros2 launch cpsl_ros2_sensors_bringup ugv_sensor_bringup.launch.py namespace:=/cpslCreate3 lidar_enable:=true lidar_scan_enable:=true radar_enable:=true platform_description_enable:=true rviz:=true
+cd CPSL_ROS2_Sensors
+source install/setup.bash
+ros2 launch cpsl_ros2_sensors_bringup ugv_sensor_bringup.launch.py lidar_enable:=true lidar_scan_enable:=true camera_enable:=false radar_enable:=false platform_description_enable:=true rviz:=false namespace:=cpsl_ugv_1
 ```
 The parameters that can be used here are as follows: 
 | **Parameter** | **Default** | **Description** |  
 |-----------|--------------------------|---------------------------------------------|  
 | `namespace`   | ''  | the namespace of the robot |  
+| `camera_enable`| true | on True, starts the camera node
 | `lidar_enable`| true | on True, starts the livox lidar node
-| `lidar_scan_enable`| false | on True, publishes a laserscan version of the livox's PC2 topic on /livox/scan
+| `lidar_scan_enable`| false | on True, publishes a laserscan version of the livox's PC2 topic on /livox/lidar
 | `radar_enable`| true | On True, launch the (front and back) TI radars
 | `platform_description_enable`| true | On true, publishes the UGV robot description tf tree
-| `rviz`| false | On True, displays an RViz window of sensor data
+| `rviz`| true | On True, displays an RViz window of sensor data
+
 
 ## 1. Using a Livox Mid360 lidar
 1. [FIRST TIME ONLY] - the first time you utilize the livox Mid360 lidar, you must set the ip address of your system to have a static ipv4 address of ```192.168.1.50``` and a netmask of ```255.255.255.0```. Then replace the last two digits of the IP address of the lidar with the last two digits of the serial number (located on the side of the LiDAR, under the QR code). Update this in the JSON file located at `~/CPSL_ROS2_Sensors/install/livox_ros_driver2/share/livox_ros_driver2/config/MID360_config.json` and at `~/CPSL_ROS2_Sensors/src/CPSL_ROS_livox_ros_driver2/config/MID360_config.json`
