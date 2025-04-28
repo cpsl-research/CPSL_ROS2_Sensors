@@ -585,8 +585,7 @@ class DatasetGenerator(Node):
             if self.imu_enable:
                 self.imu_data_update_buffer(cur_time)
             if self.vehicle_odom_enable:
-                self.vehicle_odometry_update_buffer(cur_time)
-        
+                self.vehicle_odometry_update_buffer(cur_time)        
         return
     
     ####################################################################
@@ -662,8 +661,15 @@ class DatasetGenerator(Node):
         if self.imu_enable:
             imu_data = np.array(self.imu_data_buffer)
         if self.vehicle_odom_enable:
-            odom_data = np.array(self.vehicle_odom_data_buffer) 
-            vel_data = odom_data[:,[0,8,13]]
+            # if len(self.vehicle_odom_data_buffer) == 1:
+            #     odom_data = np.array([self.vehicle_odom_data_buffer])
+            # else:
+            odom_data = np.array(self.vehicle_odom_data_buffer)
+        
+        self.get_logger().info("odom array shape: {}, len:{}".format(
+            odom_data.shape,len(self.vehicle_odom_data_buffer)
+        ))
+        vel_data = odom_data[:,[0,8,13]]
         
         #reset the buffers so they continue capturing data
         self.clear_high_speed_sensor_buffers()
@@ -688,7 +694,7 @@ class DatasetGenerator(Node):
         msg:Imu = self.imu_data_msg_latest
 
         # Prevent the imu_data_full buffer from growing too large
-        if len(self.imu_data_buffer) > 50:
+        if len(self.imu_data_buffer) > 100:
             self.imu_data_buffer = []
         else:
             self.imu_data_buffer.append([
@@ -712,7 +718,7 @@ class DatasetGenerator(Node):
             self.vehicle_odom_data_buffer = []
         
         #reset the buffer if it gets too big
-        if len(self.vehicle_odom_data_buffer) > 50:
+        if len(self.vehicle_odom_data_buffer) > 100:
             self.vehicle_odom_data_buffer = []
         
         msg:Odometry = self.vehicle_odom_msg_latest
@@ -833,11 +839,11 @@ class DatasetGenerator(Node):
         
         msg:Image = self.camera_msg_latest
 
-        bridge = CvBridge
-        cv_image = bridge.imgmsg_to_cv2(msg,desired_encoding='passthrough')
+        bridge = CvBridge()
+        cv_image = bridge.imgmsg_to_cv2(img_msg=msg,desired_encoding="bgr8")
 
-        file_name = "{}_{}.npy".format(self.save_file_name,self.sample_idx)
-        path = os.path.join(self.dataset_path,self.lidar_data_folder,file_name)
+        file_name = "{}_{}.png".format(self.save_file_name,self.sample_idx)
+        path = os.path.join(self.dataset_path,self.camera_data_folder,file_name)
 
         cv2.imwrite(path,cv_image)
         self.get_logger().info("Saved camera data")

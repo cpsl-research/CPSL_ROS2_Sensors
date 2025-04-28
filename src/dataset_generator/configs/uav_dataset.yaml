@@ -4,13 +4,13 @@ dataset_generator:
     lidar_enable: True
     lidar_topic: "livox/lidar"
     camera_enable: True
-    camera_topic: usb_cam/image_raw
-    imu_enable: True
+    camera_topic: "image_raw"
+    imu_enable: False
     imu_topic: "imu"
     vicon_enable: False
     vehicle_odom_enable: True
     vehicle_odom_topic: "odom"
-    base_frame: "cpsl_ugv_1/base_link"
-    frame_rate_save_data: 10.0
-    frame_rate_high_speed_sensors: 50.0
-    dataset_path: "/home/cpsl/Downloads/datasets/CPSL_TEST_1"
+    base_frame: "cpsl_uav_1/base_footprint"
+    frame_rate_save_data: 5.0
+    frame_rate_high_speed_sensors: 100.0
+    dataset_path: "/home/cpsl/Downloads/datasets/NORTH_RadSAR_Test_1"
