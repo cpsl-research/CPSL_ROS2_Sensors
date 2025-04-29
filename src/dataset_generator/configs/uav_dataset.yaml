@@ -11,6 +11,6 @@ dataset_generator:
     vehicle_odom_enable: True
     vehicle_odom_topic: "odom"
     base_frame: "cpsl_uav_1/base_footprint"
-    frame_rate_save_data: 5.0
+    frame_rate_save_data: 5.0 #5.0 for SAR, 20.0 for vel
     frame_rate_high_speed_sensors: 100.0
     dataset_path: "/home/cpsl/Downloads/datasets/NORTH_RadSAR_Test_1"
