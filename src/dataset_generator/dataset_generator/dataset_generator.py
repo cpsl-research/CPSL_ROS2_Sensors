@@ -1,5 +1,6 @@
 import rclpy
 from rclpy.node import Node
+import time
 import rclpy.duration
 from rclpy.node import Node,ParameterDescriptor,ParameterType
 import rclpy.publisher
@@ -350,14 +351,29 @@ class DatasetGenerator(Node):
 
             self.vicon_data_folders.append(folder_name)
     
-    def radar_data_folders_init(self):
-        # Get all topic names and types
-        topic_list = self.get_topic_names_and_types()
+    import time
 
-        #Find radar point cloud topics
-        self.radar_pc_topics = [name for name, _ in topic_list if "radar" in name.lower() and "detected_points" in name.lower()]
+    def radar_data_folders_init(self, timeout_sec=5.0, poll_interval=0.5):
+        start_time = time.time()
+
+        radar_pc_topics = []
+        radar_raw_adc_topics = []
+
+        while time.time() - start_time < timeout_sec:
+            topic_list = self.get_topic_names_and_types()
+
+            radar_pc_topics = [name for name, _ in topic_list if "radar" in name.lower() and "detected_points" in name.lower()]
+            radar_raw_adc_topics = [name for name, _ in topic_list if "radar" in name.lower() and "adc_data_cube" in name.lower()]
+
+            if radar_pc_topics or radar_raw_adc_topics:
+                break
+
+            time.sleep(poll_interval)
+
+        # Process radar point cloud topics
+        self.radar_pc_topics = radar_pc_topics
         self.radar_pc_folders = ["{}_pc".format(name.split("/")[-2]) for name in self.radar_pc_topics]
-        if len(self.radar_pc_topics) == 0:
+        if not self.radar_pc_topics:
             self.get_logger().info("No point cloud topics found.")
         else:
             self.get_logger().info("Radar point cloud topics: {}".format(self.radar_pc_topics))
@@ -365,16 +381,43 @@ class DatasetGenerator(Node):
                 path = os.path.join(self.dataset_path, folder)
                 self.check_for_directory(path, clear_contents=True)
 
-        #Find raw radar data topics
-        self.radar_raw_adc_topics = [name for name, _ in topic_list if "radar" in name.lower() and "adc_data_cube" in name.lower()]
+        # Process raw radar adc topics
+        self.radar_raw_adc_topics = radar_raw_adc_topics
         self.radar_raw_adc_folders = ["{}_adc".format(name.split("/")[-2]) for name in self.radar_raw_adc_topics]
-        if len(self.radar_raw_adc_topics) == 0:
-            self.get_logger().info("No raw adc data topics found")
+        if not self.radar_raw_adc_topics:
+            self.get_logger().info("No raw adc data topics found.")
         else:
             self.get_logger().info("Radar raw adc data topics: {}".format(self.radar_raw_adc_topics))
             for folder in self.radar_raw_adc_folders:
                 path = os.path.join(self.dataset_path, folder)
                 self.check_for_directory(path, clear_contents=True)
+
+    
+    # def radar_data_folders_init(self):
+    #     # Get all topic names and types
+    #     topic_list = self.get_topic_names_and_types()
+
+    #     #Find radar point cloud topics
+    #     self.radar_pc_topics = [name for name, _ in topic_list if "radar" in name.lower() and "detected_points" in name.lower()]
+    #     self.radar_pc_folders = ["{}_pc".format(name.split("/")[-2]) for name in self.radar_pc_topics]
+    #     if len(self.radar_pc_topics) == 0:
+    #         self.get_logger().info("No point cloud topics found.")
+    #     else:
+    #         self.get_logger().info("Radar point cloud topics: {}".format(self.radar_pc_topics))
+    #         for folder in self.radar_pc_folders:
+    #             path = os.path.join(self.dataset_path, folder)
+    #             self.check_for_directory(path, clear_contents=True)
+
+    #     #Find raw radar data topics
+    #     self.radar_raw_adc_topics = [name for name, _ in topic_list if "radar" in name.lower() and "adc_data_cube" in name.lower()]
+    #     self.radar_raw_adc_folders = ["{}_adc".format(name.split("/")[-2]) for name in self.radar_raw_adc_topics]
+    #     if len(self.radar_raw_adc_topics) == 0:
+    #         self.get_logger().info("No raw adc data topics found")
+    #     else:
+    #         self.get_logger().info("Radar raw adc data topics: {}".format(self.radar_raw_adc_topics))
+    #         for folder in self.radar_raw_adc_folders:
+    #             path = os.path.join(self.dataset_path, folder)
+    #             self.check_for_directory(path, clear_contents=True)
 
 
     ####################################################################
@@ -579,7 +622,7 @@ class DatasetGenerator(Node):
 
     def update_high_rate_sensors(self):
 
-        if self.check_latest_data():
+        if self.check_high_speed_sources():
             cur_time = self.get_clock().now()
             
             if self.imu_enable:
@@ -623,6 +666,34 @@ class DatasetGenerator(Node):
                     "No camera data"
                 )
                 return False
+        if self.imu_enable:
+            if len(self.imu_data_buffer) <= 1:
+                self.get_logger().info(
+                    "insufficient imu data"
+                )
+                return False
+        if self.vicon_enable:
+            for i in range(len(self.vicon_msgs_latest)):
+                #check radar adc data
+                if self.vicon_msgs_latest[i] is None:
+                    self.get_logger().info(
+                        "No vicon data from {}".format(self.vicon_topics[i]))
+                    return False
+        if self.vehicle_odom_enable:
+            if len(self.vehicle_odom_data_buffer) <= 1:
+                self.get_logger().info(
+                    "Insufficient vehicle odom data"
+                )
+                return False
+        
+        return True
+    
+    def check_high_speed_sources(self)->bool:
+        """Check to make sure that all expected data is being streamed
+
+        Returns:
+            bool: True if all data is now being streamed, false if not
+        """
         if self.imu_enable:
             if self.imu_data_msg_latest is None:
                 self.get_logger().info(
