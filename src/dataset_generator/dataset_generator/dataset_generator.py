@@ -737,10 +737,10 @@ class DatasetGenerator(Node):
             # else:
             odom_data = np.array(self.vehicle_odom_data_buffer)
         
-        self.get_logger().info("odom array shape: {}, len:{}".format(
-            odom_data.shape,len(self.vehicle_odom_data_buffer)
-        ))
-        vel_data = odom_data[:,[0,8,13]]
+            self.get_logger().info("odom array shape: {}, len:{}".format(
+                odom_data.shape,len(self.vehicle_odom_data_buffer)
+            ))
+            vel_data = odom_data[:,[0,8,13]]
         
         #reset the buffers so they continue capturing data
         self.clear_high_speed_sensor_buffers()
