@@ -76,6 +76,7 @@ git submodule update --init --recursive
 3. Next, build the ROS nodes in your catkin workspace using the following commands:
 ```
 cd CPSL_ROS2_Sensors
+colcon build --packages-select radar_msgs
 colcon build --symlink-install
 ```
 
