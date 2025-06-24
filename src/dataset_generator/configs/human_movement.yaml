@@ -4,7 +4,8 @@ dataset_generator:
     lidar_enable: False
     lidar_topic: "livox/lidar"
     camera_enable: True
-    camera_topic: "image_raw"
+    camera_topic: "/cpsl_ugv_1/camera/cpsl_realsense/color/image_raw"
+    realsense_enable: True
     imu_enable: False
     imu_topic: "imu"
     vicon_enable: False
