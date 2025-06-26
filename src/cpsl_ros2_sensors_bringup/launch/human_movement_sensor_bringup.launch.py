@@ -134,7 +134,7 @@ def launch_setup(context, *args, **kwargs):
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(launch_platform_description),
             launch_arguments=[
-                ('urdf_file','cpsl_ugv_1.urdf.xml'),
+                ('urdf_file','cpsl_human_movement.urdf.xml'),
             ],
             condition=IfCondition(platform_description_enable)
         ),
