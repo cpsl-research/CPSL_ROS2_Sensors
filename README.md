@@ -143,8 +143,8 @@ The parameters that can be used here are as follows:
 | `rviz`| true | On True, displays an RViz window of sensor data
 
 To integrate RealSense depth, use the human_movement_sensor_bringup.launch.py file instead:
-ros2 launch cpsl_ros2_sensors_bringup human_movement_sensor_bringup.launch.py lidar_enable:=true lidar_scan_enable:=true camera_enable:=false radar_enable:=false realsense_enable:=true platform_description_enable:=true rviz:=false namespace:=cpsl_ugv_1
-```
+```ros2 launch cpsl_ros2_sensors_bringup human_movement_sensor_bringup.launch.py lidar_enable:=true lidar_scan_enable:=true camera_enable:=false radar_enable:=false realsense_enable:=true platform_description_enable:=true rviz:=false namespace:=cpsl_ugv_1```
+
 The parameters that can be used here are as follows: 
 | **Parameter** | **Default** | **Description** |  
 |-----------|--------------------------|---------------------------------------------|  
