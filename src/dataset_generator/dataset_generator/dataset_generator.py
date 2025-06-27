@@ -12,7 +12,6 @@ from sensor_msgs.msg import PointCloud2,Image,Imu
 import sensor_msgs_py.point_cloud2 as pc2
 from tf2_ros import Buffer, TransformListener
 from raw_radar_msgs.msg import ADCDataCube
-
 from geometry_msgs.msg import Vector3Stamped,TransformStamped
 from nav_msgs.msg import Odometry
 from cv_bridge import CvBridge
@@ -332,6 +331,7 @@ class DatasetGenerator(Node):
             depth_path = os.path.join(self.dataset_path, self.depth_data_folder)
             self.check_for_directory(depth_path, clear_contents=True)
 
+            
         if self.imu_enable:
             
             #imu data full (all IMU data)
@@ -475,6 +475,7 @@ class DatasetGenerator(Node):
                 callback=self.depth_sub_callback,
                 qos_profile=self.qos_profile
             )
+
         if self.imu_enable:
             self.create_subscription(
                 msg_type=Imu,
@@ -718,6 +719,7 @@ class DatasetGenerator(Node):
                     "No depth data"
                 )
                 return False
+
         if self.imu_enable:
             if len(self.imu_data_buffer) <= 1:
                 self.get_logger().info(
@@ -983,8 +985,7 @@ class DatasetGenerator(Node):
 
         cv2.imwrite(depth_path, converted_image)
         self.get_logger().info("Saved depth data")
-    
-    
+
     def imu_data_save_to_file(self,data:np.ndarray):
         """Save the imu data to a file
 
