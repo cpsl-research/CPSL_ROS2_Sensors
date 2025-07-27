@@ -1,0 +1,16 @@
+dataset_generator:
+  ros__parameters:
+    radar_enable: True
+    lidar_enable: False
+    lidar_topic: "livox/lidar"
+    camera_enable: False
+    camera_topic: "image_raw"
+    imu_enable: False
+    imu_topic: "imu"
+    vicon_enable: False
+    vehicle_odom_enable: True
+    vehicle_odom_topic: "odom"
+    base_frame: "cpsl_uav_1/base_footprint"
+    frame_rate_save_data: 5.0 #5.0 for SAR, 20.0 for vel
+    frame_rate_high_speed_sensors: 40.0
+    dataset_path: "/home/cpsl/Downloads/datasets/CPSL_RadVel_ods_5Hz_diagonal"

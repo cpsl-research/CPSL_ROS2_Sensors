@@ -34,6 +34,9 @@ ARGUMENTS = [
                           default_value='true',
                           choices=['true','false'],
                           description='Launch the ti radars (front and back) lidar'),
+    DeclareLaunchArgument('front_radar_config_file',
+                          default_value='radar_0_IWR1843_demo.json',
+                          description='Radar configuration file in install/ti_radar_connect/share/ti_radar_connect/configs folder'),
     DeclareLaunchArgument('camera_enable',
                           default_value='true',
                           choices=['true','false'],
@@ -56,6 +59,7 @@ def launch_setup(context, *args, **kwargs):
     lidar_scan_enable = LaunchConfiguration('lidar_scan_enable')
     camera_enable = LaunchConfiguration('camera_enable')
     radar_enable = LaunchConfiguration('radar_enable')
+    front_radar_config_file = LaunchConfiguration('front_radar_config_file')
     platform_description_enable = LaunchConfiguration('platform_description_enable')
     rviz = LaunchConfiguration('rviz')
 
@@ -113,7 +117,7 @@ def launch_setup(context, *args, **kwargs):
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(launch_radar),
             launch_arguments=[
-                ('config_file','radar_0_IWR1843_human_movement.json'),
+                ('config_file',front_radar_config_file),
                 ('radar_name','radar_0'),
                 ('tf_prefix',tf_prefix),
                 ('stamp_delay_sec','0.1'),
