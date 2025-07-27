@@ -34,9 +34,9 @@ class DatasetGenerator(Node):
         self.lidar_enable:bool = False
         self.lidar_topic:str = ""
         self.camera_enable:bool = False
-        self.depth_enable:bool = False
+        self.camera_depth_enable:bool = False
         self.camera_topic:str = ""
-        self.depth_topic:str = ""
+        self.camera_depth_topic:str = ""
         self.imu_enable:bool = False
         self.imu_topic:str = ""
         self.vicon_enable:bool = False
@@ -60,7 +60,7 @@ class DatasetGenerator(Node):
         #dataset generation support variables
         self.lidar_data_folder = "lidar"
         self.camera_data_folder = "camera"
-        self.depth_data_folder = "depth"
+        self.camera_depth_data_folder = "depth"
         self.imu_data_folder = "imu_data" #position reading
         self.vehicle_odom_folder = "vehicle_odom"
         self.vehicle_vel_folder = "vehicle_vel"
@@ -84,7 +84,7 @@ class DatasetGenerator(Node):
         self.radar_raw_adc_msgs_latest:list = []
         self.lidar_data_msg_latest:PointCloud2 = None
         self.camera_msg_latest:Image = None
-        self.depth_msg_latest:Image = None
+        self.camera_depth_msg_latest:Image = None
         self.imu_data_msg_latest:Imu = None
         self.imu_data_buffer = [] #list of imu messages recorded at higher rate
         self.vicon_msgs_latest:list = []
@@ -148,7 +148,7 @@ class DatasetGenerator(Node):
             )
         )
         self.declare_parameter(
-            name='depth_enable',
+            name='camera_depth_enable',
             value=False,
             descriptor=ParameterDescriptor(
                 type=ParameterType.PARAMETER_BOOL,
@@ -164,7 +164,7 @@ class DatasetGenerator(Node):
             )
         )
         self.declare_parameter(
-            name='depth_topic',
+            name='camera_depth_topic',
             value="usb_cam/image_raw",
             descriptor=ParameterDescriptor(
                 type=ParameterType.PARAMETER_STRING,
@@ -250,8 +250,8 @@ class DatasetGenerator(Node):
         self.lidar_topic = self.get_parameter('lidar_topic').get_parameter_value().string_value
         self.camera_enable = self.get_parameter('camera_enable').get_parameter_value().bool_value
         self.camera_topic = self.get_parameter('camera_topic').get_parameter_value().string_value
-        self.depth_enable = self.get_parameter('depth_enable').get_parameter_value().bool_value
-        self.depth_topic = self.get_parameter('depth_topic').get_parameter_value().string_value
+        self.camera_depth_enable = self.get_parameter('camera_depth_enable').get_parameter_value().bool_value
+        self.camera_depth_topic = self.get_parameter('camera_depth_topic').get_parameter_value().string_value
         self.imu_enable = self.get_parameter('imu_enable').get_parameter_value().bool_value
         self.imu_topic = self.get_parameter('imu_topic').get_parameter_value().string_value
         self.vicon_enable = self.get_parameter('vicon_enable').get_parameter_value().bool_value
@@ -327,8 +327,8 @@ class DatasetGenerator(Node):
             path = os.path.join(self.dataset_path,self.camera_data_folder)
             self.check_for_directory(path,clear_contents=True)
 
-        if self.depth_enable:
-            depth_path = os.path.join(self.dataset_path, self.depth_data_folder)
+        if self.camera_depth_enable:
+            depth_path = os.path.join(self.dataset_path, self.camera_depth_data_folder)
             self.check_for_directory(depth_path, clear_contents=True)
 
             
@@ -468,10 +468,10 @@ class DatasetGenerator(Node):
                 callback=self.camera_sub_callback,
                 qos_profile=self.qos_profile
             )
-        if self.depth_enable:
+        if self.camera_depth_enable:
             self.create_subscription(
                 msg_type=Image,
-                topic=self.depth_topic,
+                topic=self.camera_depth_topic,
                 callback=self.depth_sub_callback,
                 qos_profile=self.qos_profile
             )
@@ -588,7 +588,7 @@ class DatasetGenerator(Node):
         Args:
             msg (Image): An Image message to save
         """
-        self.depth_msg_latest = msg
+        self.camera_depth_msg_latest = msg
         
         return
     
@@ -654,8 +654,8 @@ class DatasetGenerator(Node):
             if self.camera_enable:
                 self.camera_data_save_to_file()
             
-            if self.depth_enable:
-                self.depth_data_save_to_file()
+            if self.camera_depth_enable:
+                self.camera_depth_data_save_to_file()
 
             if self.vicon_enable:
                 self.vicon_data_save_to_file()
@@ -713,8 +713,8 @@ class DatasetGenerator(Node):
                     "No camera data"
                 )
                 return False
-        if self.depth_enable:
-            if self.depth_msg_latest is None:
+        if self.camera_depth_enable:
+            if self.camera_depth_msg_latest is None:
                 self.get_logger().info(
                     "No depth data"
                 )
@@ -974,14 +974,14 @@ class DatasetGenerator(Node):
         self.get_logger().info("Saved camera data")
 
 
-    def depth_data_save_to_file(self):
+    def camera_depth_data_save_to_file(self):
         bridge = CvBridge()
         file_name = "{}_{}.png".format(self.save_file_name,self.sample_idx)
 
 
-        depth_msg = self.depth_msg_latest
+        depth_msg = self.camera_depth_msg_latest
         converted_image = bridge.imgmsg_to_cv2(depth_msg, desired_encoding="passthrough")
-        depth_path = os.path.join(self.dataset_path, self.depth_data_folder, file_name)
+        depth_path = os.path.join(self.dataset_path, self.camera_depth_data_folder, file_name)
 
         cv2.imwrite(depth_path, converted_image)
         self.get_logger().info("Saved depth data")

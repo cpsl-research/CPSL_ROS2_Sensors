@@ -37,6 +37,21 @@ cmake -DCMAKE_C_COMPILER=/usr/bin/gcc-9 -DCMAKE_CXX_COMPILER=/usr/bin/g++-9 ..
 make
 sudo make install
 ```
+
+### 4. Install Intel Realsense Dependencies
+In order to use an intel realsense, complete the following steps to install the required dependencies (taken from the [realsense-ros](https://github.com/IntelRealSense/realsense-ros)). 
+
+1. **Install Intel Realsense SDK2.0**  Empircally, we found that it was easiest to install the librealsense2 through the ROS servers. This can be done as follows:
+    ```
+    #REPLACE <ROS_DISTRO> WITH YOUR ROS DISTRO (e.g.; jazzy)
+    sudo apt install ros-<ROS_DISTRO>-librealsense2* 
+    ```
+2. **Install Intel Realsense2 ROS Nodes** Finally, install the ROS nodes using the following command
+    ```
+    #REPLACE <ROS_DISTRO> WITH YOUR ROS DISTRO (e.g.; jazzy)
+    sudo apt install ros-<ROS_DISTRO>-realsense2-*
+    ```
+
 ## Installing CPSL_ROS2_Sensors as ROS2 package
 
 1. To install the CPSL_ROS2_Sensors ROS2 workspace perform the following commands

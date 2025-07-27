@@ -5,10 +5,10 @@ dataset_generator:
     lidar_topic: "/cpsl_human_movement/livox/lidar"
     camera_enable: True
     camera_topic: "/cpsl_human_movement/camera/cpsl_realsense/color/image_raw"
-    depth_enable: True
-    depth_topic: "/cpsl_human_movement/camera/cpsl_realsense/depth/image_rect_raw"
+    camera_depth_enable: True
+    camera_depth_topic: "/cpsl_human_movement/camera/cpsl_realsense/depth/image_rect_raw"
     realsense_enable: True
-    imu_enable: False
+    imu_enable: False 
     imu_topic: "imu"
     vicon_enable: False
     vehicle_odom_enable: False

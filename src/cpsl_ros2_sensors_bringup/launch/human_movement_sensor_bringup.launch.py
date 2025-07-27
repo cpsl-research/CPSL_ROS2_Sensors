@@ -114,7 +114,12 @@ def launch_setup(context, *args, **kwargs):
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(launch_realsense),
             launch_arguments=[
-                ('camera_name','cpsl_realsense')
+                ('camera_name','cpsl_realsense'),
+                ('enable_rgbd','true'),
+                ('align_depth.enable','true'),
+                ('enable_sync','true'),
+                ('enable_color','true'),
+                ('enable_depth','true'),
             ],
             condition=IfCondition(realsense_enable)
         ),

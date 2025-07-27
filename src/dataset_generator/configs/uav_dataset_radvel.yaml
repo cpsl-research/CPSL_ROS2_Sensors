@@ -5,6 +5,8 @@ dataset_generator:
     lidar_topic: "livox/lidar"
     camera_enable: False
     camera_topic: "image_raw"
+    camera_depth_enable: False
+    camera_depth_topic: "/cpsl_uav_1/camera/cpsl_realsense/depth/image_rect_raw"
     imu_enable: False
     imu_topic: "imu"
     vicon_enable: False
