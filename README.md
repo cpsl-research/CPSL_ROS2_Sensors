@@ -143,6 +143,22 @@ The parameters that can be used here are as follows:
 | `platform_description_enable`| true | On true, publishes the UGV robot description tf tree
 | `rviz`| true | On True, displays an RViz window of sensor data
 
+To integrate RealSense depth, use the human_movement_sensor_bringup.launch.py file instead:
+```ros2 launch cpsl_ros2_sensors_bringup human_movement_sensor_bringup.launch.py lidar_enable:=true lidar_scan_enable:=true camera_enable:=false radar_enable:=false realsense_enable:=true platform_description_enable:=true rviz:=false namespace:=cpsl_ugv_1```
+
+The parameters that can be used here are as follows: 
+| **Parameter** | **Default** | **Description** |  
+|-----------|--------------------------|---------------------------------------------|  
+| `namespace`   | ''  | the namespace of the robot |  
+| `camera_enable`| true | on True, starts the camera node
+| `lidar_enable`| true | on True, starts the livox lidar node
+| `lidar_scan_enable`| false | on True, publishes a laserscan version of the livox's PC2 topic on /livox/lidar
+| `radar_enable`| true | On True, launch the (front and back) TI radars
+| `realsense_enable`| false | On True, launch the RealSense camera
+| `platform_description_enable`| true | On true, publishes the UGV robot description tf tree
+| `rviz`| true | On True, displays an RViz window of sensor data
+
+
 ## 2.Recording a Dataset (UGV)
 Once a dataset has been captured the ```dataset_generator``` package can be used to capture datasets of time synchronized datasets from all of the sensors. The data that is currently available is as follows:
 
@@ -166,6 +182,8 @@ dataset_generator:
     lidar_topic: "livox/lidar"
     camera_enable: False
     camera_topic: usb_cam/image_raw
+    depth_enable: True
+    depth_topic: "camera/cpsl_realsense/depth/image_rect_raw"
     imu_enable: True
     imu_topic: "imu"
     vicon_enable: False

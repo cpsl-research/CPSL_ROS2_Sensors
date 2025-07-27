@@ -14,6 +14,9 @@
 
   <depend>pointcloud_to_laserscan</depend>
   <depend>usb_cam</depend>
+  <depend>realsense2_camera</depend>
+  <depend>realsense2_camera_msgs</depend>
+  <depend>realsense2_description</depend>
 
   <export>
     <build_type>ament_python</build_type>
