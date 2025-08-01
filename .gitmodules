@@ -4,3 +4,9 @@
 [submodule "src/CPSL_TI_Radar_ROS2"]
 	path = src/CPSL_TI_Radar_ROS2
 	url = https://github.com/cpsl-research/CPSL_TI_Radar_ROS2.git
+[submodule "src/CPSL_ROS2_LeapMotion"]
+	path = src/CPSL_ROS2_LeapMotion
+	url = https://github.com/cpsl-research/CPSL_ROS2_LeapMotion.git
+[submodule "submodules/leapc-python-bindings"]
+	path = submodules/leapc-python-bindings
+	url = https://github.com/ultraleap/leapc-python-bindings.git

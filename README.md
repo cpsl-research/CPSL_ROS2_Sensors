@@ -52,6 +52,90 @@ In order to use an intel realsense, complete the following steps to install the 
     sudo apt install ros-<ROS_DISTRO>-realsense2-*
     ```
 
+### 5. Install Leap Motion (for hand tracking) Dependencies
+If you want to use the LeapMotion2 hand tracking sensor, complete the following steps to install the required dependencies
+
+1. Install the Ultraleap Gemini from the [Leap Motion Controller 2 Downloads page](https://www.ultraleap.com/downloads/leap-motion-controller-2/). For ubuntu 22.04 and 24.04LTS, this can be done using the following commands:
+    ```
+    #add the Ultraleap GPG key
+    wget -qO - https://repo.ultraleap.com/keys/apt/gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/ultraleap.gpg
+
+    #add Ultraleap repo to apt
+    echo 'deb [arch=amd64] https://repo.ultraleap.com/apt stable main' | sudo tee /etc/apt/sources.list.d/ultraleap.list
+
+    #update apt
+    sudo apt update
+
+    #install Ultraleap packates
+    sudo apt install ultraleap-hand-tracking
+    ```
+
+    - To ensure that everything installed correctly, you should be able to run the following to test that the ultra-leap is connected:
+    ```
+    ultraleap-hand-tracking-control-panel
+    ```
+
+## 6. Setting up python environment using python poetry
+
+
+#### Installing Poetry:
+ 
+1. Check to see if Python Poetry is installed. If the below command is successful, poetry is installed move on to setting up the conda environment
+
+```
+    poetry --version
+```
+2. If Python Poetry is not installed, follow the [Poetry Install Instructions](https://python-poetry.org/docs/#installing-with-the-official-installer). On linux, Poetry can be installed using the following command:
+```
+curl -sSL https://install.python-poetry.org | python3 -
+```
+
+If you are using poetry over an ssh connection or get an error in the following steps, try running the following command first and then continuing with the remainder fo the installation.
+```
+export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
+```
+#### Installing CPSL_ROS2_Sensors
+
+To install the package using poetry, use the following steps
+1. Configure poetry projects to be able to use the system packages
+```
+poetry config virtualenvs.options.system-site-packages true
+```
+
+2. If you're using conda, you need to make sure that you're installing all python packages with the OS python version (instead of the conda version). To do this, use the following command (update 3.12 to whatever python installation ROS2 is using)
+```
+poetry env use /usr/bin/python3.12
+```
+
+3. Install the virtual environment
+```
+cd CPSL_ROS2_PC_Processing
+poetry install #without leap motion
+poetry install --with leapmotion #with leapmotion
+```
+
+3b. If using the leap motion
+```
+eval $(poetry env activate)
+cd submodules/leapc-python-bindings
+python -m build leapc-cffi
+pip install leapc-cffi/dist/leapc_cffi-0.0.1.tar.gz
+```
+
+Activating poetry shell
+```
+eval $(poetry env activate)
+```
+
+Building the packages
+```
+python -m colcon build --base-paths src --symlink-install
+```
+
+Data types:
+https://github.com/ultraleap/leapc-python-bindings/blob/main/leapc-python-api/src/leap/datatypes.py
+
+
 ## Installing CPSL_ROS2_Sensors as ROS2 package
 
 1. To install the CPSL_ROS2_Sensors ROS2 workspace perform the following commands

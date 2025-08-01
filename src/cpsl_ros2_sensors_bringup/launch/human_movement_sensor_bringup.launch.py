@@ -18,31 +18,36 @@ pkg_ti_radar_connect = get_package_share_directory('ti_radar_connect')
 pkg_platform_descriptions = get_package_share_directory('platform_descriptions')
 pkg_realsense2_camera = get_package_share_directory('realsense2_camera')
 pkg_cpsl_ros2_sensors_bringup = get_package_share_directory('cpsl_ros2_sensors_bringup')
+pkg_leap_motion = get_package_share_directory('leap_node')
 
 #ROS2 launch arguments
 ARGUMENTS = [
-    DeclareLaunchArgument('namespace', default_value='',
+    DeclareLaunchArgument('namespace', default_value='cpsl_human_movement',
                           description='namespace'),
     DeclareLaunchArgument('lidar_enable',
                           default_value='true',
                           choices=['true','false'],
                           description='Launch the livox lidar'),
     DeclareLaunchArgument('lidar_scan_enable',
-                          default_value='false',
+                          default_value='true',
                           choices=['true','false'],
                           description='If lidar is enabled, additionally publish a /LaserScan message on the /scan topic'),
     DeclareLaunchArgument('radar_enable',
-                          default_value='true',
+                          default_value='false',
                           choices=['true','false'],
                           description='Launch the ti radars (front and back) lidar'),
     DeclareLaunchArgument('camera_enable',
-                          default_value='true',
+                          default_value='false',
                           choices=['true','false'],
                           description='Launch the cameras'),
     DeclareLaunchArgument('realsense_enable',
-                          default_value='false',
+                          default_value='true',
                           choices=['true','false'],
                           description='Launch the realsense camera'),
+    DeclareLaunchArgument('leapmotion_enable',
+                            default_value='true',
+                            choices=['true','false'],
+                            description='Launch the leap motion sensor'),
     DeclareLaunchArgument('platform_description_enable',
                           default_value='true',
                           choices=['true','false'],
@@ -62,6 +67,7 @@ def launch_setup(context, *args, **kwargs):
     camera_enable = LaunchConfiguration('camera_enable')
     radar_enable = LaunchConfiguration('radar_enable')
     realsense_enable = LaunchConfiguration('realsense_enable')
+    leapmotion_enable = LaunchConfiguration('leapmotion_enable')
     platform_description_enable = LaunchConfiguration('platform_description_enable')
     rviz = LaunchConfiguration('rviz')
 
@@ -124,11 +130,20 @@ def launch_setup(context, *args, **kwargs):
             condition=IfCondition(realsense_enable)
         ),
 
+        #start the leap motion
+        Node(
+            package='leap_node',
+            executable='hands_publisher',
+            name='leapmotion_hands_publisher',
+            output='screen',
+            condition=IfCondition(leapmotion_enable),
+        ),
+
 
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(launch_radar),
             launch_arguments=[
-                ('config_file','radar_0_IWR1843_human_movement.json'),
+                ('config_file','radar_0_IWR6843_ods_human_movement.json'),
                 ('radar_name','radar_0'),
                 ('tf_prefix',tf_prefix),
                 ('stamp_delay_sec','0.1'),

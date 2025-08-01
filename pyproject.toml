@@ -1,0 +1,29 @@
+[project]
+name = "cpsl_ros2_sensors"
+version = "0.1.0"
+description = "Custom Python Environment for ROS2 workspaces"
+authors = [{ name = "David Hunt", email = "dmh89@duke.edu" }]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.10, <3.13"
+package-mode = false
+dependencies = [
+    "build (>=1.2.2.post1,<2.0.0)",
+    "cffi (>=1.17.1,<2.0.0)",
+    "opencv-python (>=3.0,<5.0.0.0)",
+    "numpy (>=1.25,<2.0.0)"
+]
+
+[tool.poetry.group.leapmotion]
+optional = true
+
+[tool.poetry.group.leapmotion.dependencies]
+leap = {path="./submodules/leapc-python-bindings/leapc-python-api", develop = true}
+
+[tool.poetry]
+package-mode = false
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
