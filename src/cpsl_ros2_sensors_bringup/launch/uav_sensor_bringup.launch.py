@@ -163,15 +163,15 @@ def launch_setup(context, *args, **kwargs):
             parameters=[
                 # {'min_height':-0.1},
                 # {'max_height':0.1},
-                {'min_height':0.1},
-                {'max_height':0.3},
+                {'min_height':0.5},
+                {'max_height':0.90},
                 {'angle_min':-3.141592653589793},
                 {'angle_max':3.141592653589793},
-                {'angle_increment':0.0174532925}, #pi/180
+                {'angle_increment':0.008}, #pi/180
                 {'queue_size':10},
                 {'scan_time':1.0/20.0},
                 {'range_min':0.5},
-                {'range_max':10.0},
+                {'range_max':50.0},
                 {'target_frame':laser_scan_target_frame}, #use lidar's point cloud frame
                 {'transform_tolerance':0.01},
                 {'use_inf':True},
