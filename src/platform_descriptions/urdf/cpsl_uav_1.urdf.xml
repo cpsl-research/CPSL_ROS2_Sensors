@@ -38,7 +38,7 @@
     </joint>
 
     <!-- Radar 0 link (front radar)-->
-    <link name="cpsl_uav_1/radar_0">
+    <link name="cpsl_uav_1/front_radar">
         <visual>
             <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
             <geometry>
@@ -51,14 +51,14 @@
     </link>
 
     <!-- Fixed joint to attach radar to base_link -->
-    <joint name="radar_0_joint" type="fixed">
+    <joint name="front_radar_joint" type="fixed">
         <origin xyz="0.095 0.0 -0.05" rpy="0.0 3.141592653589793 -1.57079633"/>
         <parent link="cpsl_uav_1/base_link"/>
-        <child link="cpsl_uav_1/radar_0"/>
+        <child link="cpsl_uav_1/front_radar"/>
     </joint>
 
     <!-- Radar 1 link -->
-    <link name="cpsl_uav_1/radar_1">
+    <link name="cpsl_uav_1/down_radar">
         <visual>
             <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
             <geometry>
@@ -71,10 +71,10 @@
     </link>
 
     <!-- Fixed joint to attach radar to base_link -->
-    <joint name="radar_1_joint" type="fixed">
+    <joint name="down_radar_joint" type="fixed">
         <origin xyz="-0.105 0.0 -0.05" rpy="0.0 3.141592653589793 1.57079633"/>
         <parent link="cpsl_uav_1/base_link"/>
-        <child link="cpsl_uav_1/radar_1"/>
+        <child link="cpsl_uav_1/down_radar"/>
     </joint>
 
 </robot>

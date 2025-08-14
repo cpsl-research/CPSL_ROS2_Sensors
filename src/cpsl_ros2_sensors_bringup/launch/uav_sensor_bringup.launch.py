@@ -20,7 +20,7 @@ pkg_cpsl_ros2_sensors_bringup = get_package_share_directory('cpsl_ros2_sensors_b
 
 #ROS2 launch arguments
 ARGUMENTS = [
-    DeclareLaunchArgument('namespace', default_value='',
+    DeclareLaunchArgument('namespace', default_value='cpsl_uav_1',
                           description='namespace'),
     DeclareLaunchArgument('lidar_enable',
                           default_value='true',
@@ -30,12 +30,19 @@ ARGUMENTS = [
                           default_value='false',
                           choices=['true','false'],
                           description='If lidar is enabled, additionally publish a /LaserScan message on the /scan topic'),
-    DeclareLaunchArgument('radar_enable',
+    DeclareLaunchArgument('front_radar_enable',
                           default_value='true',
                           choices=['true','false'],
                           description='Launch the ti radars (front and back) lidar'),
     DeclareLaunchArgument('front_radar_config_file',
-                          default_value='radar_0_IWR1843_demo.json',
+                          default_value='front_radar_IWR1843_dca_RadVel_10Hz.json',
+                          description='Radar configuration file in install/ti_radar_connect/share/ti_radar_connect/configs folder'),
+    DeclareLaunchArgument('down_radar_enable',
+                          default_value='true',
+                          choices=['true','false'],
+                          description='Launch the ti radars (front and back) lidar'),
+    DeclareLaunchArgument('down_radar_config_file',
+                          default_value='down_radar_IWR6843_ods_dca_RadVel.json',
                           description='Radar configuration file in install/ti_radar_connect/share/ti_radar_connect/configs folder'),
     DeclareLaunchArgument('camera_enable',
                           default_value='true',
@@ -58,8 +65,10 @@ def launch_setup(context, *args, **kwargs):
     lidar_enable = LaunchConfiguration('lidar_enable')
     lidar_scan_enable = LaunchConfiguration('lidar_scan_enable')
     camera_enable = LaunchConfiguration('camera_enable')
-    radar_enable = LaunchConfiguration('radar_enable')
+    front_radar_enable = LaunchConfiguration('front_radar_enable')
     front_radar_config_file = LaunchConfiguration('front_radar_config_file')
+    down_radar_enable = LaunchConfiguration('down_radar_enable')
+    down_radar_config_file = LaunchConfiguration('down_radar_config_file')
     platform_description_enable = LaunchConfiguration('platform_description_enable')
     rviz = LaunchConfiguration('rviz')
 
@@ -104,47 +113,29 @@ def launch_setup(context, *args, **kwargs):
             condition=IfCondition(lidar_enable)
         ),
 
-        # IncludeLaunchDescription(
-        #     PythonLaunchDescriptionSource(launch_radar),
-        #     launch_arguments=[
-        #         ('config_file','radar_0_IWR1843_vel_sr.json'),
-        #         ('radar_name','radar_0'),
-        #         ('tf_prefix',tf_prefix),
-        #         ('stamp_delay_sec','0.1'),
-        #     ],
-        #     condition=IfCondition(radar_enable)
-        # ),
+        #start front radar sensor
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(launch_radar),
             launch_arguments=[
                 ('config_file',front_radar_config_file),
-                ('radar_name','radar_0'),
+                ('radar_name','front_radar'),
                 ('tf_prefix',tf_prefix),
                 ('stamp_delay_sec','0.1'),
             ],
-            condition=IfCondition(radar_enable)
+            condition=IfCondition(front_radar_enable)
         ),
-        # IncludeLaunchDescription(
-        #     PythonLaunchDescriptionSource(launch_radar),
-        #     launch_arguments=[
-        #         ('config_file','radar_0_IWR1843_nav.json'),
-        #         ('radar_name','radar_0'),
-        #         ('tf_prefix',tf_prefix),
-        #         ('stamp_delay_sec','0.1'),
-        #     ],
-        #     condition=IfCondition(radar_enable)
-        # ),
 
-        # IncludeLaunchDescription(
-        #     PythonLaunchDescriptionSource(launch_radar),
-        #     launch_arguments=[
-        #         ('config_file','radar_1_IWR1843_nav.json'),
-        #         ('radar_name','radar_1'),
-        #         ('tf_prefix',tf_prefix),
-        #         ('stamp_delay_sec','0.0'),
-        #     ],
-        #     condition=IfCondition(radar_enable)
-        # ),
+        #start front radar sensor
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(launch_radar),
+            launch_arguments=[
+                ('config_file',down_radar_config_file),
+                ('radar_name','down_radar'),
+                ('tf_prefix',tf_prefix),
+                ('stamp_delay_sec','0.1'),
+            ],
+            condition=IfCondition(down_radar_enable)
+        ),
 
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(launch_platform_description),
