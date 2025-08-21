@@ -31,21 +31,21 @@ ARGUMENTS = [
                           choices=['true','false'],
                           description='If lidar is enabled, additionally publish a /LaserScan message on the /scan topic'),
     DeclareLaunchArgument('front_radar_enable',
-                          default_value='true',
+                          default_value='false',
                           choices=['true','false'],
                           description='Launch the ti radars (front and back) lidar'),
     DeclareLaunchArgument('front_radar_config_file',
                           default_value='front_radar_IWR1843_dca_RadVel_10Hz.json',
                           description='Radar configuration file in install/ti_radar_connect/share/ti_radar_connect/configs folder'),
     DeclareLaunchArgument('down_radar_enable',
-                          default_value='true',
+                          default_value='false',
                           choices=['true','false'],
                           description='Launch the ti radars (front and back) lidar'),
     DeclareLaunchArgument('down_radar_config_file',
                           default_value='down_radar_IWR6843_ods_dca_RadVel.json',
                           description='Radar configuration file in install/ti_radar_connect/share/ti_radar_connect/configs folder'),
     DeclareLaunchArgument('camera_enable',
-                          default_value='true',
+                          default_value='false',
                           choices=['true','false'],
                           description='Launch the cameras'),
     DeclareLaunchArgument('platform_description_enable',
@@ -79,9 +79,11 @@ def launch_setup(context, *args, **kwargs):
             namespace_str = '/' + namespace_str
         tf_prefix = namespace_str.strip("/")
         laser_scan_target_frame = '{}/base_footprint'.format(tf_prefix)
+        urdf_name = '{}.urdf.xml'.format(namespace_str.lstrip('/'))
     else:
         tf_prefix = ""
         laser_scan_target_frame = "base_footprint"
+        urdf_name = 'cpsl_uav_1.urdf.xml'
 
     #locating other launch files
     launch_livox = PathJoinSubstitution(
@@ -140,7 +142,7 @@ def launch_setup(context, *args, **kwargs):
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(launch_platform_description),
             launch_arguments=[
-                ('urdf_file','cpsl_uav_1.urdf.xml'),
+                ('urdf_file',urdf_name),
             ],
             condition=IfCondition(platform_description_enable)
         ),

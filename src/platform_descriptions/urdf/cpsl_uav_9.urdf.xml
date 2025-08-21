@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<robot name="create_3">
+
+
+    <!-- Robot's base link (cylindrical) -->
+    <link name="cpsl_uav_9/base_link">
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <!-- TurtleBot4 -->
+                <cylinder radius="0.171" length="0.192"/>
+            </geometry>
+            <material name="white">
+                <color rgba="1.0 1.0 1.0 0.5"/>
+            </material>
+        </visual>
+    </link>
+
+    <!-- Lidar link (Livox Mid360) -->
+    <link name="cpsl_uav_9/livox_frame">
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <!-- Livox Mid360 -->
+                <cylinder radius="0.0385" length="0.081"/>
+            </geometry>
+            <material name="black">
+                <color rgba="0.0 0.0 0.0 0.5"/>
+            </material>
+        </visual>
+    </link>
+
+    <!-- Fixed joint to attach lidar to base_link -->
+    <joint name="lidar_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.1" rpy="0.0 0.0 -1.57079633"/>
+        <parent link="cpsl_uav_9/base_link"/>
+        <child link="cpsl_uav_9/livox_frame"/>
+    </joint>
+
+    <!-- Radar 0 link (front radar)-->
+    <link name="cpsl_uav_9/front_radar">
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <box size="0.0005 0.02 0.05"/>
+            </geometry>
+            <material name="red">
+                <color rgba="1.0 0.0 0.0 1.0"/>
+            </material>
+        </visual>
+    </link>
+
+    <!-- Fixed joint to attach radar to base_link -->
+    <joint name="front_radar_joint" type="fixed">
+        <origin xyz="0.095 0.0 -0.05" rpy="0.0 3.141592653589793 -1.57079633"/>
+        <parent link="cpsl_uav_9/base_link"/>
+        <child link="cpsl_uav_9/front_radar"/>
+    </joint>
+
+    <!-- Radar 1 link -->
+    <link name="cpsl_uav_9/down_radar">
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <box size="0.0005 0.02 0.05"/>
+            </geometry>
+            <material name="red">
+                <color rgba="1.0 0.0 0.0 1.0"/>
+            </material>
+        </visual>
+    </link>
+
+    <!-- Fixed joint to attach radar to base_link -->
+    <joint name="down_radar_joint" type="fixed">
+        <origin xyz="-0.105 0.0 -0.05" rpy="0.0 3.141592653589793 1.57079633"/>
+        <parent link="cpsl_uav_9/base_link"/>
+        <child link="cpsl_uav_9/down_radar"/>
+    </joint>
+
+</robot>
