@@ -23,7 +23,7 @@ ARGUMENTS = [
     DeclareLaunchArgument('namespace', default_value='cpsl_uav_1',
                           description='namespace'),
     DeclareLaunchArgument('lidar_enable',
-                          default_value='true',
+                          default_value='false',
                           choices=['true','false'],
                           description='Launch the livox lidar'),
     DeclareLaunchArgument('lidar_scan_enable',
