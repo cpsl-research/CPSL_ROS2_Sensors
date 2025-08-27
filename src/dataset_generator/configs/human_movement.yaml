@@ -1,19 +1,21 @@
 dataset_generator:
   ros__parameters:
     radar_enable: True
-    lidar_enable: True
+    lidar_enable: False
     lidar_topic: "/cpsl_human_movement/livox/lidar"
     camera_enable: True
     camera_topic: "/cpsl_human_movement/camera/cpsl_realsense/color/image_raw"
     camera_depth_enable: True
     camera_depth_topic: "/cpsl_human_movement/camera/cpsl_realsense/depth/image_rect_raw"
-    realsense_enable: True
+    hand_tracking_enable: True
+    hand_tracking_left_topic: "/cpsl_human_movement/left_hand_joints"
+    hand_tracking_right_topic: "/cpsl_human_movement/right_hand_joints"
     imu_enable: False 
     imu_topic: "imu"
     vicon_enable: False
     vehicle_odom_enable: False
     vehicle_odom_topic: "odom"
     base_frame: "cpsl_human_movement/radar_0"
-    frame_rate_save_data: 20.0 #5.0 for SAR, 20.0 for vel
+    frame_rate_save_data: 10.0 #5.0 for SAR, 20.0 for vel
     frame_rate_high_speed_sensors: 20.0
-    dataset_path: "/home/cpsl/Downloads/datasets/action_1_no_v"
+    dataset_path: "/home/cpsl/Downloads/datasets/hand_pose_test_1"

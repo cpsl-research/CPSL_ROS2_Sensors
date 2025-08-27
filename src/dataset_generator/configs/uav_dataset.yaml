@@ -7,6 +7,9 @@ dataset_generator:
     camera_topic: "image_raw"
     camera_depth_enable: False
     camera_depth_topic: "/cpsl_uav_1/camera/cpsl_realsense/depth/image_rect_raw"
+    hand_tracking_enable: False
+    hand_tracking_left_topic: "/cpsl_human_movement/left_hand_joints"
+    hand_tracking_right_topic: "/cpsl_human_movement/right_hand_joints"
     imu_enable: False
     imu_topic: "imu"
     vicon_enable: False

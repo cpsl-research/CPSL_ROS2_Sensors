@@ -37,6 +37,9 @@ class DatasetGenerator(Node):
         self.camera_depth_enable:bool = False
         self.camera_topic:str = ""
         self.camera_depth_topic:str = ""
+        self.hand_tracking_enable:bool = False
+        self.hand_tracking_left_topic:str = ""
+        self.hand_tracking_right_topic:str = ""
         self.imu_enable:bool = False
         self.imu_topic:str = ""
         self.vicon_enable:bool = False
@@ -44,7 +47,7 @@ class DatasetGenerator(Node):
         self.vehicle_odom_topic:str = ""
         self.base_frame:str = ""
         self.frame_rate_save_data:float = 10
-        self.frame_rate_high_speed_sensors:float = 20
+        self.frame_rate_high_speed_sensors:float = 2
         self.dataset_path:str = ""
 
         #radar dataset generation
@@ -61,6 +64,7 @@ class DatasetGenerator(Node):
         self.lidar_data_folder = "lidar"
         self.camera_data_folder = "camera"
         self.camera_depth_data_folder = "depth"
+        self.hand_tracking_data_folder = "hands"
         self.imu_data_folder = "imu_data" #position reading
         self.vehicle_odom_folder = "vehicle_odom"
         self.vehicle_vel_folder = "vehicle_vel"
@@ -85,6 +89,8 @@ class DatasetGenerator(Node):
         self.lidar_data_msg_latest:PointCloud2 = None
         self.camera_msg_latest:Image = None
         self.camera_depth_msg_latest:Image = None
+        self.hand_tracking_left_msg_latest:PointCloud2 = None
+        self.hand_tracking_right_msg_latest:PointCloud2 = None
         self.imu_data_msg_latest:Imu = None
         self.imu_data_buffer = [] #list of imu messages recorded at higher rate
         self.vicon_msgs_latest:list = []
@@ -172,6 +178,30 @@ class DatasetGenerator(Node):
             )
         )
         self.declare_parameter(
+            name='hand_tracking_enable',
+            value=False,
+            descriptor=ParameterDescriptor(
+                type=ParameterType.PARAMETER_BOOL,
+                description='Whether or not to enable hand tracking'
+            )
+        )
+        self.declare_parameter(
+            name='hand_tracking_left_topic',
+            value="left_hand_joints",
+            descriptor=ParameterDescriptor(
+                type=ParameterType.PARAMETER_STRING,
+                description='The topic to left hand joints from'
+            )
+        )
+        self.declare_parameter(
+            name='hand_tracking_right_topic',
+            value="right_hand_joints",
+            descriptor=ParameterDescriptor(
+                type=ParameterType.PARAMETER_STRING,
+                description='The topic to right hand joints from'
+            )
+        )
+        self.declare_parameter(
             name='imu_enable',
             value=False,
             descriptor=ParameterDescriptor(
@@ -252,6 +282,9 @@ class DatasetGenerator(Node):
         self.camera_topic = self.get_parameter('camera_topic').get_parameter_value().string_value
         self.camera_depth_enable = self.get_parameter('camera_depth_enable').get_parameter_value().bool_value
         self.camera_depth_topic = self.get_parameter('camera_depth_topic').get_parameter_value().string_value
+        self.hand_tracking_enable = self.get_parameter('hand_tracking_enable').get_parameter_value().bool_value
+        self.hand_tracking_left_topic = self.get_parameter('hand_tracking_left_topic').get_parameter_value().string_value
+        self.hand_tracking_right_topic = self.get_parameter('hand_tracking_right_topic').get_parameter_value().string_value
         self.imu_enable = self.get_parameter('imu_enable').get_parameter_value().bool_value
         self.imu_topic = self.get_parameter('imu_topic').get_parameter_value().string_value
         self.vicon_enable = self.get_parameter('vicon_enable').get_parameter_value().bool_value
@@ -266,6 +299,8 @@ class DatasetGenerator(Node):
         self.get_logger().info(f'radar_enable set to: {self.radar_enable}')
         self.get_logger().info(f'lidar_enable set to: {self.lidar_enable}')
         self.get_logger().info(f'camera_enable set to: {self.camera_enable}')
+        self.get_logger().info(f'camera_depth_enable set to: {self.camera_depth_enable}')
+        self.get_logger().info(f'hand_tracking_enable set to: {self.hand_tracking_enable}')
         self.get_logger().info(f'imu_enable set to: {self.imu_enable}')
         self.get_logger().info(f'vicon_enable set to: {self.vicon_enable}')
         self.get_logger().info(f'vehicle_odom_enable set to: {self.vehicle_odom_enable}')
@@ -323,6 +358,7 @@ class DatasetGenerator(Node):
             path = os.path.join(self.dataset_path,self.lidar_data_folder)
             self.check_for_directory(path,clear_contents=True)
 
+        #initialize camera data folders
         if self.camera_enable:
             path = os.path.join(self.dataset_path,self.camera_data_folder)
             self.check_for_directory(path,clear_contents=True)
@@ -331,7 +367,10 @@ class DatasetGenerator(Node):
             depth_path = os.path.join(self.dataset_path, self.camera_depth_data_folder)
             self.check_for_directory(depth_path, clear_contents=True)
 
-            
+        if self.hand_tracking_enable:
+            path = os.path.join(self.dataset_path,self.hand_tracking_data_folder)
+            self.check_for_directory(path,clear_contents=True)
+
         if self.imu_enable:
             
             #imu data full (all IMU data)
@@ -475,6 +514,20 @@ class DatasetGenerator(Node):
                 callback=self.depth_sub_callback,
                 qos_profile=self.qos_profile
             )
+        
+        if self.hand_tracking_enable:
+            self.create_subscription(
+                msg_type=PointCloud2,
+                topic=self.hand_tracking_left_topic,
+                callback=self.hand_tracking_left_sub_callback,
+                qos_profile=self.qos_profile
+            )
+            self.create_subscription(
+                msg_type=PointCloud2,
+                topic=self.hand_tracking_right_topic,
+                callback=self.hand_tracking_right_sub_callback,
+                qos_profile=self.qos_profile
+            )
 
         if self.imu_enable:
             self.create_subscription(
@@ -591,6 +644,27 @@ class DatasetGenerator(Node):
         self.camera_depth_msg_latest = msg
         
         return
+
+    def hand_tracking_left_sub_callback(self,msg:PointCloud2):
+        """Update the left_hand_msg_latest with the latest message from the left hand joints
+
+        Args:
+            msg (PointCloud2): A PointCloud2 message to save
+        """
+        self.hand_tracking_left_msg_latest = msg
+
+        return
+
+    def hand_tracking_right_sub_callback(self,msg:PointCloud2):
+        """Update the right_hand_msg_latest with the latest message from the right hand joints
+
+        Args:
+            msg (PointCloud2): A PointCloud2 message to save
+        """
+        self.hand_tracking_right_msg_latest = msg
+
+        return
+        
     
     def imu_sub_callback(self,msg:Imu):
         """Update the imu_data_msg_latest with the latest message from the IMU
@@ -656,6 +730,9 @@ class DatasetGenerator(Node):
             
             if self.camera_depth_enable:
                 self.camera_depth_data_save_to_file()
+            
+            if self.hand_tracking_enable:
+                self.hand_tracking_data_save_to_file()
 
             if self.vicon_enable:
                 self.vicon_data_save_to_file()
@@ -717,6 +794,18 @@ class DatasetGenerator(Node):
             if self.camera_depth_msg_latest is None:
                 self.get_logger().info(
                     "No depth data"
+                )
+                return False
+
+        if self.hand_tracking_enable:
+            if self.hand_tracking_left_msg_latest is None:
+                self.get_logger().info(
+                    "No left hand tracking data"
+                )
+                return False
+            if self.hand_tracking_right_msg_latest is None:
+                self.get_logger().info(
+                    "No right hand tracking data"
                 )
                 return False
 
@@ -985,6 +1074,30 @@ class DatasetGenerator(Node):
 
         cv2.imwrite(depth_path, converted_image)
         self.get_logger().info("Saved depth data")
+    
+    def hand_tracking_data_save_to_file(self):
+        """Save lidar point cloud data (automatically transformed to base_frame)
+        stored with at least (x,y,z) information
+        """
+        #transform the message to the base frame
+        # msg:PointCloud2 = self.transform_pc2_to_base_frame(self.lidar_data_msg_latest)
+        left_msg = self.hand_tracking_left_msg_latest
+        right_msg = self.hand_tracking_right_msg_latest
+
+        if left_msg and right_msg:
+            #convert to np array
+            left_data:np.ndarray = self.pointcloud2_to_np_hand_tracking(left_msg)
+            right_data:np.ndarray = self.pointcloud2_to_np_hand_tracking(right_msg)
+
+            data:np.ndarray = np.stack([left_data, right_data], axis=0)
+
+            file_name = "{}_{}.npy".format(self.save_file_name,self.sample_idx)
+            path = os.path.join(self.dataset_path,self.hand_tracking_data_folder,file_name)
+            np.save(path,data)
+
+            self.get_logger().info("Saved hand tracking data")
+        else:
+            self.get_logger().info("Failed to save data from hand tracking")
 
     def imu_data_save_to_file(self,data:np.ndarray):
         """Save the imu data to a file
@@ -1128,7 +1241,7 @@ class DatasetGenerator(Node):
         return point_cloud
     
     def pointcloud2_to_np_lidar(self,msg:PointCloud2)->np.ndarray:
-        """Converts a PointCloud2 array  from a radar into a numpy array
+        """Converts a PointCloud2 array  from a lidar into a numpy array
 
         Args:
             msg (PointCloud2): The pointCloud2 object to convert to a numpy array
@@ -1140,6 +1253,24 @@ class DatasetGenerator(Node):
             cloud=msg,
             skip_nans=True,
             field_names=['x','y','z','intensity'],
+            reshape_organized_cloud=True
+        )
+
+        return point_cloud
+    
+    def pointcloud2_to_np_hand_tracking(self,msg:PointCloud2)->np.ndarray:
+        """Converts a PointCloud2 array  from a leap motion into a numpy array
+
+        Args:
+            msg (PointCloud2): The pointCloud2 object to convert to a numpy array
+
+        Returns:
+            np.ndarray: Numpy array of points from the PointCloud2 array
+        """
+        point_cloud = pc2.read_points_numpy(
+            cloud=msg,
+            skip_nans=True,
+            field_names=['x','y','z'],
             reshape_organized_cloud=True
         )
 

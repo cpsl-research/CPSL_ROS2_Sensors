@@ -77,4 +77,24 @@
         <child link="cpsl_human_movement/radar_1"/>
     </joint>
 
+    <!-- Radar 0 link (front radar)-->
+    <link name="cpsl_human_movement/leap_link">
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <box size="0.0005 0.02 0.05"/>
+            </geometry>
+            <material name="red">
+                <color rgba="1.0 0.0 0.0 1.0"/>
+            </material>
+        </visual>
+    </link>
+
+    <!-- Fixed joint to attach radar to base_link -->
+    <joint name="leap_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="1.57079633 0.0 0.0"/>
+        <parent link="cpsl_human_movement/base_link"/>
+        <child link="cpsl_human_movement/leap_link"/>
+    </joint>
+
 </robot>

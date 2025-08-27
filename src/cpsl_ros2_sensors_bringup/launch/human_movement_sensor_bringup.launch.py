@@ -33,7 +33,7 @@ ARGUMENTS = [
                           choices=['true','false'],
                           description='If lidar is enabled, additionally publish a /LaserScan message on the /scan topic'),
     DeclareLaunchArgument('radar_enable',
-                          default_value='false',
+                          default_value='true',
                           choices=['true','false'],
                           description='Launch the ti radars (front and back) lidar'),
     DeclareLaunchArgument('camera_enable',
@@ -45,7 +45,7 @@ ARGUMENTS = [
                           choices=['true','false'],
                           description='Launch the realsense camera'),
     DeclareLaunchArgument('leapmotion_enable',
-                            default_value='false',
+                            default_value='true',
                             choices=['true','false'],
                             description='Launch the leap motion sensor'),
     DeclareLaunchArgument('platform_description_enable',
@@ -133,8 +133,8 @@ def launch_setup(context, *args, **kwargs):
         #start the leap motion
         Node(
             package='leap_node',
-            executable='hands_publisher',
-            name='leapmotion_hands_publisher',
+            executable='joint_publisher',
+            name='leapmotion_joint_publisher',
             output='screen',
             condition=IfCondition(leapmotion_enable),
         ),
