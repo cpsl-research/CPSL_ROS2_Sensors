@@ -427,11 +427,12 @@ class DatasetGenerator(Node):
         while time.time() - start_time < timeout_sec:
             topic_list = self.get_topic_names_and_types()
 
-            radar_pc_topics = [name for name, _ in topic_list if "radar" in name.lower() and "detected_points" in name.lower()]
-            radar_raw_adc_topics = [name for name, _ in topic_list if "radar" in name.lower() and "adc_data_cube" in name.lower()]
+            new_radar_pc_topics = [name for name, _ in topic_list if "radar" in name.lower() and "detected_points" in name.lower()]
+            new_radar_raw_adc_topics = [name for name, _ in topic_list if "radar" in name.lower() and "adc_data_cube" in name.lower()]
 
-            if radar_pc_topics or radar_raw_adc_topics:
-                break
+            # Add only new topics to the lists
+            radar_pc_topics.extend(name for name in new_radar_pc_topics if name not in radar_pc_topics)
+            radar_raw_adc_topics.extend(name for name in new_radar_raw_adc_topics if name not in radar_raw_adc_topics)
 
             time.sleep(poll_interval)
 

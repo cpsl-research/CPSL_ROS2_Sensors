@@ -66,7 +66,7 @@ If you want to use the LeapMotion2 hand tracking sensor, complete the following 
     #update apt
     sudo apt update
 
-    #install Ultraleap packates
+    #install Ultraleap packates - press Tab then Enter to accept the license.
     sudo apt install ultraleap-hand-tracking
     ```
 
@@ -109,7 +109,7 @@ poetry env use /usr/bin/python3.12
 
 3. Install the virtual environment
 ```
-cd CPSL_ROS2_PC_Processing
+cd CPSL_ROS2_Sensors
 poetry install #without leap motion
 poetry install --with leapmotion #with leapmotion
 ```
