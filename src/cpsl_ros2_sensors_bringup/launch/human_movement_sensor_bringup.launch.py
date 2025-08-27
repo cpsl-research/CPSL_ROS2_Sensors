@@ -25,7 +25,7 @@ ARGUMENTS = [
     DeclareLaunchArgument('namespace', default_value='cpsl_human_movement',
                           description='namespace'),
     DeclareLaunchArgument('lidar_enable',
-                          default_value='false',
+                          default_value='true',
                           choices=['true','false'],
                           description='Launch the livox lidar'),
     DeclareLaunchArgument('lidar_scan_enable',

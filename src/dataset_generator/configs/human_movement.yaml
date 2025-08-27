@@ -18,4 +18,4 @@ dataset_generator:
     base_frame: "cpsl_human_movement/radar_0"
     frame_rate_save_data: 10.0 #5.0 for SAR, 20.0 for vel
     frame_rate_high_speed_sensors: 20.0
-    dataset_path: "/home/cpsl/Downloads/datasets/hand_pose_test_1"
+    dataset_path: "/home/cpsl/Downloads/datasets/hand_pose_test_2"

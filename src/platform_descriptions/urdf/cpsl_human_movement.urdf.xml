@@ -92,7 +92,7 @@
 
     <!-- Fixed joint to attach radar to base_link -->
     <joint name="leap_joint" type="fixed">
-        <origin xyz="0.0 0.0 0.0" rpy="1.57079633 0.0 0.0"/>
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 3.141592654 -1.57079633"/>
         <parent link="cpsl_human_movement/base_link"/>
         <child link="cpsl_human_movement/leap_link"/>
     </joint>
