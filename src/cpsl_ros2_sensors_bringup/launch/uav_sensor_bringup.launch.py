@@ -37,6 +37,13 @@ ARGUMENTS = [
     DeclareLaunchArgument('front_radar_config_file',
                           default_value='front_radar_IWR1843_dca_RadVel_10Hz.json',
                           description='Radar configuration file in install/ti_radar_connect/share/ti_radar_connect/configs folder'),
+    DeclareLaunchArgument('back_radar_enable',
+                          default_value='false',
+                          choices=['true','false'],
+                          description='Launch the ti radars (front and back) lidar'),
+    DeclareLaunchArgument('back_radar_config_file',
+                          default_value='back_radar_IWR1843_dca_RadVel_10Hz.json',
+                          description='Radar configuration file in install/ti_radar_connect/share/ti_radar_connect/configs folder'),
     DeclareLaunchArgument('down_radar_enable',
                           default_value='false',
                           choices=['true','false'],
@@ -67,6 +74,8 @@ def launch_setup(context, *args, **kwargs):
     camera_enable = LaunchConfiguration('camera_enable')
     front_radar_enable = LaunchConfiguration('front_radar_enable')
     front_radar_config_file = LaunchConfiguration('front_radar_config_file')
+    back_radar_enable = LaunchConfiguration('back_radar_enable')
+    back_radar_config_file = LaunchConfiguration('back_radar_config_file')
     down_radar_enable = LaunchConfiguration('down_radar_enable')
     down_radar_config_file = LaunchConfiguration('down_radar_config_file')
     platform_description_enable = LaunchConfiguration('platform_description_enable')
@@ -125,6 +134,18 @@ def launch_setup(context, *args, **kwargs):
                 ('stamp_delay_sec','0.1'),
             ],
             condition=IfCondition(front_radar_enable)
+        ),
+
+        #start front radar sensor
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(launch_radar),
+            launch_arguments=[
+                ('config_file',back_radar_config_file),
+                ('radar_name','back_radar'),
+                ('tf_prefix',tf_prefix),
+                ('stamp_delay_sec','0.1'),
+            ],
+            condition=IfCondition(back_radar_enable)
         ),
 
         #start front radar sensor
