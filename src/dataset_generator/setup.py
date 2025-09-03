@@ -24,7 +24,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'dataset_generator = dataset_generator.dataset_generator:main'
+            'dataset_generator = dataset_generator.dataset_generator:main',
+            'camera_intrinsics = dataset_generator.camera_intrinsics:main'
         ],
     },
 )

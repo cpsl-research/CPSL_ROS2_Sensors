@@ -97,4 +97,24 @@
         <child link="cpsl_human_movement/leap_link"/>
     </joint>
 
+    <!-- Realsense link (front radar)-->
+    <link name="cpsl_realsense_link">
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <box size="0.0005 0.02 0.05"/>
+            </geometry>
+            <material name="red">
+                <color rgba="1.0 0.0 0.0 1.0"/>
+            </material>
+        </visual>
+    </link>
+
+    <!-- Fixed joint to attach radar to base_link -->
+    <joint name="realsense_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="cpsl_human_movement/base_link"/>
+        <child link="cpsl_realsense_link"/>
+    </joint>
+
 </robot>
