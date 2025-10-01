@@ -95,6 +95,13 @@ Visualization Manager:
             {}
           cpsl_human_movement/radar_1:
             {}
+          cpsl_realsense_link:
+            cpsl_realsense_color_frame:
+              cpsl_realsense_color_optical_frame:
+                {}
+            cpsl_realsense_depth_frame:
+              cpsl_realsense_depth_optical_frame:
+                {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -138,7 +145,7 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 213
+      Max Intensity: 180
       Min Color: 0; 0; 0
       Min Intensity: 0
       Name: lidar
@@ -329,7 +336,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 3.2317299842834473
+      Distance: 4.896880626678467
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -344,10 +351,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.4897974133491516
+      Pitch: 0.5947970151901245
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.2540454864501953
+      Yaw: 3.209052801132202
     Saved: ~
 Window Geometry:
   Displays:

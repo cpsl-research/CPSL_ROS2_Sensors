@@ -1083,13 +1083,20 @@ class DatasetGenerator(Node):
         #transform the message to the base frame
         # msg:PointCloud2 = self.transform_pc2_to_base_frame(self.lidar_data_msg_latest)
         left_msg = self.hand_tracking_left_msg_latest
+        left_msg = self.transform_pc2_to_base_frame(left_msg)
+
         right_msg = self.hand_tracking_right_msg_latest
+        right_msg = self.transform_pc2_to_base_frame(right_msg)
 
         if left_msg and right_msg:
             #convert to np array
             left_data:np.ndarray = self.pointcloud2_to_np_hand_tracking(left_msg)
             right_data:np.ndarray = self.pointcloud2_to_np_hand_tracking(right_msg)
 
+            # Print out array size for debugging:
+            print(f"Left hand array size: {left_data.size}")
+            print(f"Right hand array size: {right_data.size}")
+            
             data:np.ndarray = np.stack([left_data, right_data], axis=0)
 
             file_name = "{}_{}.npy".format(self.save_file_name,self.sample_idx)

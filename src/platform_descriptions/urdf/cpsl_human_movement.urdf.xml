@@ -32,7 +32,7 @@
 
     <!-- Fixed joint to attach lidar to base_link -->
     <joint name="lidar_joint" type="fixed">
-        <origin xyz="0.0 0.0 0.1365" rpy="0.0 0.0 0.0"/>
+        <origin xyz="-0.08152 0.038 0.11330" rpy="0.0 0.0 0.0"/>
         <parent link="cpsl_human_movement/base_link"/>
         <child link="cpsl_human_movement/livox_frame"/>
     </joint>
@@ -90,14 +90,14 @@
         </visual>
     </link>
 
-    <!-- Fixed joint to attach radar to base_link -->
+    <!-- Fixed joint to attach radar to base_link (back center of leap motion)-->
     <joint name="leap_joint" type="fixed">
-        <origin xyz="0.0 0.0 0.0" rpy="0.0 3.141592654 -1.57079633"/>
+        <origin xyz="-0.0171 0.132 0.05900" rpy="0.0 3.141592654 -1.57079633"/>
         <parent link="cpsl_human_movement/base_link"/>
         <child link="cpsl_human_movement/leap_link"/>
     </joint>
 
-    <!-- Realsense link (front radar)-->
+    <!-- Realsense link center front of realsense-->
     <link name="cpsl_realsense_link">
         <visual>
             <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
@@ -112,7 +112,7 @@
 
     <!-- Fixed joint to attach radar to base_link -->
     <joint name="realsense_joint" type="fixed">
-        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <origin xyz="-0.048 0.131 0.0115" rpy="0.0 0.0 0.0"/>
         <parent link="cpsl_human_movement/base_link"/>
         <child link="cpsl_realsense_link"/>
     </joint>
