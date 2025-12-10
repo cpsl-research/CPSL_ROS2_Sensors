@@ -122,14 +122,9 @@ python -m build leapc-cffi
 pip install leapc-cffi/dist/leapc_cffi-0.0.1.tar.gz
 ```
 
-Activating poetry shell
+Activating poetry shell (for future development)
 ```
 eval $(poetry env activate)
-```
-
-Building the packages
-```
-python -m colcon build --base-paths src --symlink-install
 ```
 
 Data types:
@@ -175,8 +170,9 @@ git submodule update --init --recursive
 3. Next, build the ROS nodes in your catkin workspace using the following commands:
 ```
 cd CPSL_ROS2_Sensors
-colcon build --packages-select raw_radar_msgs
-colcon build --symlink-install
+eval $(poetry env activate) #activate the poetry environment
+python -m colcon build --packages-select raw_radar_msgs #install raw_radar_msgs first
+python -m colcon build --base-paths src --symlink-install #then install the remaining packages
 ```
 
 4. Finally, source the setup.bash file so that ROS can find the nodes and the messages

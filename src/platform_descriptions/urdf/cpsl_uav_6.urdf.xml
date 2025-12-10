@@ -32,7 +32,7 @@
 
     <!-- Fixed joint to attach lidar to base_link -->
     <joint name="lidar_joint" type="fixed">
-        <origin xyz="0.0 0.0 0.1" rpy="0.0 0.0 0.0"/>
+        <origin xyz="0.0 0.0 0.1" rpy="3.141592653589793  0.0 3.141592653589793 "/>
         <parent link="cpsl_uav_6/base_link"/>
         <child link="cpsl_uav_6/livox_frame"/>
     </joint>
@@ -55,6 +55,26 @@
         <origin xyz="0.095 0.0 -0.05" rpy="0.0 3.141592653589793 -1.57079633"/>
         <parent link="cpsl_uav_6/base_link"/>
         <child link="cpsl_uav_6/front_radar"/>
+    </joint>
+
+    <!-- Radar 2 link (back radar)-->
+    <link name="cpsl_uav_6/back_radar">
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <box size="0.0005 0.02 0.05"/>
+            </geometry>
+            <material name="red">
+                <color rgba="1.0 0.0 0.0 1.0"/>
+            </material>
+        </visual>
+    </link>
+
+    <!-- Fixed joint to attach radar to base_link -->
+    <joint name="back_radar_joint" type="fixed">
+        <origin xyz="0.095 0.0 -0.05" rpy="0.0 3.141592653589793 +1.57079633"/>
+        <parent link="cpsl_uav_6/base_link"/>
+        <child link="cpsl_uav_6/back_radar"/>
     </joint>
 
     <!-- Radar 1 link -->

@@ -6,7 +6,7 @@ dataset_generator:
     camera_enable: True
     camera_topic: "image_raw"
     camera_depth_enable: False
-    camera_depth_topic: "/cpsl_uav_1/camera/cpsl_realsense/depth/image_rect_raw"
+    camera_depth_topic: "/cpsl_uav_9/camera/cpsl_realsense/depth/image_rect_raw"
     hand_tracking_enable: False
     hand_tracking_left_topic: "/cpsl_human_movement/left_hand_joints"
     hand_tracking_right_topic: "/cpsl_human_movement/right_hand_joints"
@@ -15,7 +15,7 @@ dataset_generator:
     vicon_enable: False
     vehicle_odom_enable: True
     vehicle_odom_topic: "odom"
-    base_frame: "cpsl_uav_1/base_footprint"
-    frame_rate_save_data: 5.0 #5.0 for SAR, 20.0 for vel
+    base_frame: "cpsl_uav_6/base_footprint"
+    frame_rate_save_data: 10.0 #5.0 for SAR, 20.0 for vel
     frame_rate_high_speed_sensors: 20.0
     dataset_path: "/home/cpsl/Downloads/datasets/WILK_RadSAR_lr_test"
