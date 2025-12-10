@@ -1,9 +1,9 @@
 dataset_generator:
   ros__parameters:
-    radar_enable: True
+    radar_enable: False
     lidar_enable: True
     lidar_topic: "livox/lidar"
-    camera_enable: False
+    camera_enable: True
     camera_topic: usb_cam/image_raw
     camera_depth_enable: False
     camera_depth_topic: "/cpsl_ugv_1/camera/cpsl_realsense/depth/image_rect_raw"
@@ -11,11 +11,11 @@ dataset_generator:
     hand_tracking_left_topic: "/cpsl_human_movement/left_hand_joints"
     hand_tracking_right_topic: "/cpsl_human_movement/right_hand_joints"
     imu_enable: True
-    imu_topic: "imu"
+    imu_topic: "livox/imu"
     vicon_enable: False
     vehicle_odom_enable: True
-    vehicle_odom_topic: "odom"
+    vehicle_odom_topic: "odom_repub"
     base_frame: "cpsl_ugv_1/base_link"
-    frame_rate_save_data: 5.0
-    frame_rate_high_speed_sensors: 20.0
-    dataset_path: "/home/cpsl/Downloads/datasets/CPSL_TEST_1"
+    frame_rate_save_data: 10.0
+    frame_rate_high_speed_sensors: 50.0
+    dataset_path: "/home/cpsl/Downloads/datasets/north_vicon_2"
