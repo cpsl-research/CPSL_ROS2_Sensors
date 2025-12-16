@@ -210,6 +210,16 @@ These launch files bring up the `livox_lidar`, `ti_radars`, and `usb_camera` for
 | **`ugv_sensor_bringup.launch.py`** | **Standard Setup**. Uses standard velocity/range profiles. | • Front: `radar_0_IWR1843_vel_sr.json`<br>• Back: `radar_1_IWR1843_vel_sr.json` |
 | **`ugv_sensor_bringup_ragnnarok.launch.py`** | **RaGNNarok Setup**. Configured for the RaGNNarok paper dataset. | • Front: `front_radar_IWR1843_RaGNNarok_UGV_5m.json`<br>• Back: `back_radar_IWR1843_RaGNNarok_UGV_5m.json` |
 
+| Parameter | Default | Description |
+| :--- | :--- | :--- |
+| `namespace` | `''` | Namespace for the nodes. |
+| `lidar_enable` | `true` | Launch the Livox LiDAR. |
+| `lidar_scan_enable` | `false` | Publish `/scan` (LaserScan) from LiDAR pointcloud. |
+| `radar_enable` | `true` | Launch the TI Radars (front and back). |
+| `camera_enable` | `true` | Launch the USB Camera. |
+| `platform_description_enable` | `true` | Publish the UGV robot description (URDF). |
+| `rviz` | `false` | Launch RViz for visualization. |
+
 **Example Usage**:
 ```bash
 ros2 launch cpsl_ros2_sensors_bringup ugv_sensor_bringup.launch.py \
@@ -218,11 +228,6 @@ ros2 launch cpsl_ros2_sensors_bringup ugv_sensor_bringup.launch.py \
     camera_enable:=true \
     namespace:=cpsl_ugv_1
 ```
-*Common Arguments:*
-- `lidar_enable`: `true`/`false`
-- `radar_enable`: `true`/`false`
-- `camera_enable`: `true`/`false`
-- `rviz`: `true`/`false` (Open RViz for visualization)
 
 ### 4.2 UAV Data Collection
 These launch files bring up sensors for the UAV platform, including Downward-facing radar and LiDAR.
@@ -231,6 +236,21 @@ These launch files bring up sensors for the UAV platform, including Downward-fac
 | :--- | :--- | :--- |
 | **`uav_sensor_bringup_radsar.launch.py`** | **Standard (RadSAR)**. Setup for SAR/Velocity collection. | • Front: `front_radar_IWR1843_dca_RadVel_10Hz.json`<br>• Down: `down_radar_IWR6843_ods_dca_RadVel.json` |
 | **`uav_sensor_bringup_ragnnarok.launch.py`** | **RaGNNarok**. Setup for RaGNNarok paper. | • Front: `front_radar_IWR1843_RaGNNarok_UAV_5m.json`<br>• Back: `back_radar_IWR1843_RaGNNarok_UAV_5m.json` |
+
+| Parameter | Default | Description |
+| :--- | :--- | :--- |
+| `namespace` | `cpsl_uav_1` | Namespace for the nodes. |
+| `lidar_enable` | `false` | Launch the Livox LiDAR. |
+| `lidar_scan_enable` | `false` | Publish `/scan` (LaserScan) from LiDAR pointcloud. |
+| `front_radar_enable` | `false` | Launch the Front Radar. |
+| `front_radar_config_file` | *(varies)* | Config file for the front radar. |
+| `back_radar_enable` | `false` | Launch the Back Radar. |
+| `back_radar_config_file` | *(varies)* | Config file for the back radar. |
+| `down_radar_enable` | `false` | Launch the Downward Radar. |
+| `down_radar_config_file` | *(varies)* | Config file for the down radar. |
+| `camera_enable` | `false` | Launch the USB Camera. |
+| `platform_description_enable` | `true` | Publish the UAV robot description (URDF). |
+| `rviz` | `false` | Launch RViz for visualization. |
 
 **Example Usage**:
 ```bash
@@ -245,6 +265,18 @@ Captures data for human motion correlation using Leap Motion (Hands), RealSense 
 
 **Launch File**: `human_movement_sensor_bringup.launch.py`
 
+| Parameter | Default | Description |
+| :--- | :--- | :--- |
+| `namespace` | `cpsl_human_movement` | Namespace for the nodes. |
+| `lidar_enable` | `false` | Launch the Livox LiDAR. |
+| `lidar_scan_enable` | `false` | Publish `/scan` (LaserScan) from LiDAR pointcloud. |
+| `radar_enable` | `false` | Launch the TI Radars. |
+| `camera_enable` | `false` | Launch the USB Camera. |
+| `realsense_enable` | `true` | Launch the RealSense Camera. |
+| `leapmotion_enable` | `true` | Launch the Leap Motion Sensor. |
+| `platform_description_enable` | `true` | Publish the robot description. |
+| `rviz` | `false` | Launch RViz for visualization. |
+
 **Example Usage**:
 ```bash
 ros2 launch cpsl_ros2_sensors_bringup human_movement_sensor_bringup.launch.py \
@@ -257,6 +289,16 @@ ros2 launch cpsl_ros2_sensors_bringup human_movement_sensor_bringup.launch.py \
 Bring up a single radar for testing purposes.
 
 **Launch File**: `sensor_bringup_single_radar.launch.py`
+
+| Parameter | Default | Description |
+| :--- | :--- | :--- |
+| `namespace` | `''` | Namespace for the nodes. |
+| `lidar_enable` | `true` | Launch the Livox LiDAR. |
+| `lidar_scan_enable` | `false` | Publish `/scan` (LaserScan) from LiDAR pointcloud. |
+| `radar_enable` | `true` | Launch the TI Radar. |
+| `camera_enable` | `true` | Launch the USB Camera. |
+| `platform_description_enable` | `true` | Publish the robot description. |
+| `rviz` | `false` | Launch RViz for visualization. |
 
 **Example Usage**:
 ```bash
@@ -300,5 +342,10 @@ dataset_generator:
 ```bash
 ros2 launch dataset_generator record_dataset.launch.py param_file:=my_experiment.yaml
 ```
-*Note: The `param_file` argument looks for files inside the `configs/` directory.*
 
+| Parameter | Default | Description |
+| :--- | :--- | :--- |
+| `namespace` | `''` | Namespace for the nodes. |
+| `param_file` | `ugv_dataset.yaml` | The `.yaml` config file located in `src/dataset_generator/configs`. |
+
+*Note: The `param_file` argument looks for files inside the `configs/` directory.*
