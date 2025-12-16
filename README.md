@@ -148,128 +148,157 @@ If you want to use the LeapMotion2 hand tracking sensor:
     source install/setup.bash
     ```
 
-## Sensor Setup
-After performing the above steps, the realsense and leap motion sensors should be ready to use. However, the Livox lidar and TI radar require additional setup. 
+## 3. Hardware & Sensor Setup
 
-# Tutorials
+After installation, the RealSense and Leap Motion sensors should be ready to use. However, the Livox LIDAR and TI Radars require additional configuration.
+
+### 3.1 Radar Setup
+This repository uses the `CPSL_TI_Radar_ROS2` package to interface with TI mmWave radars.
+1.  **JSON Configuration**: Radar launch files use JSON config files located in `src/CPSL_TI_Radar_ROS2/src/ti_radar_connect/include/CPSL_TI_Radar/CPSL_TI_Radar_cpp/configs`.
+    -   **Important Fields**:
+        -   `CLI_port`: The serial port for the configuration UART (e.g., `/dev/ttyACM0`).
+        -   `data_port`: The serial port for the data UART (e.g., `/dev/ttyACM1`).
+        -   `DCA1000_streaming`: Set `enabled: true` if using a DCA1000 capture card.
+        -   `TI_Radar_config_path`: Path to the `.cfg` chirp profile.
+2.  **Connection Order**:
+    -   **Front Radar**: Connect first. Usually appears as `/dev/ttyACM0` (CLI) and `/dev/ttyACM1` (Data).
+    -   **Back Radar**: Connect second. Usually appears as `/dev/ttyACM2` (CLI) and `/dev/ttyACM3` (Data).
+3.  **Permissions**:
+    -   Ensure your user is in the `dialout` group to access serial ports:
+        ```bash
+        sudo usermod -a -G dialout $USER
+        ```
+        *Log out and back in for this to take effect.*
+
+    - To confirm that this worked correctly, connect either of the radars and then run the following command:
+        ```
+        ls /dev/ttyACM* # for 1843/1443 should return /ttyACM0 /ttyACM1 /ttyACM2 /ttyACM3
+        ls /dev/ttyUSB* #for 6843, should return /ttyUSB0 /ttyUSB1
+        ```
+
+    - If the problem persists, try running the following command to give access to the serial port:
+        ```
+        sudo chmod 666 /dev/ttyACM0 # or whatever port you need to specify
+        ```
+
+### 3.2 Livox LiDAR Setup (Mid360)
+The Livox Mid360 requires a static IP connection.
+1.  **Network Configuration**:
+    -   Set your computer's wired network interface to a static IPv4 address:
+        -   IP: `192.168.1.XX` (e.g., `192.168.1.50`).
+            - Note: replace the last two digits of the IP address (XX) of the lidar with the last two digits of the serial number (located on the side of the LiDAR, under the QR code).
+            - If the last two digits start with a 0 (e.g.; 09), the ip address should just be the last digit (e.g.; 9).
+        -   Netmask: `255.255.255.0`.
+2.  **Update Config File**:
+    -   Locate the serial number on your LiDAR (under the QR code).
+    -   Modify `src/CPSL_ROS_livox_ros_driver2/config/MID360_config.json`:
+        -   Update `ip` in `lidar_configs` to `192.168.1.1XX` (where XX are the last two digits of the serial number).
+        -   *Note*: If the serial ends in `09`, the IP should be `...109`.
 
 
-## 1. Starting LivoxMid360 and TI-Radar's simultaneously (UGV)
+---
 
-1. **Radar Setup**. See the insructions in [CPSL_TI_Radar_ROS2](./src/CPSL_TI_Radar_ROS2/README.md) to ensure that each radar is setup correctly. For this code bases, each Radar should have the  mmWaveSDK3.6 demo installed.
+## 4. Tutorials
 
-2. **Radar connection setup** Follow these steps to connect the radars in the correct order.
+This section details how to launch the sensor systems for data collection.
 
-- Connect the front radar, then check to confirm that the first radar connects successfully
-    ```
-    ls /dev/ttyACM* #should return /ttyACM0 /ttyACM1
-    ```
-- If it connects successfully, then connect the back radar, then check to confirm that the second radar connects successfully
-    ```
-    ls /dev/ttyACM* #should return /ttyACM0 /ttyACM1 /ttyACM2 /ttyACM3
-    ```
-- If you have trouble connecting the radar successfully, or the radars fail to connect in later steps, try running the following commands (you may have to login and then log out for changes to apply)
-    ```
-    sudo usermod -a -G dialout $USER
-    ```
-- If the problem persists, try running the following command to give access to the serial port:
-    ```
-    sudo chmod 666 /dev/ttyACM0 # or whatever port you need to specify
-    ```
+### 4.1 UGV Data Collection
+These launch files bring up the `livox_lidar`, `ti_radars`, and `usb_camera` for the iRobot Create3 UGV.
 
-3. **Radar .json file** Next, setup the radar_0_IWR1843_nav.json and radar_1_IWR1843_nav.json configuration files in the [/src/CPSL_TI_Radar_ROS2/src/ti_radar_connect/include/CPSL_TI_Radar/CPSL_TI_Radar_cpp/configs](./src/CPSL_TI_Radar_ROS2/src/ti_radar_connect/include/CPSL_TI_Radar/CPSL_TI_Radar_cpp/configs). Note, that this only need to be performed the first time you use the radar on your system. 
+| Launch File | Description | Radar Configuration |
+| :--- | :--- | :--- |
+| **`ugv_sensor_bringup.launch.py`** | **Standard Setup**. Uses standard velocity/range profiles. | • Front: `radar_0_IWR1843_vel_sr.json`<br>• Back: `radar_1_IWR1843_vel_sr.json` |
+| **`ugv_sensor_bringup_ragnnarok.launch.py`** | **RaGNNarok Setup**. Configured for the RaGNNarok paper dataset. | • Front: `front_radar_IWR1843_RaGNNarok_UGV_5m.json`<br>• Back: `back_radar_IWR1843_RaGNNarok_UGV_5m.json` |
 
-4. **Configure the LivoxMid360**:  [FIRST TIME ONLY] - the first time you utilize the livox Mid360 lidar, you must set the ip address of your system to have a static ipv4 address of ```192.168.1.XX``` and a netmask of ```255.255.255.0```. Then replace the last two digits of the IP address (XX) of the lidar with the last two digits of the serial number (located on the side of the LiDAR, under the QR code). Note, if the last two digits start with a 0 (e.g.; 09), the ip address should just be the last digit (e.g.; 9). Update the ``cmd_data_ip``, ``push_msg_ip``, ``point_data_ip``, and ``imu_data_ip`` in the JSON file located at `~/CPSL_ROS2_Sensors/install/livox_ros_driver2/share/livox_ros_driver2/config/MID360_config.json` and at `~/CPSL_ROS2_Sensors/src/CPSL_ROS_livox_ros_driver2/config/MID360_config.json`. Finally, change the ``ip`` in ``lidar_configs`` to be 192.168.1.1XX where XX is the last two digits of the IP address
-
-5. **Build CPSL_ROS2_Sensors**
-Next, build and source the CPSL_ROS2_Sensors package
+**Example Usage**:
+```bash
+ros2 launch cpsl_ros2_sensors_bringup ugv_sensor_bringup.launch.py \
+    lidar_enable:=true \
+    radar_enable:=true \
+    camera_enable:=true \
+    namespace:=cpsl_ugv_1
 ```
-cd CPSL_ROS2_Sensors
-colcon build --symlink-install
-source install/setup.bash
+*Common Arguments:*
+- `lidar_enable`: `true`/`false`
+- `radar_enable`: `true`/`false`
+- `camera_enable`: `true`/`false`
+- `rviz`: `true`/`false` (Open RViz for visualization)
+
+### 4.2 UAV Data Collection
+These launch files bring up sensors for the UAV platform, including Downward-facing radar and LiDAR.
+
+| Launch File | Description | Radar Configuration |
+| :--- | :--- | :--- |
+| **`uav_sensor_bringup_radsar.launch.py`** | **Standard (RadSAR)**. Setup for SAR/Velocity collection. | • Front: `front_radar_IWR1843_dca_RadVel_10Hz.json`<br>• Down: `down_radar_IWR6843_ods_dca_RadVel.json` |
+| **`uav_sensor_bringup_ragnnarok.launch.py`** | **RaGNNarok**. Setup for RaGNNarok paper. | • Front: `front_radar_IWR1843_RaGNNarok_UAV_5m.json`<br>• Back: `back_radar_IWR1843_RaGNNarok_UAV_5m.json` |
+
+**Example Usage**:
+```bash
+ros2 launch cpsl_ros2_sensors_bringup uav_sensor_bringup_ragnnarok.launch.py \
+    front_radar_enable:=true \
+    down_radar_enable:=true \
+    lidar_enable:=true
 ```
 
+### 4.3 Human Movement Data Collection
+Captures data for human motion correlation using Leap Motion (Hands), RealSense (Depth/RGB), and Radars.
 
-5. **Launch the sensors**
-Finally, launch all of the sensors with the given bringup file
+**Launch File**: `human_movement_sensor_bringup.launch.py`
 
+**Example Usage**:
+```bash
+ros2 launch cpsl_ros2_sensors_bringup human_movement_sensor_bringup.launch.py \
+    leapmotion_enable:=true \
+    realsense_enable:=true \
+    radar_enable:=true
 ```
-cd CPSL_ROS2_Sensors
-source install/setup.bash
-ros2 launch cpsl_ros2_sensors_bringup ugv_sensor_bringup.launch.py lidar_enable:=true lidar_scan_enable:=true camera_enable:=false radar_enable:=false platform_description_enable:=true rviz:=false namespace:=cpsl_ugv_1
+
+### 4.4 Single Radar Testing
+Bring up a single radar for testing purposes.
+
+**Launch File**: `sensor_bringup_single_radar.launch.py`
+
+**Example Usage**:
+```bash
+ros2 launch cpsl_ros2_sensors_bringup sensor_bringup_single_radar.launch.py
 ```
-The parameters that can be used here are as follows: 
-| **Parameter** | **Default** | **Description** |  
-|-----------|--------------------------|---------------------------------------------|  
-| `namespace`   | ''  | the namespace of the robot |  
-| `camera_enable`| true | on True, starts the camera node
-| `lidar_enable`| true | on True, starts the livox lidar node
-| `lidar_scan_enable`| false | on True, publishes a laserscan version of the livox's PC2 topic on /livox/lidar
-| `radar_enable`| true | On True, launch the (front and back) TI radars
-| `platform_description_enable`| true | On true, publishes the UGV robot description tf tree
-| `rviz`| true | On True, displays an RViz window of sensor data
 
-To integrate RealSense depth, use the human_movement_sensor_bringup.launch.py file instead:
-```ros2 launch cpsl_ros2_sensors_bringup human_movement_sensor_bringup.launch.py lidar_enable:=true lidar_scan_enable:=true camera_enable:=false radar_enable:=false realsense_enable:=true platform_description_enable:=true rviz:=false namespace:=cpsl_ugv_1```
+### 4.5 Recording Datasets
+The `dataset_generator` package synchronizes and saves data from all active sensors.
 
-The parameters that can be used here are as follows: 
-| **Parameter** | **Default** | **Description** |  
-|-----------|--------------------------|---------------------------------------------|  
-| `namespace`   | ''  | the namespace of the robot |  
-| `camera_enable`| true | on True, starts the camera node
-| `lidar_enable`| true | on True, starts the livox lidar node
-| `lidar_scan_enable`| false | on True, publishes a laserscan version of the livox's PC2 topic on /livox/lidar
-| `radar_enable`| true | On True, launch the (front and back) TI radars
-| `realsense_enable`| false | On True, launch the RealSense camera
-| `platform_description_enable`| true | On true, publishes the UGV robot description tf tree
-| `rviz`| true | On True, displays an RViz window of sensor data
+**1. Create/Edit a Configuration YAML:**
+Create a file in `src/dataset_generator/configs/` (e.g., `my_experiment.yaml`).
 
-
-## 2.Recording a Dataset (UGV)
-Once a dataset has been captured the ```dataset_generator``` package can be used to capture datasets of time synchronized datasets from all of the sensors. The data that is currently available is as follows:
-
-| **Data** | **Format** | **Description** |  
-|-----------|--------------------------|---------------------------------------------|  
-| `radar_pc`   | Nx4 np array with [x,y,z,vel] points  | radar point cloud data | 
-| `radar_adc`   |  rx_antennas x samples_per_chirp x chirps_per_frame np array of complex int16s | adc data cubes | 
-| `lidar`| Nx4 aray with [x,y,z,intensity] | full 3D lidar point cloud |
-| `camera`| .png | image recorded from a camera |
-| `imu_data`| Nx7 array with [time,w_x,w_y,w_z,a_x,a_y,a_z] |imu measurements (recorded at higher rate) |
-| `vicon`| Nx7 array with [trans_x, trans_y, trans_z, quat_w, quat_x, quat_y, quat_z] |vicon poses for an object (recorded for each object) |
-| `vehicle_odom`| Nx14 array with [time,x,y,z,quat_w,quat_x,quat_y,quat_z,vx,vy,vz,wx,wy,wz] |vehicle odometry measurements (recorded at higher rate) |
-| `vehicle_vel`| Nx3 array with [time,vx,wz] |vehicle velocity measurements (recorded at higher rate) |
-
-1. **Define .yaml file** To record a dataset, first update or create a new .yaml configuration file in `~/CPSL_ROS2_Sensors/src/dataset_generator/configs`. An example configuration file is shown below. Note, when specifying the topics, you should not put a "/" (e.g.; "/topic_name") as this will specify an absolute path and prevent dynamic namespacing.
-```
+```yaml
 dataset_generator:
   ros__parameters:
+    # --- Sensor Enables ---
     radar_enable: True
     lidar_enable: True
-    lidar_topic: "livox/lidar"
-    camera_enable: False
-    camera_topic: usb_cam/image_raw
-    depth_enable: True
-    depth_topic: "camera/cpsl_realsense/depth/image_rect_raw"
+    camera_enable: True
+    depth_enable: False
     imu_enable: True
-    imu_topic: "imu"
-    vicon_enable: False
     vehicle_odom_enable: True
-    vehicle_odom_topic: "odom"
+    
+    # --- Topic Names ---
+    lidar_topic: "livox/lidar"
+    camera_topic: "usb_cam/image_raw"
+    imu_topic: "livox/imu"
+    
+    # --- Storage ---
+    # Path where the dataset folder will be created
+    dataset_path: "/home/cpsl/Downloads/datasets/experiment_1"
+    
+    # --- Frames ---
     base_frame: "cpsl_ugv_1/base_link"
-    frame_rate_save_data: 5.0
-    frame_rate_high_speed_sensors: 20.0
-    dataset_path: "/home/cpsl/Downloads/datasets/CPSL_TEST_1"
-```
-2. **Launch the dataset_generator** : Once the .yaml configuration file has been generatoed, use the following code to launch dataset generation:
-```
-cd CPSL_ROS2_Sensors
-colcon build --symlink-install
-source install/setup.bash
-ros2 launch dataset_generator record_dataset.launch.py
+    
+    # --- Rates ---
+    frame_rate_save_data: 10.0  # Hz
 ```
 
-The parameters that can be used by using the ```parameter:=value``` notation: 
-| **Parameter** | **Default** | **Description** |  
-|-----------|--------------------------|---------------------------------------------|  
-| `namespace`   | ''  | the namespace of the robot |  
-| `param_file`| 'ugv_dataset.yaml' | the .yaml config file in the configs directory of the dataset_generator package.
+**2. Launch the Recorder:**
+```bash
+ros2 launch dataset_generator record_dataset.launch.py param_file:=my_experiment.yaml
+```
+*Note: The `param_file` argument looks for files inside the `configs/` directory.*
+
