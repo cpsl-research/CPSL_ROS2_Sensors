@@ -4,17 +4,15 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /Global Options1
         - /TF1/Frames1
         - /RobotModel1/Description Topic1
         - /lidar1/Status1
         - /lidar1/Topic1
-        - /radar_01/Status1
-        - /radar_11/Topic1
+        - /front_radar1/Status1
+        - /back_radar1/Topic1
         - /LaserScan1/Status1
         - /LaserScan1/Topic1
         - /RadarScan1/Topic1
-        - /Image1
       Splitter Ratio: 0.5
     Tree Height: 665
   - Class: rviz_common/Selection
@@ -34,7 +32,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: radar_0
+    SyncSource: front_radar
 Visualization Manager:
   Class: ""
   Displays:
@@ -63,41 +61,37 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        cpsl_uav_6/back_radar:
+        cpsl_uav_8/back_radar:
           Value: false
-        cpsl_uav_6/base_footprint:
+        cpsl_uav_8/base_footprint:
           Value: true
-        cpsl_uav_6/base_level:
+        cpsl_uav_8/base_link:
           Value: true
-        cpsl_uav_6/base_link:
+        cpsl_uav_8/down_radar:
           Value: false
-        cpsl_uav_6/down_radar:
+        cpsl_uav_8/front_radar:
           Value: false
-        cpsl_uav_6/front_radar:
+        cpsl_uav_8/livox_frame:
           Value: false
-        cpsl_uav_6/livox_frame:
-          Value: false
-        cpsl_uav_6/odom:
-          Value: false
+        cpsl_uav_8/odom:
+          Value: true
       Marker Scale: 5
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: false
       Tree:
-        cpsl_uav_6/odom:
-          cpsl_uav_6/base_footprint:
+        cpsl_uav_8/odom:
+          cpsl_uav_8/base_footprint:
             {}
-          cpsl_uav_6/base_level:
-            {}
-          cpsl_uav_6/base_link:
-            cpsl_uav_6/back_radar:
+          cpsl_uav_8/base_link:
+            cpsl_uav_8/back_radar:
               {}
-            cpsl_uav_6/down_radar:
+            cpsl_uav_8/down_radar:
               {}
-            cpsl_uav_6/front_radar:
+            cpsl_uav_8/front_radar:
               {}
-            cpsl_uav_6/livox_frame:
+            cpsl_uav_8/livox_frame:
               {}
       Update Interval: 0
       Value: true
@@ -163,8 +157,8 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: false
       Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
+        Max Value: 0.35346323251724243
+        Min Value: 0.24070708453655243
         Value: true
       Axis: Z
       Channel Name: vel
@@ -172,13 +166,13 @@ Visualization Manager:
       Color: 51; 209; 122
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 0.5
       Min Color: 0; 0; 0
       Min Intensity: -0.5
-      Name: radar_0
+      Name: front_radar
       Position Transformer: XYZ
       Selectable: true
       Size (Pixels): 7
@@ -189,10 +183,10 @@ Visualization Manager:
         Durability Policy: System Default
         History Policy: Keep Last
         Reliability Policy: Best Effort
-        Value: /cpsl_uav_6/front_radar/detected_points
+        Value: /cpsl_uav_8/front_radar/detected_points
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: false
       Autocompute Value Bounds:
@@ -205,13 +199,13 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 3
+      Max Intensity: 0.5
       Min Color: 0; 0; 0
-      Min Intensity: -3
-      Name: radar_1
+      Min Intensity: -0.5
+      Name: back_radar
       Position Transformer: XYZ
       Selectable: true
       Size (Pixels): 10
@@ -222,10 +216,10 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Best Effort
-        Value: /cpsl_uav_6/back_radar/detected_points
+        Value: /cpsl_uav_8/back_radar/detected_points
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -400,7 +394,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: cpsl_uav_6/odom
+    Fixed Frame: cpsl_uav_8/odom
     Frame Rate: 30
   Name: root
   Tools:
@@ -443,25 +437,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 13.538147926330566
+      Distance: 12.775032997131348
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.4502204656600952
-        Y: -0.11043751984834671
-        Z: 4.531365394592285
+        X: -1.964820146560669
+        Y: -1.1065261363983154
+        Z: 2.628500461578369
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.329796552658081
+      Pitch: 1.2547969818115234
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.135854959487915
+      Yaw: 3.150859832763672
     Saved: ~
 Window Geometry:
   Displays:
