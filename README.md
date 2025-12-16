@@ -1,4 +1,4 @@
-# CPSL_ROS_Sensors
+# CPSL_ROS2_Sensors
 
 Set of ROS packages for various sensors developed and utilized by Duke's CPSL laboratory. This repository contains ROS1 packages for the following sensing modalitites:
 * Livox Lidars
@@ -7,178 +7,149 @@ Set of ROS packages for various sensors developed and utilized by Duke's CPSL la
 
 ## Installation [Built on ROS2 Jazzy, Ubuntu 24.04]:
 
-### 1. Install ROS
-1. Follow the instructions on the [ROS2 installation instructions](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html) website to install ROS2. If you are unfamiliar with ROS, its worth taking some of the [ROS2 Jazzy Tutorials](https://docs.ros.org/en/jazzy/Tutorials.html). We use ROS jazzy developed for Ubuntu 24.04. Using other ROS versions may require some changes
+### 1. Pre-requisites
 
-### 2. Install pre-requisites for CPSL_TI_Radar module
+If you haven't already done so, please perform the following steps to install the pre-requisites for this repository:
 
-This repo additionally includes the CPSL_TI_Radar_ROS and CPSL_TI_Radar repositories for integrating with the TI IWR (and DCA1000) radar hardware. To ensure that all of the pre-requisites are installed for these code bases, perform the following steps:
-1. Install all of the required C++ pre-requisites by following the "Pre-requisite packages" instructions in the "Pre-requisite packages" instructions in the [CPSL_TI_Radar_cpp github installation instructions](https://github.com/davidmhunt/CPSL_TI_Radar/tree/main/CPSL_TI_Radar_cpp).
+#### 1.1 Install ROS 2
+Follow the instructions on the [ROS2 installation instructions](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html) website to install ROS2. If you are unfamiliar with ROS, it is worth taking some of the [ROS2 Jazzy Tutorials](https://docs.ros.org/en/jazzy/Tutorials.html). We use ROS Jazzy developed for Ubuntu 24.04. Using other ROS versions may require some changes.
 
-### 3. Install Livox-SDK
+#### 1.2 Install TI Radar Dependencies
+This repo integrates with the CPSL_TI_Radar packages. To ensure all pre-requisites are installed:
+1. Install all required C++ pre-requisites by following the "Pre-requisite packages" instructions in the [CPSL_TI_Radar_cpp github installation instructions](https://github.com/davidmhunt/CPSL_TI_Radar/tree/main/CPSL_TI_Radar_cpp).
 
-In order to use the Livox Lidar ROS nodes, you will also need to install the Livox-SDK. To do so, follow these instructions:
-1. Install gcc 9.4.0 to allow for correct compilation:
-```
-sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-sudo apt update
-sudo apt install gcc-9 g++-9 -y
-```
-2. Clone the Livox-SDK2.git repository
-```
-git clone https://github.com/Livox-SDK/Livox-SDK2.git
-```
-3. Finally, build and install the Libox-SDK, making sure to specify the use of gcc 9.4.0
-```
-cd ./Livox-SDK2/
-mkdir build
-cd build
-cmake -DCMAKE_C_COMPILER=/usr/bin/gcc-9 -DCMAKE_CXX_COMPILER=/usr/bin/g++-9 ..
-make
-sudo make install
-```
-
-### 4. Install Intel Realsense Dependencies
-In order to use an intel realsense, complete the following steps to install the required dependencies (taken from the [realsense-ros](https://github.com/IntelRealSense/realsense-ros)). 
-
-1. **Install Intel Realsense SDK2.0**  Empircally, we found that it was easiest to install the librealsense2 through the ROS servers. This can be done as follows:
+#### 1.3 Install Livox-SDK
+To use the Livox Lidar ROS nodes, install the Livox-SDK:
+1. Install gcc 9.4.0:
+    ```bash
+    sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+    sudo apt update
+    sudo apt install gcc-9 g++-9 -y
     ```
-    #REPLACE <ROS_DISTRO> WITH YOUR ROS DISTRO (e.g.; jazzy)
+2. Clone the Livox-SDK2 repository:
+    ```bash
+    git clone https://github.com/Livox-SDK/Livox-SDK2.git
+    ```
+3. Build and install Livox-SDK, specifying gcc 9.4.0:
+    ```bash
+    cd ./Livox-SDK2/
+    mkdir build
+    cd build
+    cmake -DCMAKE_C_COMPILER=/usr/bin/gcc-9 -DCMAKE_CXX_COMPILER=/usr/bin/g++-9 ..
+    make
+    sudo make install
+    ```
+
+#### 1.4 Install Intel Realsense Dependencies
+To use an Intel Realsense camera (taken from [realsense-ros](https://github.com/IntelRealSense/realsense-ros)):
+1. **Install Intel Realsense SDK2.0**:
+    ```bash
+    # REPLACE <ROS_DISTRO> WITH YOUR ROS DISTRO (e.g.; jazzy)
     sudo apt install ros-<ROS_DISTRO>-librealsense2* 
     ```
-2. **Install Intel Realsense2 ROS Nodes** Finally, install the ROS nodes using the following command
-    ```
-    #REPLACE <ROS_DISTRO> WITH YOUR ROS DISTRO (e.g.; jazzy)
+2. **Install Intel Realsense2 ROS Nodes**:
+    ```bash
+    # REPLACE <ROS_DISTRO> WITH YOUR ROS DISTRO (e.g.; jazzy)
     sudo apt install ros-<ROS_DISTRO>-realsense2-*
     ```
 
-### 5. Install Leap Motion (for hand tracking) Dependencies
-If you want to use the LeapMotion2 hand tracking sensor, complete the following steps to install the required dependencies
-
-1. Install the Ultraleap Gemini from the [Leap Motion Controller 2 Downloads page](https://www.ultraleap.com/downloads/leap-motion-controller-2/). For ubuntu 22.04 and 24.04LTS, this can be done using the following commands:
-    ```
-    #add the Ultraleap GPG key
+#### 1.5 Install Leap Motion Dependencies (Optional)
+If you want to use the LeapMotion2 hand tracking sensor:
+1. Install Ultraleap Gemini for Ubuntu 22.04/24.04:
+    ```bash
+    # Add the Ultraleap GPG key
     wget -qO - https://repo.ultraleap.com/keys/apt/gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/ultraleap.gpg
 
-    #add Ultraleap repo to apt
+    # Add Ultraleap repo to apt
     echo 'deb [arch=amd64] https://repo.ultraleap.com/apt stable main' | sudo tee /etc/apt/sources.list.d/ultraleap.list
 
-    #update apt
+    # Update apt
     sudo apt update
 
-    #install Ultraleap packates - press Tab then Enter to accept the license.
+    # Install Ultraleap packages
     sudo apt install ultraleap-hand-tracking
     ```
-
-    - To ensure that everything installed correctly, you should be able to run the following to test that the ultra-leap is connected:
-    ```
+    - Verify installation:
+    ```bash
     ultraleap-hand-tracking-control-panel
     ```
 
-## 6. Setting up python environment using python poetry
-
-
-#### Installing Poetry:
- 
-1. Check to see if Python Poetry is installed. If the below command is successful, poetry is installed move on to setting up the conda environment
-
-```
+#### 1.6 Install Python Poetry
+1. Check if Poetry is installed:
+    ```bash
     poetry --version
-```
-2. If Python Poetry is not installed, follow the [Poetry Install Instructions](https://python-poetry.org/docs/#installing-with-the-official-installer). On linux, Poetry can be installed using the following command:
-```
-curl -sSL https://install.python-poetry.org | python3 -
-```
-
-If you are using poetry over an ssh connection or get an error in the following steps, try running the following command first and then continuing with the remainder fo the installation.
-```
-export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
-```
-#### Installing CPSL_ROS2_Sensors
-
-To install the package using poetry, use the following steps
-1. Configure poetry projects to be able to use the system packages
-```
-poetry config virtualenvs.options.system-site-packages true
-```
-
-2. If you're using conda, you need to make sure that you're installing all python packages with the OS python version (instead of the conda version). To do this, use the following command (update 3.12 to whatever python installation ROS2 is using)
-```
-poetry env use /usr/bin/python3.12
-```
-
-3. Install the virtual environment
-```
-cd CPSL_ROS2_Sensors
-poetry install #without leap motion
-poetry install --with leapmotion #with leapmotion
-```
-
-3b. If using the leap motion
-```
-eval $(poetry env activate)
-cd submodules/leapc-python-bindings
-python -m build leapc-cffi
-pip install leapc-cffi/dist/leapc_cffi-0.0.1.tar.gz
-```
-
-Activating poetry shell (for future development)
-```
-eval $(poetry env activate)
-```
-
-Data types:
-https://github.com/ultraleap/leapc-python-bindings/blob/main/leapc-python-api/src/leap/datatypes.py
-
-
-## Installing CPSL_ROS2_Sensors as ROS2 package
-
-1. To install the CPSL_ROS2_Sensors ROS2 workspace perform the following commands
-```
-git clone --recurse-submodules https://github.com/cpsl-research/CPSL_ROS2_Sensors
-```
-
-If you forgot to perform the --recurse-submodules when cloning the repository, you can use the following command to load the necessary submodules
-```
-cd CPSL_ROS2_Sensors
-git submodule update --init --recursive
-```
-
-2. Next, install all of the required ros dependencies using the following commands.
-
-    - First, install all other dependencies required by the CPSL_ROS2_Sensors package
     ```
+2. If not installed, install it:
+    ```bash
+    curl -sSL https://install.python-poetry.org | python3 -
+    ```
+    *Troubleshooting*: If you encounter keyring errors:
+    ```bash
+    export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
+    ```
+
+### 2. Installing CPSL_ROS2_Sensors
+
+#### 2.1 Clone and Configure
+1. Configure poetry to use system packages:
+    ```bash
+    poetry config virtualenvs.options.system-site-packages true
+    ```
+2. Clone the repository with submodules:
+    ```bash
+    git clone --recurse-submodules https://github.com/cpsl-research/CPSL_ROS2_Sensors
+    ```
+    *If you forgot submodules*: `git submodule update --init --recursive` inside the repo.
+
+#### 2.2 Install Python Environment
+1. Setup the environment (ensure you use the system python version matching your ROS install, e.g., 3.12 for Jazzy):
+    ```bash
     cd CPSL_ROS2_Sensors
-    colcon build --packages-select raw_radar_msgs
-    source install/setup.bash
-    rosdep install --from-paths src -y --rosdistro=jazzy
+    poetry env use /usr/bin/python3.12
     ```
-    Note: we build this package for ROS2 jazzy, if you are using a different ROS distribution, some of the above packages may have changed
+2. Install dependencies:
+    ```bash
+    poetry install # standard
+    # OR
+    poetry install --with leapmotion # if using leap motion
+    ```
 
-    - Next,configure the livox lidar ROS driver correctly by running the following commands. Note: this step only needs to be done when first installing the CPSL_ROS_Sensors Module
+3. **(Leap Motion Only)** Build bindings:
+    ```bash
+    eval $(poetry env activate)
+    cd submodules/leapc-python-bindings
+    python -m build leapc-cffi
+    pip install leapc-cffi/dist/leapc_cffi-0.0.1.tar.gz
     ```
-    cd CPSL_ROS2_Sensors/src/CPSL_ROS_livox_ros_driver2
+
+#### 2.3 Build ROS Packages
+1. Install ROS dependencies and build:
+    ```bash
+    cd CPSL_ROS2_Sensors
+    eval $(poetry env activate)
+    
+    # 1. Install ROS dependencies, skipping the local raw_radar_msgs
+    rosdep install --from-paths src -y --rosdistro=jazzy --skip-keys "raw_radar_msgs"
+
+    # 2. Configure Livox Lidar Driver (First time only)
+    cd src/CPSL_ROS_livox_ros_driver2
     ./build_CPSL_ROS2_Sensors.sh jazzy
+    cd ../..
+
+    # 3. Build raw_radar_msgs first to ensure visibility
+    python -m colcon build --packages-select raw_radar_msgs --symlink-install
+
+    # 4. Build the rest of the workspace
+    python -m colcon build --base-paths src --symlink-install
     ```
 
-    - Finally, install the remaining ROS2 dependencies for the livox_ros_driver2
-    ```
-    cd CPSL_ROS2_Sensors
-    rosdep install --from-paths src -y --rosdistro=jazzy
+2. Source the workspace:
+    ```bash
+    source install/setup.bash
     ```
 
-3. Next, build the ROS nodes in your catkin workspace using the following commands:
-```
-cd CPSL_ROS2_Sensors
-eval $(poetry env activate) #activate the poetry environment
-python -m colcon build --packages-select raw_radar_msgs #install raw_radar_msgs first
-python -m colcon build --base-paths src --symlink-install #then install the remaining packages
-```
-
-4. Finally, source the setup.bash file so that ROS can find the nodes and the messages
-```
-source install/setup.bash
-```
+## Sensor Setup
+After performing the above steps, the realsense and leap motion sensors should be ready to use. However, the Livox lidar and TI radar require additional setup. 
 
 # Tutorials
 
