@@ -104,10 +104,12 @@ def launch_setup(context, *args, **kwargs):
         # Radar 0 (delayed 4.0s)
         TimerAction(
             period=4.0,
-            actions=[IncludeLaunchDescription(
+            actions=[
+                PushRosNamespace(namespace),
+                IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(launch_radar),
                 launch_arguments=[
-                    ('config_file','front_radar_IWR1843_RaGNNarok_UAV_10m.json'),
+                    ('config_file','front_radar_IWR1843_RaGNNarok_UGV_5m.json'),
                     ('radar_name','radar_0'),
                     ('tf_prefix',tf_prefix),
                     ('stamp_delay_sec','0.1'),
@@ -122,7 +124,7 @@ def launch_setup(context, *args, **kwargs):
             actions=[IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(launch_radar),
                 launch_arguments=[
-                    ('config_file','back_radar_IWR1843_RaGNNarok_UAV_10m.json'),
+                    ('config_file','back_radar_IWR1843_RaGNNarok_UGV_5m.json'),
                     ('radar_name','radar_1'),
                     ('tf_prefix',tf_prefix),
                     ('stamp_delay_sec','0.1'),
