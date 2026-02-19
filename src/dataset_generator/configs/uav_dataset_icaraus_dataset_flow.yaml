@@ -18,4 +18,4 @@ dataset_generator:
     base_frame: "cpsl_uav_8/base_footprint" #base_footprint normally though
     frame_rate_save_data: 10.0 #5.0 for SAR, 20.0 for vel
     frame_rate_high_speed_sensors: 40.0
-    dataset_path: "/home/cpsl/Downloads/datasets/IcaRAus_odom_dataset"
+    dataset_path: "/home/cpsl/Downloads/datasets/IcaRAus_UAV_dataset_flow"

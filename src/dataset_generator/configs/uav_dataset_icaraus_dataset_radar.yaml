@@ -1,0 +1,21 @@
+dataset_generator:
+  ros__parameters:
+    radar_enable: True
+    lidar_enable: False
+    lidar_topic: "livox/lidar"
+    camera_enable: False
+    camera_topic: "image_raw"
+    camera_depth_enable: False
+    camera_depth_topic: "/cpsl_uav_1/camera/cpsl_realsense/depth/image_rect_raw"
+    hand_tracking_enable: False
+    hand_tracking_left_topic: "/cpsl_human_movement/left_hand_joints"
+    hand_tracking_right_topic: "/cpsl_human_movement/right_hand_joints"
+    imu_enable: False
+    imu_topic: "imu"
+    vicon_enable: True
+    vehicle_odom_enable: True
+    vehicle_odom_topic: "odom"
+    base_frame: "cpsl_uav_8/base_footprint" #base_footprint normally though
+    frame_rate_save_data: 10.0 #5.0 for SAR, 20.0 for vel
+    frame_rate_high_speed_sensors: 40.0
+    dataset_path: "/home/cpsl/Downloads/datasets/IcaRAus_UAV_dataset_radar"
