@@ -393,13 +393,24 @@ class DatasetGenerator(Node):
             path = os.path.join(self.dataset_path,self.vehicle_vel_folder)
             self.check_for_directory(path,clear_contents=True)
 
-    def vicon_data_folders_init(self):
+    def vicon_data_folders_init(self,timeout_sec=5.0, poll_interval=0.5):
         # Get a list of all topics and their types
-        topic_list = self.get_topic_names_and_types()
+        vicon_topic_list = []
+        start_time = time.time()
+        while time.time() - start_time < timeout_sec:
+            topic_list = self.get_topic_names_and_types()
+
+            new_vicon_topics = [name for name, _ in topic_list if "/vicon/" in name.lower() and "pose" not in name.lower()]
+
+            # Add only new topics to the lists
+            vicon_topic_list.extend(name for name in new_vicon_topics if name not in vicon_topic_list)
+
+            time.sleep(poll_interval)
+
+        self.get_logger().info(f"Topic list: {vicon_topic_list}")
 
         # Filter for Vicon topics
-        vicon_topics = [name for name, _ in topic_list if "vicon" in name and "markers" not in name]
-        self.vicon_topics = vicon_topics
+        self.vicon_topics = vicon_topic_list
 
         if len(self.vicon_topics) == 0:
             self.get_logger().info("No Vicon topics found")

@@ -36,21 +36,21 @@ ARGUMENTS = [
                           choices=['true','false'],
                           description='Launch the front radar'),
     DeclareLaunchArgument('front_radar_config_file',
-                          default_value='front_radar_IWR1843_RaGNNarok_UAV_5m.json',
+                          default_value='front_radar_IWR1843_IcaRAus.json',
                           description='Radar config file'),
     DeclareLaunchArgument('back_radar_enable',
                           default_value='false',
                           choices=['true','false'],
                           description='Launch the back radar'),
     DeclareLaunchArgument('back_radar_config_file',
-                          default_value='back_radar_IWR1843_RaGNNarok_UAV_5m.json',
+                          default_value='back_radar_IWR1843_IcaRAus.json',
                           description='Radar config file'),
     DeclareLaunchArgument('down_radar_enable',
                           default_value='false',
                           choices=['true','false'],
                           description='Launch the down radar'),
     DeclareLaunchArgument('down_radar_config_file',
-                          default_value='down_radar_6843_RadVel_ods_10Hz.json',
+                          default_value='down_radar_6843_IcaRAus_ods_10Hz.json',
                           description='Radar config file'),
     DeclareLaunchArgument('camera_enable',
                           default_value='false',
@@ -63,7 +63,11 @@ ARGUMENTS = [
     DeclareLaunchArgument('rviz',
                           default_value='false',
                           choices=['true','false'],
-                          description='Display RViz')
+                          description='Display RViz'),
+    DeclareLaunchArgument('vicon_enable',
+                          default_value='false',
+                          choices=['true','false'],
+                          description='Enable Vicon')
 ]
 
 def launch_setup(context, *args, **kwargs):
@@ -80,6 +84,7 @@ def launch_setup(context, *args, **kwargs):
     down_radar_config_file = LaunchConfiguration('down_radar_config_file')
     platform_description_enable = LaunchConfiguration('platform_description_enable')
     rviz = LaunchConfiguration('rviz')
+    vicon_enable = LaunchConfiguration('vicon_enable')
 
     namespace_str = namespace.perform(context)
     if namespace_str:
@@ -99,6 +104,11 @@ def launch_setup(context, *args, **kwargs):
     launch_platform_description = PathJoinSubstitution([pkg_platform_descriptions, 'launch', 'publish_platform_description.launch.py'])
     rviz_config_file = PathJoinSubstitution([pkg_cpsl_ros2_sensors_bringup, 'rviz_cfgs', 'uav_view.rviz'])
 
+    #setup vicon system
+    vicon_computer_ip = "192.168.0.101" # ip address of vicon computer
+    port_number = "801" # default port number
+    host_name = f"{vicon_computer_ip}:{port_number}"
+    
     bringup_group = GroupAction([
         PushRosNamespace(namespace),
 
@@ -148,7 +158,7 @@ def launch_setup(context, *args, **kwargs):
                     ('config_file', down_radar_config_file),
                     ('radar_name', 'down_radar'),
                     ('tf_prefix', tf_prefix),
-                    ('stamp_delay_sec', '0.1'),
+                    ('stamp_delay_sec', '0.0'),
                 ],
                 condition=IfCondition(down_radar_enable)
             )]
@@ -218,7 +228,25 @@ def launch_setup(context, *args, **kwargs):
                 output='screen',
                 condition=IfCondition(rviz)
             )]
-        )
+        ),
+
+        TimerAction(
+            period=24.0,
+            actions=[Node(
+                package='vicon_bridge',
+                executable='vicon_bridge',
+                name='vicon_bridge',
+                parameters = [
+                    {"host_name": host_name},
+                    {"stream_mode": "ClientPull"}, # or "ClientPull" or "ServerPush"
+                #    {"update_rate_hz": 250.0},
+                #    {"publish_specific_segment": False},
+                    {"world_frame_id": "map"},
+                    {"tf_namespace": "vicon"}
+                ],
+                condition=IfCondition(vicon_enable)
+            )]
+        ),
     ])
 
     return [bringup_group]

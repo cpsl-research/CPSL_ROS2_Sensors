@@ -45,15 +45,27 @@ To use an Intel Realsense camera (taken from [realsense-ros](https://github.com/
 1. **Install Intel Realsense SDK2.0**:
     ```bash
     # REPLACE <ROS_DISTRO> WITH YOUR ROS DISTRO (e.g.; jazzy)
-    sudo apt install ros-<ROS_DISTRO>-librealsense2* 
+    sudo apt install "ros-<ROS_DISTRO>-librealsense2*" 
     ```
 2. **Install Intel Realsense2 ROS Nodes**:
     ```bash
     # REPLACE <ROS_DISTRO> WITH YOUR ROS DISTRO (e.g.; jazzy)
-    sudo apt install ros-<ROS_DISTRO>-realsense2-*
+    sudo apt install "ros-<ROS_DISTRO>-realsense2-*"
     ```
 
-#### 1.5 Install Leap Motion Dependencies (Optional)
+#### 1.5 Install Vicon Bridge Dependencies
+To utilize the Vicon Bridge, ensure the following `Boost` libraries are available. 
+```bash
+sudo apt-get install libboost-thread-dev libboost-date-time-dev
+```
+The source code of the `ViconSDK` has been copied from Vicon and provided in the ros2-vicon-bridge repository (added as a submodule to the src directory), and it should be able to build for both `x86` and `aarch64` systems, and possibly others. 
+
+Additionally, you'll need to grab the ROS2 `diagnostic-updater` package:
+```bash
+sudo apt-get install ros-${ROS_DISTRO}-diagnostic-updater
+```
+
+#### 1.6 Install Leap Motion Dependencies (Optional)
 If you want to use the LeapMotion2 hand tracking sensor:
 1. Install Ultraleap Gemini for Ubuntu 22.04/24.04:
     ```bash
@@ -66,7 +78,7 @@ If you want to use the LeapMotion2 hand tracking sensor:
     # Update apt
     sudo apt update
 
-    # Install Ultraleap packages
+    # Install Ultraleap packages (hit tab to accept the license)
     sudo apt install ultraleap-hand-tracking
     ```
     - Verify installation:
@@ -74,7 +86,7 @@ If you want to use the LeapMotion2 hand tracking sensor:
     ultraleap-hand-tracking-control-panel
     ```
 
-#### 1.6 Install Python Poetry
+#### 1.7 Install Python Poetry
 1. Check if Poetry is installed:
     ```bash
     poetry --version
@@ -202,7 +214,7 @@ The Livox Mid360 requires a static IP connection.
 
 This section details how to launch the sensor systems for data collection.
 
-### 4.1 UGV Data Collection
+### 4.1 UGV Sensor Bringup
 These launch files bring up the `livox_lidar`, `ti_radars`, and `usb_camera` for the iRobot Create3 UGV.
 
 | Launch File | Description | Radar Configuration |
@@ -229,7 +241,7 @@ ros2 launch cpsl_ros2_sensors_bringup ugv_sensor_bringup.launch.py \
     namespace:=cpsl_ugv_1
 ```
 
-### 4.2 UAV Data Collection
+### 4.2 UAV Sensor Bringup
 These launch files bring up sensors for the UAV platform, including Downward-facing radar and LiDAR.
 
 | Launch File | Description | Radar Configuration |
