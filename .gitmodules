@@ -10,3 +10,6 @@
 [submodule "submodules/leapc-python-bindings"]
 	path = submodules/leapc-python-bindings
 	url = https://github.com/ultraleap/leapc-python-bindings.git
+[submodule "src/ros2-vicon-bridge"]
+	path = src/ros2-vicon-bridge
+	url = https://github.com/dasc-lab/ros2-vicon-bridge.git
