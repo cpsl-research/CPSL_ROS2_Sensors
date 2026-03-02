@@ -13,3 +13,6 @@
 [submodule "src/ros2-vicon-bridge"]
 	path = src/ros2-vicon-bridge
 	url = https://github.com/dasc-lab/ros2-vicon-bridge.git
+[submodule "src/ouster-ros"]
+	path = src/ouster-ros
+	url = https://github.com/ouster-lidar/ouster-ros.git

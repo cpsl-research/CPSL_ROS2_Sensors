@@ -86,7 +86,44 @@ If you want to use the LeapMotion2 hand tracking sensor:
     ultraleap-hand-tracking-control-panel
     ```
 
-#### 1.7 Install Python Poetry
+#### 1.7 Install Ouster LiDAR Dependencies
+To use the Ouster LiDAR ROS nodes, install the required ROS and system dependencies (from [ouster-ros](https://github.com/ouster-lidar/ouster-ros/tree/ros2)). **Note**: The Ouster ROS driver performs best and is recommended to be used with the Eclipse Cyclone DDS middleware instead of the default FastDDS.
+
+1. Install ROS packages:
+    ```bash
+    sudo apt install -y \
+        ros-${ROS_DISTRO}-pcl-ros \
+        ros-${ROS_DISTRO}-tf2-eigen \
+        ros-${ROS_DISTRO}-rviz2
+    ```
+2. Install system packages and tools:
+    ```bash
+    sudo apt install -y \
+        build-essential \
+        libeigen3-dev \
+        libjsoncpp-dev \
+        libspdlog-dev \
+        libcurl4-openssl-dev \
+        cmake \
+        python3-colcon-common-extensions \
+        libpcap-dev
+    ```
+3. Install and configure Eclipse Cyclone DDS:
+    ```bash
+    # Install the Cyclone DDS ROS middleware package
+    sudo apt install -y ros-${ROS_DISTRO}-rmw-cyclonedds-cpp
+    
+    # Set the environment variable for your current terminal session
+    export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+    
+    # (Optional, but recommended) Add to your .bashrc to make it persistent across all terminals
+    echo "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp" >> ~/.bashrc
+
+    # (Optional, but recommended) Add to your .zshrc to make it persistent across all terminals
+    echo "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp" >> ~/.zshrc
+    ```
+
+#### 1.8 Install Python Poetry
 1. Check if Poetry is installed:
     ```bash
     poetry --version
@@ -107,11 +144,20 @@ If you want to use the LeapMotion2 hand tracking sensor:
     ```bash
     poetry config virtualenvs.options.system-site-packages true
     ```
-2. Clone the repository with submodules:
+2. Clone the repository:
     ```bash
-    git clone --recurse-submodules https://github.com/cpsl-research/CPSL_ROS2_Sensors
+    git clone https://github.com/cpsl-research/CPSL_ROS2_Sensors
+    cd CPSL_ROS2_Sensors
     ```
-    *If you forgot submodules*: `git submodule update --init --recursive` inside the repo.
+3. Initialize submodules:
+    * To initialize **all** submodules:
+        ```bash
+        git submodule update --init --recursive
+        ```
+    * To initialize **specific** submodules:
+        ```bash
+        git submodule update --init --recursive <path_to_submodule>
+        ```
 
 #### 2.2 Install Python Environment
 1. Setup the environment (ensure you use the system python version matching your ROS install, e.g., 3.12 for Jazzy):
@@ -151,7 +197,10 @@ If you want to use the LeapMotion2 hand tracking sensor:
     # 3. Build raw_radar_msgs first to ensure visibility
     python -m colcon build --packages-select raw_radar_msgs --symlink-install
 
-    # 4. Build the rest of the workspace
+    # 4. Build the Ouster ROS driver with Release build type
+    python -m colcon build --packages-select ouster_ros ouster_sensor_msgs --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+
+    # 5. Build the rest of the workspace
     python -m colcon build --base-paths src --symlink-install
     ```
 
@@ -361,3 +410,34 @@ ros2 launch dataset_generator record_dataset.launch.py param_file:=my_experiment
 | `param_file` | `ugv_dataset.yaml` | The `.yaml` config file located in `src/dataset_generator/configs`. |
 
 *Note: The `param_file` argument looks for files inside the `configs/` directory.*
+
+### 4.6 Ouster LiDAR Configuration & Bringup
+The Ouster LiDAR requires configuration for network connectivity and launch parameters via the `ouster_ros` package.
+
+1. **Network Configuration**:
+    - The LiDAR sensor must be on the same subnet as your computer. It can be set to a static IP or use DHCP depending on your network setup.
+    - Connect the Ouster sensor to your machine's ethernet port.
+    - Generally, this means setting the machine to have a static IP of: 169.254.1.1 and a netmask of 255.255.0.0 (at least for the OS128)
+
+2. **Driver Parameters**:
+    - Edit the Ouster driver parameters file: `src/cpsl_ros2_sensors_bringup/ouster_configs/driver_params.yaml`.
+    - **Important Fields**:
+        - `sensor_hostname`: The IP address of the Ouster sensor (e.g., `192.168.1.100` or its DNS hostname like `os-XXXXXXXXXXXX.local`).
+        - `udp_dest`: (Optional) The IP address of your computer to receive the UDP packets. Leave empty for automatic detection in most cases.
+
+**Launch File**: `ouster_lidar_bringup.launch.py`
+
+| Parameter | Default | Description |
+| :--- | :--- | :--- |
+| `namespace` | `''` | Namespace for the nodes. |
+| `lidar_enable` | `true` | Launch the Ouster LiDAR. |
+| `lidar_scan_enable` | `false` | Publish `/ouster/scan` (LaserScan) from LiDAR pointcloud. |
+| `platform_description_enable` | `true` | Publish the robot description. |
+| `rviz` | `false` | Launch RViz for visualization. |
+
+**Example Usage**:
+```bash
+ros2 launch cpsl_ros2_sensors_bringup ouster_lidar_bringup.launch.py \
+    lidar_scan_enable:=true \
+    rviz:=true
+```
