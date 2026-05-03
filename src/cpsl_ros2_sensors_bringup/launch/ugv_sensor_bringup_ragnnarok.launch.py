@@ -66,10 +66,10 @@ def launch_setup(context, *args, **kwargs):
         if not namespace_str.startswith('/'):
             namespace_str = '/' + namespace_str
         tf_prefix = namespace_str.strip("/")
-        laser_scan_target_frame = '{}/base_link'.format(tf_prefix)
+        laser_scan_target_frame = '{}/base_footprint'.format(tf_prefix)
     else:
         tf_prefix = ""
-        laser_scan_target_frame = "base_link"
+        laser_scan_target_frame = "base_footprint"
 
     #locating other launch files
     launch_livox = PathJoinSubstitution(
@@ -185,6 +185,12 @@ def launch_setup(context, *args, **kwargs):
                 executable="usb_cam_node_exe",
                 name="usb_cam",
                 output='screen',
+                parameters=[
+                    {'framerate':10.0},
+                    {'image_width': 640},
+                    {'image_height': 480},
+                    {'qos_reliability': 'best_effort'}
+                ],
                 condition=IfCondition(camera_enable)
             )]
         ),

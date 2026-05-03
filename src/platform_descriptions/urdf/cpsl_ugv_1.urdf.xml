@@ -3,7 +3,7 @@
 
 
     <!-- Robot's base link (cylindrical) -->
-    <link name="cpsl_ugv_1/base_link">
+    <link name="cpsl_ugv_1/base_footprint">
         <visual>
             <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
             <geometry>
@@ -30,10 +30,10 @@
         </visual>
     </link>
 
-    <!-- Fixed joint to attach lidar to base_link -->
+    <!-- Fixed joint to attach lidar to base_footprint -->
     <joint name="lidar_joint" type="fixed">
         <origin xyz="0.0 0.0 0.1365" rpy="0.0 0.0 3.141592653589793"/>
-        <parent link="cpsl_ugv_1/base_link"/>
+        <parent link="cpsl_ugv_1/base_footprint"/>
         <child link="cpsl_ugv_1/livox_frame"/>
     </joint>
 
@@ -50,10 +50,10 @@
         </visual>
     </link>
 
-    <!-- Fixed joint to attach radar to base_link -->
+    <!-- Fixed joint to attach radar to base_footprint -->
     <joint name="radar_0_joint" type="fixed">
         <origin xyz="0.147 0.0 0.11" rpy="0.0 0.0 -1.57079633"/>
-        <parent link="cpsl_ugv_1/base_link"/>
+        <parent link="cpsl_ugv_1/base_footprint"/>
         <child link="cpsl_ugv_1/radar_0"/>
     </joint>
 
@@ -70,10 +70,10 @@
         </visual>
     </link>
 
-    <!-- Fixed joint to attach radar to base_link -->
+    <!-- Fixed joint to attach radar to base_footprint -->
     <joint name="radar_1_joint" type="fixed">
         <origin xyz="-0.147 0.0 0.11" rpy="0.0 0.0 1.57079633"/>
-        <parent link="cpsl_ugv_1/base_link"/>
+        <parent link="cpsl_ugv_1/base_footprint"/>
         <child link="cpsl_ugv_1/radar_1"/>
     </joint>
 

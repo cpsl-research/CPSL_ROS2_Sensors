@@ -25,6 +25,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'env_check_node = cpsl_ros2_sensors_bringup.env_check_node:main',
         ],
     },
 )
