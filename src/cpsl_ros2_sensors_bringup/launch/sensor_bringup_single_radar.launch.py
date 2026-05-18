@@ -103,7 +103,7 @@ def launch_setup(context, *args, **kwargs):
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(launch_radar),
             launch_arguments=[
-                ('config_file','radar_0_IWR1843_nav_dca.json'),
+                ('config_file','radar_0_IWR1843_vel_sr.json'),
                 ('radar_name','radar_0'),
                 ('tf_prefix',tf_prefix),
                 ('stamp_delay_sec','0.1'),
