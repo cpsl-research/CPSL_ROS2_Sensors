@@ -1,443 +1,165 @@
-# CPSL_ROS2_Sensors
+# CPSL ROS2 Sensors
 
-Set of ROS packages for various sensors developed and utilized by Duke's CPSL laboratory. This repository contains ROS1 packages for the following sensing modalitites:
-* Livox Lidars
-* Vicon motion capture system (to be added soon)
-* TI-IWRXXX and DCA1000 radar development boards
-
-## Installation [Built on ROS2 Jazzy, Ubuntu 24.04]:
-
-### 1. Pre-requisites
-
-If you haven't already done so, please perform the following steps to install the pre-requisites for this repository:
-
-#### 1.1 Install ROS 2
-Follow the instructions on the [ROS2 installation instructions](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html) website to install ROS2. If you are unfamiliar with ROS, it is worth taking some of the [ROS2 Jazzy Tutorials](https://docs.ros.org/en/jazzy/Tutorials.html). We use ROS Jazzy developed for Ubuntu 24.04. Using other ROS versions may require some changes.
-
-#### 1.2 Install TI Radar Dependencies
-This repo integrates with the CPSL_TI_Radar packages. To ensure all pre-requisites are installed:
-1. Install all required C++ pre-requisites by following the "Pre-requisite packages" instructions in the [CPSL_TI_Radar_cpp github installation instructions](https://github.com/davidmhunt/CPSL_TI_Radar/tree/main/CPSL_TI_Radar_cpp).
-
-#### 1.3 Install Livox-SDK
-To use the Livox Lidar ROS nodes, install the Livox-SDK:
-1. Install gcc 9.4.0:
-    ```bash
-    sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-    sudo apt update
-    sudo apt install gcc-9 g++-9 -y
-    ```
-2. Clone the Livox-SDK2 repository:
-    ```bash
-    git clone https://github.com/Livox-SDK/Livox-SDK2.git
-    ```
-3. Build and install Livox-SDK, specifying gcc 9.4.0:
-    ```bash
-    cd ./Livox-SDK2/
-    mkdir build
-    cd build
-    cmake -DCMAKE_C_COMPILER=/usr/bin/gcc-9 -DCMAKE_CXX_COMPILER=/usr/bin/g++-9 ..
-    make
-    sudo make install
-    ```
-
-#### 1.4 Install Intel Realsense Dependencies
-To use an Intel Realsense camera (taken from [realsense-ros](https://github.com/IntelRealSense/realsense-ros)):
-1. **Install Intel Realsense SDK2.0**:
-    ```bash
-    # REPLACE <ROS_DISTRO> WITH YOUR ROS DISTRO (e.g.; jazzy)
-    sudo apt install "ros-<ROS_DISTRO>-librealsense2*" 
-    ```
-2. **Install Intel Realsense2 ROS Nodes**:
-    ```bash
-    # REPLACE <ROS_DISTRO> WITH YOUR ROS DISTRO (e.g.; jazzy)
-    sudo apt install "ros-<ROS_DISTRO>-realsense2-*"
-    ```
-
-#### 1.5 Install Vicon Bridge Dependencies
-To utilize the Vicon Bridge, ensure the following `Boost` libraries are available. 
-```bash
-sudo apt-get install libboost-thread-dev libboost-date-time-dev
-```
-The source code of the `ViconSDK` has been copied from Vicon and provided in the ros2-vicon-bridge repository (added as a submodule to the src directory), and it should be able to build for both `x86` and `aarch64` systems, and possibly others. 
-
-Additionally, you'll need to grab the ROS2 `diagnostic-updater` package:
-```bash
-sudo apt-get install ros-${ROS_DISTRO}-diagnostic-updater
-```
-
-#### 1.6 Install Leap Motion Dependencies (Optional)
-If you want to use the LeapMotion2 hand tracking sensor:
-1. Install Ultraleap Gemini for Ubuntu 22.04/24.04:
-    ```bash
-    # Add the Ultraleap GPG key
-    wget -qO - https://repo.ultraleap.com/keys/apt/gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/ultraleap.gpg
-
-    # Add Ultraleap repo to apt
-    echo 'deb [arch=amd64] https://repo.ultraleap.com/apt stable main' | sudo tee /etc/apt/sources.list.d/ultraleap.list
-
-    # Update apt
-    sudo apt update
-
-    # Install Ultraleap packages (hit tab to accept the license)
-    sudo apt install ultraleap-hand-tracking
-    ```
-    - Verify installation:
-    ```bash
-    ultraleap-hand-tracking-control-panel
-    ```
-
-#### 1.7 Install Ouster LiDAR Dependencies
-To use the Ouster LiDAR ROS nodes, install the required ROS and system dependencies (from [ouster-ros](https://github.com/ouster-lidar/ouster-ros/tree/ros2)). **Note**: The Ouster ROS driver performs best and is recommended to be used with the Eclipse Cyclone DDS middleware instead of the default FastDDS.
-
-1. Install ROS packages:
-    ```bash
-    sudo apt install -y \
-        ros-${ROS_DISTRO}-pcl-ros \
-        ros-${ROS_DISTRO}-tf2-eigen \
-        ros-${ROS_DISTRO}-rviz2
-    ```
-2. Install system packages and tools:
-    ```bash
-    sudo apt install -y \
-        build-essential \
-        libeigen3-dev \
-        libjsoncpp-dev \
-        libspdlog-dev \
-        libcurl4-openssl-dev \
-        cmake \
-        python3-colcon-common-extensions \
-        libpcap-dev
-    ```
-3. Install and configure Eclipse Cyclone DDS:
-    ```bash
-    # Install the Cyclone DDS ROS middleware package
-    sudo apt install -y ros-${ROS_DISTRO}-rmw-cyclonedds-cpp
-    
-    # Set the environment variable for your current terminal session
-    export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-    
-    # (Optional, but recommended) Add to your .bashrc to make it persistent across all terminals
-    echo "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp" >> ~/.bashrc
-
-    # (Optional, but recommended) Add to your .zshrc to make it persistent across all terminals
-    echo "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp" >> ~/.zshrc
-    ```
-
-#### 1.8 Install Python Poetry
-1. Check if Poetry is installed:
-    ```bash
-    poetry --version
-    ```
-2. If not installed, install it:
-    ```bash
-    curl -sSL https://install.python-poetry.org | python3 -
-    ```
-    *Troubleshooting*: If you encounter keyring errors:
-    ```bash
-    export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
-    ```
-
-### 2. Installing CPSL_ROS2_Sensors
-
-#### 2.1 Clone and Configure
-1. Configure poetry to use system packages:
-    ```bash
-    poetry config virtualenvs.options.system-site-packages true
-    ```
-2. Clone the repository:
-    ```bash
-    git clone https://github.com/cpsl-research/CPSL_ROS2_Sensors
-    cd CPSL_ROS2_Sensors
-    ```
-3. Initialize submodules:
-    * To initialize **all** submodules:
-        ```bash
-        git submodule update --init --recursive
-        ```
-    * To initialize **specific** submodules:
-        ```bash
-        git submodule update --init --recursive <path_to_submodule>
-        ```
-
-#### 2.2 Install Python Environment
-1. Setup the environment (ensure you use the system python version matching your ROS install, e.g., 3.12 for Jazzy):
-    ```bash
-    cd CPSL_ROS2_Sensors
-    poetry env use /usr/bin/python3.12
-    ```
-2. Install dependencies:
-    ```bash
-    poetry install # standard
-    # OR
-    poetry install --with leapmotion # if using leap motion
-    ```
-
-3. **(Leap Motion Only)** Build bindings:
-    ```bash
-    eval $(poetry env activate)
-    cd submodules/leapc-python-bindings
-    python -m build leapc-cffi
-    pip install leapc-cffi/dist/leapc_cffi-0.0.1.tar.gz
-    ```
-
-#### 2.3 Build ROS Packages
-1. Install ROS dependencies and build:
-    ```bash
-    cd CPSL_ROS2_Sensors
-    eval $(poetry env activate)
-    
-    # 1. Install ROS dependencies, skipping the local raw_radar_msgs
-    rosdep install --from-paths src -y --rosdistro=jazzy --skip-keys "raw_radar_msgs"
-
-    # 2. Configure Livox Lidar Driver (First time only)
-    cd src/CPSL_ROS_livox_ros_driver2
-    ./build_CPSL_ROS2_Sensors.sh jazzy
-    cd ../..
-
-    # 3. Build raw_radar_msgs first to ensure visibility
-    python -m colcon build --packages-select raw_radar_msgs --symlink-install
-
-    # 4. Build the Ouster ROS driver with Release build type
-    python -m colcon build --packages-select ouster_ros ouster_sensor_msgs --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
-
-    # 5. Build the rest of the workspace
-    python -m colcon build --base-paths src --symlink-install
-    ```
-
-2. Source the workspace:
-    ```bash
-    source install/setup.bash
-    ```
-
-## 3. Hardware & Sensor Setup
-
-After installation, the RealSense and Leap Motion sensors should be ready to use. However, the Livox LIDAR and TI Radars require additional configuration.
-
-### 3.1 Radar Setup
-This repository uses the `CPSL_TI_Radar_ROS2` package to interface with TI mmWave radars.
-1.  **JSON Configuration**: Radar launch files use JSON config files located in `src/CPSL_TI_Radar_ROS2/src/ti_radar_connect/include/CPSL_TI_Radar/CPSL_TI_Radar_cpp/configs`.
-    -   **Important Fields**:
-        -   `CLI_port`: The serial port for the configuration UART (e.g., `/dev/ttyACM0`).
-        -   `data_port`: The serial port for the data UART (e.g., `/dev/ttyACM1`).
-        -   `DCA1000_streaming`: Set `enabled: true` if using a DCA1000 capture card.
-        -   `TI_Radar_config_path`: Path to the `.cfg` chirp profile.
-2.  **Connection Order**:
-    -   **Front Radar**: Connect first. Usually appears as `/dev/ttyACM0` (CLI) and `/dev/ttyACM1` (Data).
-    -   **Back Radar**: Connect second. Usually appears as `/dev/ttyACM2` (CLI) and `/dev/ttyACM3` (Data).
-3.  **Permissions**:
-    -   Ensure your user is in the `dialout` group to access serial ports:
-        ```bash
-        sudo usermod -a -G dialout $USER
-        ```
-        *Log out and back in for this to take effect.*
-
-    - To confirm that this worked correctly, connect either of the radars and then run the following command:
-        ```
-        ls /dev/ttyACM* # for 1843/1443 should return /ttyACM0 /ttyACM1 /ttyACM2 /ttyACM3
-        ls /dev/ttyUSB* #for 6843, should return /ttyUSB0 /ttyUSB1
-        ```
-
-    - If the problem persists, try running the following command to give access to the serial port:
-        ```
-        sudo chmod 666 /dev/ttyACM0 # or whatever port you need to specify
-        ```
-
-### 3.2 Livox LiDAR Setup (Mid360)
-The Livox Mid360 requires a static IP connection.
-1.  **Network Configuration**:
-    -   Set your computer's wired network interface to a static IPv4 address:
-        -   IP: `192.168.1.XX` (e.g., `192.168.1.50`).
-            - Note: replace the last two digits of the IP address (XX) of the lidar with the last two digits of the serial number (located on the side of the LiDAR, under the QR code).
-            - If the last two digits start with a 0 (e.g.; 09), the ip address should just be the last digit (e.g.; 9).
-        -   Netmask: `255.255.255.0`.
-2.  **Update Config File**:
-    -   Locate the serial number on your LiDAR (under the QR code).
-    -   Modify `src/CPSL_ROS_livox_ros_driver2/config/MID360_config.json`:
-        -   Update `ip` in `lidar_configs` to `192.168.1.1XX` (where XX are the last two digits of the serial number).
-        -   *Note*: If the serial ends in `09`, the IP should be `...109`.
-
+Multi-sensor ROS2 platform integrating TI radar, Livox/Ouster LiDAR, depth cameras, Leap Motion hand tracking, and Vicon motion capture for UGV, UAV, and human-movement research.
 
 ---
 
-## 4. Tutorials
+## Quick-Start
 
-This section details how to launch the sensor systems for data collection.
-
-### 4.1 UGV Sensor Bringup
-These launch files bring up the `livox_lidar`, `ti_radars`, and `usb_camera` for the iRobot Create3 UGV.
-
-| Launch File | Description | Radar Configuration |
-| :--- | :--- | :--- |
-| **`ugv_sensor_bringup.launch.py`** | **Standard Setup**. Uses standard velocity/range profiles. | • Front: `radar_0_IWR1843_vel_sr.json`<br>• Back: `radar_1_IWR1843_vel_sr.json` |
-| **`ugv_sensor_bringup_ragnnarok.launch.py`** | **RaGNNarok Setup**. Configured for the RaGNNarok paper dataset. | • Front: `front_radar_IWR1843_RaGNNarok_UGV_5m.json`<br>• Back: `back_radar_IWR1843_RaGNNarok_UGV_5m.json` |
-
-| Parameter | Default | Description |
-| :--- | :--- | :--- |
-| `namespace` | `''` | Namespace for the nodes. |
-| `lidar_enable` | `true` | Launch the Livox LiDAR. |
-| `lidar_scan_enable` | `false` | Publish `/scan` (LaserScan) from LiDAR pointcloud. |
-| `radar_enable` | `true` | Launch the TI Radars (front and back). |
-| `camera_enable` | `true` | Launch the USB Camera. |
-| `platform_description_enable` | `true` | Publish the UGV robot description (URDF). |
-| `rviz` | `false` | Launch RViz for visualization. |
-
-**Example Usage**:
 ```bash
-ros2 launch cpsl_ros2_sensors_bringup ugv_sensor_bringup.launch.py \
-    lidar_enable:=true \
-    radar_enable:=true \
-    camera_enable:=true \
-    namespace:=cpsl_ugv_1
+# From any directory:
+git clone https://github.com/cpsl-research/CPSL_ROS2_Sensors
+cd CPSL_ROS2_Sensors
+
+# Install dependencies, clone sensor submodules, and build:
+bash scripts/install.sh --sensors radar,livox   # choose the sensors you have
+
+# Source the workspace (repeat in every new terminal):
+source install/setup.$(basename $SHELL)
 ```
 
-### 4.2 UAV Sensor Bringup
-These launch files bring up sensors for the UAV platform, including Downward-facing radar and LiDAR.
+`install.sh` clones only the submodules needed for the sensors you specify — unneeded sensor repos are never downloaded.
 
-| Launch File | Description | Radar Configuration |
-| :--- | :--- | :--- |
-| **`uav_sensor_bringup_radsar.launch.py`** | **Standard (RadSAR)**. Setup for SAR/Velocity collection. | • Front: `front_radar_IWR1843_dca_RadVel_10Hz.json`<br>• Down: `down_radar_IWR6843_ods_dca_RadVel.json` |
-| **`uav_sensor_bringup_ragnnarok.launch.py`** | **RaGNNarok**. Setup for RaGNNarok paper. | • Front: `front_radar_IWR1843_RaGNNarok_UAV_5m.json`<br>• Back: `back_radar_IWR1843_RaGNNarok_UAV_5m.json` |
+| Flag | Argument | Default | Description |
+|------|----------|---------|-------------|
+| `--sensors` | comma-separated | `radar,livox` | Which sensors to install. Valid values: `radar`, `livox`, `ouster`, `realsense`, `leapmotion`, `vicon`. Controls which submodules are cloned and which SDK dependencies are installed. |
+| `--livox-ip` | `XX` (two digits) | _(none)_ | Last two digits of the Livox Mid360 serial number. Auto-patches `host_ip` in `MID360_config.json`. |
+| `--ouster-hostname` | hostname or IP | _(none)_ | Auto-patches `sensor_hostname` in `ouster_configs/driver_params.yaml`. |
+| `--skip-build` | _(flag)_ | off | Skip the colcon build step. Useful for setting up dependencies before hardware is connected. |
 
-| Parameter | Default | Description |
-| :--- | :--- | :--- |
-| `namespace` | `cpsl_uav_1` | Namespace for the nodes. |
-| `lidar_enable` | `false` | Launch the Livox LiDAR. |
-| `lidar_scan_enable` | `false` | Publish `/scan` (LaserScan) from LiDAR pointcloud. |
-| `front_radar_enable` | `false` | Launch the Front Radar. |
-| `front_radar_config_file` | *(varies)* | Config file for the front radar. |
-| `back_radar_enable` | `false` | Launch the Back Radar. |
-| `back_radar_config_file` | *(varies)* | Config file for the back radar. |
-| `down_radar_enable` | `false` | Launch the Downward Radar. |
-| `down_radar_config_file` | *(varies)* | Config file for the down radar. |
-| `camera_enable` | `false` | Launch the USB Camera. |
-| `platform_description_enable` | `true` | Publish the UAV robot description (URDF). |
-| `rviz` | `false` | Launch RViz for visualization. |
+If ROS2 Jazzy is not yet installed, run `bash scripts/install_ros2.sh` instead — it installs ROS2 first, then hands off to `install.sh`.
 
-**Example Usage**:
+---
+
+## Sensor Support
+
+| Sensor | Package / Submodule | Topics Published | Notes |
+|--------|---------------------|------------------|-------|
+| TI Radar (serial) | `CPSL_TI_Radar_ROS2` → `ti_radar_connect` | `<ns>/radar_N/ti_radar` (point cloud), `<ns>/radar_N/ti_radar_scan` | IWR1843 / IWR6843 via `/dev/ttyACM*` or `/dev/ttyUSB*` |
+| TI Radar (DCA1000) | `CPSL_TI_Radar_ROS2` → `ti_radar_connect` | same as serial | Ethernet capture; requires IP config (see Hardware Setup) |
+| Livox Mid360 | `CPSL_ROS_livox_ros_driver2` | `<ns>/livox/lidar` (point cloud), `<ns>/livox/imu` | Static-IP ethernet; requires `MID360_config.json` update |
+| Ouster | `ouster-ros` | `<ns>/ouster/points`, `<ns>/ouster/imu`, `<ns>/ouster/scan` | Link-local ethernet; requires Eclipse Cyclone DDS |
+| Intel RealSense | `realsense2_camera` (apt) | `<ns>/cpsl_realsense/color/image_raw`, `.../depth/image_rect_raw` | USB3; plug and play after apt install |
+| Leap Motion | `CPSL_ROS2_LeapMotion` | `<ns>/left_hand_joints`, `<ns>/right_hand_joints`, `<ns>/leapmotion/image` | Requires Ultraleap Gemini service running |
+| Vicon | `ros2-vicon-bridge` | `/tf` (object poses keyed by `vicon/<object>`) | Connects to Vicon DataStream over TCP |
+
+---
+
+## Hardware Setup
+
+### TI Radar — Serial (IWR1843 / IWR6843)
+
+1. Add yourself to the `dialout` group (the install script does this automatically):
+   ```bash
+   sudo usermod -a -G dialout $USER
+   # log out and back in
+   ```
+2. Port order when multiple radars are connected:
+   - IWR1843: `/dev/ttyACM0` = front radar (config), `/dev/ttyACM1` = front radar (data); `/dev/ttyACM2` = back, `/dev/ttyACM3` = back data
+   - IWR6843: `/dev/ttyUSB0` (config), `/dev/ttyUSB1` (data)
+3. Edit the JSON config in `src/CPSL_TI_Radar_ROS2/.../configs/` to match the assigned ports.
+
+### TI Radar — DCA1000 Ethernet Capture
+
+**Single radar (default):**
+- Set your PC ethernet adapter to static `192.168.33.30/24`
+- DCA1000 factory FPGA IP: `192.168.33.180`
+
+**Multi-radar or co-located with Livox Mid360:**
+- Both share one adapter; reprogram DCA1000 EEPROM to the `192.168.1.x` subnet using the CLI tool in `src/CPSL_TI_Radar_ROS2/DCA_Programming/`
+- PC adapter: `192.168.1.57/24`
+- Front DCA1000: `192.168.1.180` (port pair `4096/4098`)
+- Back DCA1000: `192.168.1.182` (port pair `4088/4090`)
+
+**Required kernel tuning (apply once, make permanent):**
 ```bash
-ros2 launch cpsl_ros2_sensors_bringup uav_sensor_bringup_ragnnarok.launch.py \
-    front_radar_enable:=true \
-    down_radar_enable:=true \
-    lidar_enable:=true
+sudo sysctl -w net.core.rmem_max=134217728
+# permanent:
+echo 'net.core.rmem_max=134217728' | sudo tee /etc/sysctl.d/99-radar.conf
+sudo sysctl --system
 ```
 
-### 4.3 Human Movement Data Collection
-Captures data for human motion correlation using Leap Motion (Hands), RealSense (Depth/RGB), and Radars.
+### Livox Mid360
 
-**Launch File**: `human_movement_sensor_bringup.launch.py`
+1. Set your PC ethernet adapter to static `192.168.1.XX/24`, where `XX` are the last two digits of the sensor's serial number.
+2. Update `src/CPSL_ROS_livox_ros_driver2/config/MID360_config.json`:
+   ```json
+   "host_net_info": { "host_ip": "192.168.1.XX", ... }
+   ```
+   Or pass `--livox-ip XX` to `install.sh` to patch it automatically.
 
-| Parameter | Default | Description |
-| :--- | :--- | :--- |
-| `namespace` | `cpsl_human_movement` | Namespace for the nodes. |
-| `lidar_enable` | `false` | Launch the Livox LiDAR. |
-| `lidar_scan_enable` | `false` | Publish `/scan` (LaserScan) from LiDAR pointcloud. |
-| `radar_enable` | `false` | Launch the TI Radars. |
-| `camera_enable` | `false` | Launch the USB Camera. |
-| `realsense_enable` | `true` | Launch the RealSense Camera. |
-| `leapmotion_enable` | `true` | Launch the Leap Motion Sensor. |
-| `platform_description_enable` | `true` | Publish the robot description. |
-| `rviz` | `false` | Launch RViz for visualization. |
+### Ouster
 
-**Example Usage**:
+1. Set your PC ethernet adapter to link-local: IP `169.254.1.1`, netmask `255.255.0.0`.
+2. Set the sensor hostname in `src/cpsl_ros2_sensors_bringup/ouster_configs/driver_params.yaml`:
+   ```yaml
+   sensor_hostname: 'os-XXXXXXXXXXXX.local'   # or IP address
+   ```
+   Or pass `--ouster-hostname <host>` to `install.sh` to patch it automatically.
+3. Eclipse Cyclone DDS is required; the install script appends `export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp` to your shell RC file.
+
+---
+
+## Launch Reference
+
+All launch files live in `src/cpsl_ros2_sensors_bringup/launch/`. Launch with:
 ```bash
-ros2 launch cpsl_ros2_sensors_bringup human_movement_sensor_bringup.launch.py \
-    leapmotion_enable:=true \
-    realsense_enable:=true \
-    radar_enable:=true
+ros2 launch cpsl_ros2_sensors_bringup <file> [arg:=value ...]
 ```
 
-### 4.4 Single Radar Testing
-Bring up a single radar for testing purposes.
+| Launch File | Default Namespace | Default Sensors On | Default Radar Configs |
+|-------------|-------------------|--------------------|-----------------------|
+| `ugv_sensor_bringup.launch.py` | _(empty)_ | lidar, radar (×2), camera | `radar_0_IWR1843_vel_sr.json` / `radar_1_IWR1843_vel_sr.json` |
+| `ugv_sensor_bringup_ragnnarok.launch.py` | _(empty)_ | lidar, radar (×2), camera | `front_radar_IWR1843_RaGNNarok_UGV_5m.json` / `back_radar_IWR1843_RaGNNarok_UGV_5m.json` |
+| `uav_sensor_bringup_radsar.launch.py` | `cpsl_uav_1` | platform description only | `front/back_radar_IWR1843_dca_RadVel_10Hz.json`, `down_radar_IWR6843_ods_dca_RadVel.json` |
+| `uav_sensor_bringup_IcaRAus.launch.py` | `cpsl_uav_1` | platform description only | `front/back_radar_IWR1843_IcaRAus.json`, `down_radar_6843_IcaRAus_ods_10Hz.json` |
+| `ouster_lidar_bringup.launch.py` | _(empty)_ | ouster lidar | — |
+| `human_movement_sensor_bringup.launch.py` | `cpsl_human_movement` | realsense, leapmotion, platform | `radar_0_IWR6843_ods_human_movement.json` |
+| `sensor_bringup_single_radar.launch.py` | _(empty)_ | lidar, radar (×1), camera | `radar_0_IWR1843_vel_sr.json` |
 
-**Launch File**: `sensor_bringup_single_radar.launch.py`
+**Common arguments** accepted by most launch files:
 
-| Parameter | Default | Description |
-| :--- | :--- | :--- |
-| `namespace` | `''` | Namespace for the nodes. |
-| `lidar_enable` | `true` | Launch the Livox LiDAR. |
-| `lidar_scan_enable` | `false` | Publish `/scan` (LaserScan) from LiDAR pointcloud. |
-| `radar_enable` | `true` | Launch the TI Radar. |
-| `camera_enable` | `true` | Launch the USB Camera. |
-| `platform_description_enable` | `true` | Publish the robot description. |
-| `rviz` | `false` | Launch RViz for visualization. |
+| Argument | Values | Description |
+|----------|--------|-------------|
+| `namespace` | string | Scopes all node names and topics |
+| `lidar_enable` | `true`/`false` | Start Livox (or Ouster) driver |
+| `radar_enable` | `true`/`false` | Start TI radar driver(s) |
+| `camera_enable` | `true`/`false` | Start USB camera node |
+| `platform_description_enable` | `true`/`false` | Publish URDF + static TF |
+| `lidar_scan_enable` | `true`/`false` | Also publish a `/scan` LaserScan |
+| `rviz` | `true`/`false` | Open an RViz window |
 
-**Example Usage**:
+UAV launch files replace the single `radar_enable` flag with per-radar flags: `front_radar_enable`, `back_radar_enable`, `down_radar_enable` — each with a matching `*_config_file` argument.
+
+---
+
+## Dataset Recording
+
+Dataset configs live in `src/dataset_generator/configs/*.yaml`. Launch the recorder alongside a bringup launch:
+
 ```bash
-ros2 launch cpsl_ros2_sensors_bringup sensor_bringup_single_radar.launch.py
+# In terminal 1 — start sensors:
+ros2 launch cpsl_ros2_sensors_bringup ugv_sensor_bringup.launch.py
+
+# In terminal 2 — start recording:
+ros2 launch dataset_generator record_dataset.launch.py \
+    param_file:=ugv_dataset.yaml \
+    dataset_subpath:=run_001
 ```
 
-### 4.5 Recording Datasets
-The `dataset_generator` package synchronizes and saves data from all active sensors.
+- `param_file` — bare filename (no path); resolved inside the installed `configs/` directory
+- `dataset_subpath` — appended to `dataset_path` from the YAML; useful for numbered runs
+- Output path: `<dataset_path>/<dataset_subpath>/frame_XXXXXX.npy` with per-sensor subdirectories
 
-**1. Create/Edit a Configuration YAML:**
-Create a file in `src/dataset_generator/configs/` (e.g., `my_experiment.yaml`).
+See [`tutorials/01_capturing_a_dataset.md`](tutorials/01_capturing_a_dataset.md) for a full walkthrough.
 
-```yaml
-dataset_generator:
-  ros__parameters:
-    # --- Sensor Enables ---
-    radar_enable: True
-    lidar_enable: True
-    camera_enable: True
-    depth_enable: False
-    imu_enable: True
-    vehicle_odom_enable: True
-    
-    # --- Topic Names ---
-    lidar_topic: "livox/lidar"
-    camera_topic: "usb_cam/image_raw"
-    imu_topic: "livox/imu"
-    
-    # --- Storage ---
-    # Path where the dataset folder will be created
-    dataset_path: "/home/cpsl/Downloads/datasets/experiment_1"
-    
-    # --- Frames ---
-    base_frame: "cpsl_ugv_1/base_link"
-    
-    # --- Rates ---
-    frame_rate_save_data: 10.0  # Hz
-```
+---
 
-**2. Launch the Recorder:**
-```bash
-ros2 launch dataset_generator record_dataset.launch.py param_file:=my_experiment.yaml
-```
+## Further Reading
 
-| Parameter | Default | Description |
-| :--- | :--- | :--- |
-| `namespace` | `''` | Namespace for the nodes. |
-| `param_file` | `ugv_dataset.yaml` | The `.yaml` config file located in `src/dataset_generator/configs`. |
-
-*Note: The `param_file` argument looks for files inside the `configs/` directory.*
-
-### 4.6 Ouster LiDAR Configuration & Bringup
-The Ouster LiDAR requires configuration for network connectivity and launch parameters via the `ouster_ros` package.
-
-1. **Network Configuration**:
-    - The LiDAR sensor must be on the same subnet as your computer. It can be set to a static IP or use DHCP depending on your network setup.
-    - Connect the Ouster sensor to your machine's ethernet port.
-    - Generally, this means setting the machine to have a static IP of: 169.254.1.1 and a netmask of 255.255.0.0 (at least for the OS128)
-
-2. **Driver Parameters**:
-    - Edit the Ouster driver parameters file: `src/cpsl_ros2_sensors_bringup/ouster_configs/driver_params.yaml`.
-    - **Important Fields**:
-        - `sensor_hostname`: The IP address of the Ouster sensor (e.g., `192.168.1.100` or its DNS hostname like `os-XXXXXXXXXXXX.local`).
-        - `udp_dest`: (Optional) The IP address of your computer to receive the UDP packets. Leave empty for automatic detection in most cases.
-
-**Launch File**: `ouster_lidar_bringup.launch.py`
-
-| Parameter | Default | Description |
-| :--- | :--- | :--- |
-| `namespace` | `''` | Namespace for the nodes. |
-| `lidar_enable` | `true` | Launch the Ouster LiDAR. |
-| `lidar_scan_enable` | `false` | Publish `/ouster/scan` (LaserScan) from LiDAR pointcloud. |
-| `platform_description_enable` | `true` | Publish the robot description. |
-| `rviz` | `false` | Launch RViz for visualization. |
-
-**Example Usage**:
-```bash
-ros2 launch cpsl_ros2_sensors_bringup ouster_lidar_bringup.launch.py \
-    lidar_scan_enable:=true \
-    rviz:=true
-```
+- [`tutorials/01_capturing_a_dataset.md`](tutorials/01_capturing_a_dataset.md) — end-to-end dataset recording guide
+- [`tutorials/02_adding_a_new_platform.md`](tutorials/02_adding_a_new_platform.md) — add a new robot URDF and wire it into bringup
+- [`tutorials/03_writing_a_bringup_launch_file.md`](tutorials/03_writing_a_bringup_launch_file.md) — write a new bringup launch file from scratch
+- [`src/CPSL_TI_Radar_ROS2/README.md`](src/CPSL_TI_Radar_ROS2/README.md) — TI radar driver details and config reference
+- [`src/CPSL_ROS_livox_ros_driver2/README.md`](src/CPSL_ROS_livox_ros_driver2/README.md) — Livox driver details
+- [`src/ouster-ros/README.md`](src/ouster-ros/README.md) — Ouster driver details
