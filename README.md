@@ -67,10 +67,10 @@ If ROS2 Jazzy is not yet installed, run `bash scripts/install_ros2.sh` instead â
 
 **Multi-radar or co-located with Livox Mid360:**
 - Both share one adapter; reprogram DCA1000 EEPROM to the `192.168.1.x` subnet using the CLI tool in `src/CPSL_TI_Radar_ROS2/DCA_Programming/`
-- PC adapter: `192.168.1.57/24`
+- PC adapter: `192.168.1.XX` (subnet 255.255.255.0)
 - Front DCA1000: `192.168.1.180` (port pair `4096/4098`)
 - Back DCA1000: `192.168.1.182` (port pair `4088/4090`)
-
+- See the [DCA1000 Setup instructions](https://github.com/davidmhunt/CPSL_TI_Radar/blob/main/DCA_Programming/README.md)
 **Required kernel tuning (apply once, make permanent):**
 ```bash
 sudo sysctl -w net.core.rmem_max=134217728
@@ -81,10 +81,22 @@ sudo sysctl --system
 
 ### Livox Mid360
 
-1. Set your PC ethernet adapter to static `192.168.1.XX/24`, where `XX` are the last two digits of the sensor's serial number.
+1. Set your PC ethernet adapter to static `192.168.1.XX` (netmask `255.255.255.0`), where `XX` are the last two digits of the sensor's serial number.
 2. Update `src/CPSL_ROS_livox_ros_driver2/config/MID360_config.json`:
    ```json
-   "host_net_info": { "host_ip": "192.168.1.XX", ... }
+   "host_net_info" : {
+      "cmd_data_ip" : "192.168.1.XX",
+      "cmd_data_port": 56101,
+      "push_msg_ip": "192.168.1.XX",
+      "push_msg_port": 56201,
+      "point_data_ip": "192.168.1.XX",
+      "point_data_port": 56301,
+      "imu_data_ip" : "192.168.1.XX",
+      "imu_data_port": 56401,
+      "log_data_ip" : "",
+      "log_data_port": 56501
+    }
+   "lidar_configs": { "ip": "192.168.1.1XX", ... }
    ```
    Or pass `--livox-ip XX` to `install.sh` to patch it automatically.
 
