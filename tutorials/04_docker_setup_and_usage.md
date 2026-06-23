@@ -160,13 +160,16 @@ On your host machine, open a new terminal window/tab and run the following comma
 ```bash
 docker exec -it cpsl_sensors bash -c "source install/setup.bash && ros2 run demo_nodes_cpp talker"
 ```
+*To stop the talker and close this container session, press `Ctrl + C`.*
 
 ### Step 3: Open Terminal 2 (The Listener)
 Open a second terminal window/tab on your host machine and run the following command to execute a shell inside the container and start a ROS2 listener node:
 ```bash
 docker exec -it cpsl_sensors bash -c "source install/setup.bash && ros2 run demo_nodes_py listener"
 ```
-*(Alternatively, you can just run `docker exec -it cpsl_sensors bash` first in each terminal, source the workspace, and run any ROS2 commands interactively).*
+*To stop the listener and close this container session, press `Ctrl + C`.*
+
+*(Alternatively, you can just run `docker exec -it cpsl_sensors bash` first in each terminal, source the workspace, and run any ROS2 commands interactively. In this case, press `Ctrl + C` to stop the running node, and type `exit` to close the container session).*
 
 ### Step 4: Verify Communication
 Observe the listener terminal printing messages received from the talker (e.g., `[INFO] [listener]: I heard: [Hello World: 1]`). This confirms ROS2 discovery and communication is fully operational inside the container network.
