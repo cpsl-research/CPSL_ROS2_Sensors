@@ -1,0 +1,41 @@
+services:
+  cpsl_sensors:
+    image: cpsl_sensors:cpu
+    container_name: cpsl_sensors_cpu
+    ipc: host
+    environment:
+      - ROS_DOMAIN_ID=42
+      - DISPLAY=${DISPLAY:-:0}
+      - QT_X11_NO_MITSHM=1
+    ports:
+      # TI Radar DCA1000 Streaming Port Forwarding
+      - "${HOST_RADAR_IP:-192.168.33.30}:4096:4096/udp"
+      - "${HOST_RADAR_IP:-192.168.33.30}:4098:4098/udp"
+      # Livox Mid360 Lidar Port Forwarding
+      - "${HOST_LIVOX_IP:-192.168.1.78}:56101:56101/udp"
+      - "${HOST_LIVOX_IP:-192.168.1.78}:56201:56201/udp"
+      - "${HOST_LIVOX_IP:-192.168.1.78}:56301:56301/udp"
+      - "${HOST_LIVOX_IP:-192.168.1.78}:56401:56401/udp"
+    devices:
+      # TI Radars serial CLI & data interfaces
+      - "/dev/ttyACM0:/dev/ttyACM0"
+      - "/dev/ttyACM1:/dev/ttyACM1"
+    volumes:
+      - "/tmp/.X11-unix:/tmp/.X11-unix:ro"
+      - "${HOME}/.Xauthority:/root/.Xauthority:ro"
+    stdin_open: true
+    tty: true
+    networks:
+      cpsl_net:
+        ipv4_address: 192.168.1.42
+
+networks:
+  cpsl_net:
+    name: cpsl_net
+    driver: ipvlan
+    driver_opts:
+      parent: ${HOST_PARENT_INTERFACE:-eth0}
+    ipam:
+      config:
+        - subnet: 192.168.1.0/24
+          gateway: 192.168.1.1

@@ -12,7 +12,8 @@ dependencies = [
     "cffi (>=1.17.1,<2.0.0)",
     "opencv-python (>=3.0,<5.0.0.0)",
     "numpy (>=1.25,<2.0.0)",
-    "setuptools (<80)"
+    "setuptools (<80)",
+    "requests (>=2.31.0)"
 ]
 
 [tool.poetry.group.leapmotion]

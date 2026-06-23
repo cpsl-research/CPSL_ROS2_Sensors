@@ -2,10 +2,11 @@
 
 ## Context
 
-This plan covers two major improvement tracks:
+This plan covers three major tracks of improvement and integration:
 
 1. **Radar Integration Upgrade** — Update the CPSL_TI_Radar C++ submodule to `phase1-dca1000-fix`, adapt the `ti_radar_connect` ROS2 package to the new directory layout, and rewrite the `CPSL_TI_Radar_ROS2` README. **COMPLETE.**
 2. **Documentation & Installation Overhaul** — Rewrite the main README, create a one-shot install script, and write a `tutorials/` directory. **COMPLETE.**
+3. **Docker Containerization & Network Isolation** — Containerize the application for CPU and GPU architectures, establish network isolation, support GUI/RViz2, and implement a 2-step socket refactor for bridge networks. **IN PROGRESS.**
 
 ---
 
@@ -40,6 +41,27 @@ All work on branches `feat/phase1-dca1000-integration` (CPSL_TI_Radar_ROS2) and 
 
 ---
 
+## Track C: Docker Containerization & GUI Support — COMPLETE ✓
+
+- **C1: Script `install_cpsl_sensors_docker.sh`** — Implement a helper script checking for Docker Engine, configuring parameters, and managing docker builds.
+- **C2: Dockerfile Setup** — Design a single parameterized `Dockerfile` using `ARG BASE_IMAGE` (`ubuntu:24.04` or `nvidia/cuda:13.3.0-cudnn-devel-ubuntu24.04`) that installs full ROS2 Jazzy Desktop (with RViz2), and executes the builds.
+- **C3: Compose Configuration** — Create `docker-compose.cpu.yaml` and `docker-compose.gpu.yaml` with custom bridge network isolation (`ROS_DOMAIN_ID=42`), specific UDP port mapping configurations, pass-through devices (`devices`), and X11 GUI forwarding support (including hardware-accelerated NVIDIA OpenGL parameters for the GPU Compose file).
+
+---
+
+## Track D: Socket Binding Verification & C++ Refactor — IN PROGRESS
+
+- **D1: JSON Configuration Verification** — Create Docker-specific JSON system configurations mapping `"system_IP"` to `"0.0.0.0"`. Validate that this allows communication on both local hosts and Docker containers.
+- **D2: C++ Base Refactor** — Once JSON tests pass, refactor `DCA1000Socket.cpp` to bind listening sockets to `INADDR_ANY` (`0.0.0.0`) by default, maintaining host compatibility while resolving the Docker bridge IP binding issue.
+
+---
+
+## Track E: Documentation & Instructions Update — IN PROGRESS
+
+- **E1: Update README.md** — Add extensive guidelines explaining Docker setup, building containers for CPU vs GPU, Compose bringup, X11 permissions, and sensor network configurations.
+
+---
+
 ## Decisions Log
 
 | Date | Decision |
@@ -51,3 +73,7 @@ All work on branches `feat/phase1-dca1000-integration` (CPSL_TI_Radar_ROS2) and 
 | 2026-05-19 | Add accessible config dir at `src/ti_radar_connect/config/` — 11 bringup JSONs + 6 .cfg files, installed after submodule so they override |
 | 2026-05-19 | Do NOT call `build_CPSL_ROS2_Sensors.sh` from install script — the dangerous rm -rf lines are commented out but the script still has a pointless launch-dir copy/delete pair. Fixed by removing those lines; script now only copies package_ROS2.xml. |
 | 2026-05-19 | Selective submodule init: install.sh inits only submodules for selected sensors, deinits others. README clone command changed from --recurse-submodules to plain git clone. |
+| 2026-06-22 | Use separate Compose files (`docker-compose.cpu.yaml` and `docker-compose.gpu.yaml`) with X11 mounts and NVIDIA capabilities. |
+| 2026-06-22 | Network isolation achieved via Compose bridge network and `ROS_DOMAIN_ID=42`. |
+| 2026-06-22 | Sub-sensory package builds configured via `ARG SENSORS=radar,livox` during Docker build to minimize image size. |
+| 2026-06-22 | Two-step verification for socket binding (first custom `0.0.0.0` JSON configs, then refactor C++ code to `INADDR_ANY`). |

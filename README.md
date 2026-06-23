@@ -109,6 +109,11 @@ sudo sysctl --system
    ```
    Or pass `--ouster-hostname <host>` to `install.sh` to patch it automatically.
 3. Eclipse Cyclone DDS is required; the install script appends `export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp` to your shell RC file.
+4. **IP Discovery Helper:** If hostname resolution (`os-XXXXXXXXXXXX.local`) is finicky, you can run the discovery helper script to scan local and link-local networks and automatically find the lidar's IP address:
+   ```bash
+   poetry run python3 scripts/find_ouster_ip.py
+   ```
+   This script performs a fast, parallelized sweep and queries the Ouster HTTP API to retrieve the exact IP address and sensor details.
 
 ---
 
@@ -172,6 +177,106 @@ See [`tutorials/01_capturing_a_dataset.md`](tutorials/01_capturing_a_dataset.md)
 - [`tutorials/01_capturing_a_dataset.md`](tutorials/01_capturing_a_dataset.md) — end-to-end dataset recording guide
 - [`tutorials/02_adding_a_new_platform.md`](tutorials/02_adding_a_new_platform.md) — add a new robot URDF and wire it into bringup
 - [`tutorials/03_writing_a_bringup_launch_file.md`](tutorials/03_writing_a_bringup_launch_file.md) — write a new bringup launch file from scratch
+- [`tutorials/04_docker_setup_and_usage.md`](tutorials/04_docker_setup_and_usage.md) — guide to build and run ROS2 containers
 - [`src/CPSL_TI_Radar_ROS2/README.md`](src/CPSL_TI_Radar_ROS2/README.md) — TI radar driver details and config reference
 - [`src/CPSL_ROS_livox_ros_driver2/README.md`](src/CPSL_ROS_livox_ros_driver2/README.md) — Livox driver details
 - [`src/ouster-ros/README.md`](src/ouster-ros/README.md) — Ouster driver details
+
+---
+
+## Docker Containerization & GUI Support
+
+The application is containerized to support isolated execution on both CPU and GPU architectures. This guarantees identical runtimes, separates ROS2 network discovery from your host machine, and routes GUI displays (like RViz2) seamlessly.
+
+### Prerequisites
+
+#### 1. Docker Engine Setup
+Ensure Docker and Docker Compose are installed on your host. If not, follow the [Docker Engine Installation Guide](https://docs.docker.com/engine/install/).
+
+Make sure your user is added to the `docker` group so you can run container commands without `sudo`:
+```bash
+sudo usermod -aG docker $USER
+# Log out and back in for changes to take effect
+```
+
+#### 2. NVIDIA Container Toolkit (For GPU Systems)
+To run hardware-accelerated GUI interfaces (e.g., RViz2 utilizing your graphics card) or utilize GPU resources inside Docker, install the **NVIDIA Container Toolkit**:
+```bash
+# Configure the production repository:
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
+  && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+    sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+    sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
+# Install the toolkit:
+sudo apt-get update
+sudo apt-get install -y nvidia-container-toolkit
+
+# Configure the runtime:
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo systemctl restart docker
+```
+For detailed setup instructions, visit the [NVIDIA Container Toolkit Installation Guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
+
+#### 3. X11 GUI Display Permissions
+For GUI applications running inside the container (like RViz2) to display on your host screen, authorize local connection permissions to the X11 server on the host:
+```bash
+xhost +local:root
+```
+
+---
+
+### Usage
+
+For a detailed step-by-step guide, see the [Docker Setup and Usage Tutorial](tutorials/04_docker_setup_and_usage.md).
+
+#### 1. Building the Docker Images
+You can build the containers for either CPU or GPU systems using the wrapper script inside the `docker/` directory. The script will first verify Docker Engine is installed and running:
+```bash
+# Build the image with all sensors enabled (CPU):
+bash docker/install_cpsl_sensors_docker.sh
+
+# Build the image with all sensors enabled (GPU/NVIDIA):
+bash docker/install_cpsl_sensors_docker.sh --gpu
+
+# Or customize built sensors (e.g., only build for radar and livox lidar):
+bash docker/install_cpsl_sensors_docker.sh --sensors radar,livox
+```
+The script auto-generates a `.env` file inside the `docker/` directory containing interface mappings, display paths, and chosen sensors for Docker Compose.
+
+#### 2. Running with Docker Compose
+Bring up the containers using the respective compose files inside `docker/`:
+```bash
+# Run CPU-only containers:
+docker compose -f docker/docker-compose.cpu.yaml run --rm cpsl_sensors
+
+# Run GPU hardware-accelerated containers:
+docker compose -f docker/docker-compose.gpu.yaml run --rm cpsl_sensors
+```
+
+#### 3. Network Isolation
+The containers use a custom bridge network `cpsl_net` and run on `ROS_DOMAIN_ID=42`. This ensures that:
+- Containers can discover each other and communicate via ROS2.
+- ROS2 nodes running inside the container are **completely hidden** from ROS2 nodes running on the host machine (and vice versa), avoiding network naming and discovery interference.
+
+#### 4. Hardware & Peripherals Configuration
+
+When deploying containers in production, physical hardware interfaces must be connected and correctly mapped. If a peripheral device is not plugged in, you must modify the Compose configuration to prevent start errors.
+
+##### TI Radar Serial Passthrough
+By default, `docker/docker-compose.cpu.yaml` and `docker/docker-compose.gpu.yaml` expect the TI Radar serial interfaces to be available on the host at `/dev/ttyACM0` and `/dev/ttyACM1`.
+- **If connected:** Ensure you are in the `dialout` group on the host.
+- **If disconnected (Testing/Development):** Comment out or remove the `devices` block from the compose file, otherwise Docker will throw a device gathering error and refuse to start:
+  ```yaml
+  # devices:
+  #   - "/dev/ttyACM0:/dev/ttyACM0"
+  #   - "/dev/ttyACM1:/dev/ttyACM1"
+  ```
+
+##### Ethernet Sensors (DCA1000, Livox Mid360, Ouster)
+Configure static or link-local IP addresses on the host machine network adapters:
+1. **TI Radar DCA1000:** Set host adapter to static IP `192.168.33.30`, netmask `255.255.255.0`.
+2. **Livox Mid360 Lidar:** Set host adapter to static IP `192.168.1.78` (or matching custom `.env` IP), netmask `255.255.255.0`.
+3. **Ouster Lidar:** Set host adapter to link-local IP `169.254.1.1`, netmask `255.255.0.0`.
+
+
