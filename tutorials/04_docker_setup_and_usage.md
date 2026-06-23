@@ -145,7 +145,42 @@ The containers launch inside a custom bridge network `cpsl_net` and run on `ROS_
 
 ---
 
-## 6. Hardware Verification Checklist
+## 6. Multi-Terminal ROS2 Testing (Talker/Listener Example)
+
+To test ROS2 node discovery and communication within the isolated Docker network environment, you can run multiple commands in separate terminals on your host machine.
+
+### Step 1: Start the Docker Environment
+First, ensure that the Docker Compose stack is running (either in simulation or production mode). For example, start the simulation stack:
+```bash
+docker compose -f docker/docker-compose.sim-cpu.yaml --profile test-router up -d
+```
+
+### Step 2: Open Terminal 1 (The Talker)
+On your host machine, open a new terminal window/tab and run the following command to execute a shell inside the running container and start a ROS2 talker node:
+```bash
+docker exec -it cpsl_sensors bash -c "source install/setup.bash && ros2 run demo_nodes_cpp talker"
+```
+
+### Step 3: Open Terminal 2 (The Listener)
+Open a second terminal window/tab on your host machine and run the following command to execute a shell inside the container and start a ROS2 listener node:
+```bash
+docker exec -it cpsl_sensors bash -c "source install/setup.bash && ros2 run demo_nodes_py listener"
+```
+*(Alternatively, you can just run `docker exec -it cpsl_sensors bash` first in each terminal, source the workspace, and run any ROS2 commands interactively).*
+
+### Step 4: Verify Communication
+Observe the listener terminal printing messages received from the talker (e.g., `[INFO] [listener]: I heard: [Hello World: 1]`). This confirms ROS2 discovery and communication is fully operational inside the container network.
+
+### Step 5: Shut Down the Stack
+Once testing is complete, stop the container stack:
+```bash
+docker compose -f docker/docker-compose.sim-cpu.yaml --profile test-router down
+```
+
+---
+
+## 7. Hardware Verification Checklist
+
 
 When launching the environment on the actual deployment machine with physical sensors, use the following checklist to verify complete hardware integration, network routing, and GUI passthrough:
 
