@@ -142,3 +142,61 @@ The containers launch inside a custom bridge network `cpsl_net` and run on `ROS_
 - Containers can discover each other and communicate via ROS2.
 - ROS2 nodes running inside the container are **completely hidden** from ROS2 nodes running on the host machine (and vice versa), avoiding network naming and discovery interference.
 - If you run multiple nodes inside the `docker-compose` environment, they will discover and talk to each other correctly.
+
+---
+
+## 6. Hardware Verification Checklist
+
+When launching the environment on the actual deployment machine with physical sensors, use the following checklist to verify complete hardware integration, network routing, and GUI passthrough:
+
+### Step 1: Physical Interface Setup
+- **TI Radar Serial USB Connection**: 
+  Plug in the TI Radar to a USB port. Check that `/dev/ttyACM0` and `/dev/ttyACM1` are successfully created on the host:
+  ```bash
+  ls -l /dev/ttyACM*
+  ```
+- **Livox Mid360 Lidar**: 
+  Configure a static IP of `192.168.1.78` (netmask `255.255.255.0`) on the host Ethernet adapter connected to the Livox Lidar.
+- **TI Radar DCA1000**: 
+  Configure a static IP of `192.168.33.30` (netmask `255.255.255.0`) on the host Ethernet adapter connected to the DCA1000.
+
+### Step 2: IPvlan Network Parent Interface
+Determine the name of your host's physical network adapter connected to the router/switch (e.g., `eth0`, `enp0s31f6`, or `wlp0s20f3`):
+```bash
+ip link show
+```
+
+Generate the local environment configuration with the specified parent interface:
+```bash
+bash docker/install_cpsl_sensors_docker.sh --skip-build --parent-interface <your_parent_interface_name>
+```
+Verify that the `docker/.env` file has been populated with the correct `HOST_PARENT_INTERFACE` value.
+
+### Step 3: Local Display Permissions
+Allow the root user inside Docker to access your local X11 server for visualization:
+```bash
+xhost +local:root
+```
+
+### Step 4: Run the Production Compose Stack
+Start the production container in IPvlan mode:
+- For **CPU** deployment:
+  ```bash
+  docker compose -f docker/docker-compose.cpu.yaml up
+  ```
+- For **GPU** deployment:
+  ```bash
+  docker compose -f docker/docker-compose.gpu.yaml up
+  ```
+
+### Step 5: Verify GUI Forwarding and ROS2 Communication
+Open a shell inside the running container:
+```bash
+docker exec -it cpsl_sensors bash
+```
+Run `rviz2` to verify that the GUI window successfully displays on your host screen:
+```bash
+rviz2
+```
+Verify that ROS2 nodes are communicating on `ROS_DOMAIN_ID=42` and are hidden from default domain traffic on the host.
+
