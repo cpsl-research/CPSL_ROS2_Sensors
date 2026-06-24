@@ -23,6 +23,7 @@ services:
     volumes:
       - "/tmp/.X11-unix:/tmp/.X11-unix:ro"
       - "${HOME}/.Xauthority:/root/.Xauthority:ro"
+      - "../:/workspace/CPSL_ROS2_Sensors"
     stdin_open: true
     tty: true
     networks:

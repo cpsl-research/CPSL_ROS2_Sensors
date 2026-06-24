@@ -17,6 +17,7 @@ OUSTER_HOSTNAME=""
 SKIP_BUILD=false
 GPU=false
 HOST_PARENT_INTERFACE="eth0"
+TAG=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -26,9 +27,11 @@ while [[ $# -gt 0 ]]; do
         --parent-interface) HOST_PARENT_INTERFACE="$2"; shift 2 ;;
         --skip-build)       SKIP_BUILD=true;      shift ;;
         --gpu)              GPU=true;             shift ;;
+        -t|--tag)           TAG="$2";             shift 2 ;;
         *) echo "Unknown argument: $1"; exit 1 ;;
     esac
 done
+
 
 # ── check docker installation ──────────────────────────────────────────────────
 header "Checking Docker Engine"
@@ -103,27 +106,63 @@ cat "$ENV_FILE"
 
 # ── build docker image ─────────────────────────────────────────────────────────
 if [[ "$SKIP_BUILD" == false ]]; then
+    # Clone/update submodules on the host before building the container
+    header "Updating Git Submodules on Host"
+    WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+    
+    contains() { echo ",$1," | grep -q ",$2,"; }
+
+    # Navigate to workspace root for git operations
+    pushd "$WORKSPACE_ROOT" > /dev/null
+    
+    if contains "$IF_SENSORS" "radar"; then
+        echo "Updating radar submodule..."
+        git submodule update --init --recursive src/CPSL_TI_Radar_ROS2 || echo "Warning: git submodule update failed (not a git repository?)"
+    fi
+    if contains "$IF_SENSORS" "livox"; then
+        echo "Updating livox submodule..."
+        git submodule update --init --recursive src/CPSL_ROS_livox_ros_driver2 || echo "Warning: git submodule update failed (not a git repository?)"
+    fi
+    if contains "$IF_SENSORS" "ouster"; then
+        echo "Updating ouster submodule..."
+        git submodule update --init --recursive src/ouster-ros || echo "Warning: git submodule update failed (not a git repository?)"
+    fi
+    if contains "$IF_SENSORS" "vicon"; then
+        echo "Updating vicon submodule..."
+        git submodule update --init --recursive src/ros2-vicon-bridge || echo "Warning: git submodule update failed (not a git repository?)"
+    fi
+    if contains "$IF_SENSORS" "leapmotion"; then
+        echo "Updating leapmotion submodules..."
+        git submodule update --init --recursive src/CPSL_ROS2_LeapMotion || echo "Warning: git submodule update failed (not a git repository?)"
+        git submodule update --init --recursive submodules/leapc-python-bindings || echo "Warning: git submodule update failed (not a git repository?)"
+    fi
+    
+    popd > /dev/null
+
     header "Building Docker Image"
     if [[ "$GPU" == true ]]; then
         BASE_IMG="nvidia/cuda:13.3.0-cudnn-devel-ubuntu24.04"
-        TAG="cpsl_sensors:gpu"
+        DEFAULT_TAG="cpsl_sensors:gpu"
     else
         BASE_IMG="ubuntu:24.04"
-        TAG="cpsl_sensors:cpu"
+        DEFAULT_TAG="cpsl_sensors:cpu"
     fi
 
-    echo "Target tag: $TAG"
+    TARGET_TAG="${TAG:-$DEFAULT_TAG}"
+
+    echo "Target tag: $TARGET_TAG"
     echo "Base image: $BASE_IMG"
     echo "Sensors   : $IF_SENSORS"
 
     docker build \
         --build-arg BASE_IMAGE="$BASE_IMG" \
         --build-arg SENSORS="$IF_SENSORS" \
-        -t "$TAG" \
+        -t "$TARGET_TAG" \
         -f "$SCRIPT_DIR/Dockerfile" \
-        "$SCRIPT_DIR"
+        "$WORKSPACE_ROOT"
 else
     header "Building Docker Image (SKIPPED)"
 fi
 
 echo "Done."
+

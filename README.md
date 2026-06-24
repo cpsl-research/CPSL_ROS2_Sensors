@@ -111,9 +111,12 @@ sudo sysctl --system
 3. Eclipse Cyclone DDS is required; the install script appends `export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp` to your shell RC file.
 4. **IP Discovery Helper:** If hostname resolution (`os-XXXXXXXXXXXX.local`) is finicky, you can run the discovery helper script to scan local and link-local networks and automatically find the lidar's IP address:
    ```bash
-   poetry run python3 scripts/find_ouster_ip.py
+   bash scripts/find_ouster_ip.sh
    ```
-   This script performs a fast, parallelized sweep and queries the Ouster HTTP API to retrieve the exact IP address and sensor details.
+   This script performs a fast sweep using `fping` over the link-local range `169.254.0.1` to `169.254.255.255`. You can also override the scan range by passing custom starting and ending IPs:
+   ```bash
+   bash scripts/find_ouster_ip.sh 169.254.1.1 169.254.1.254
+   ```
 
 ---
 
@@ -278,5 +281,9 @@ Configure static or link-local IP addresses on the host machine network adapters
 1. **TI Radar DCA1000:** Set host adapter to static IP `192.168.33.30`, netmask `255.255.255.0`.
 2. **Livox Mid360 Lidar:** Set host adapter to static IP `192.168.1.78` (or matching custom `.env` IP), netmask `255.255.255.0`.
 3. **Ouster Lidar:** Set host adapter to link-local IP `169.254.1.1`, netmask `255.255.0.0`.
+
+> [!IMPORTANT]
+> **Docker Container Networking and Host IP Binding:**
+> When configuring host/system IPs for sensor drivers (such as the TI Radar config JSON files) within the Docker environment, set the host-ip parameter (or system IP) to `0.0.0.0`. This ensures the software inside the container binds to all internal network interfaces and correctly receives the incoming UDP streams forwarded from the host.
 
 

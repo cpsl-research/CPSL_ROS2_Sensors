@@ -8,6 +8,18 @@ Tasks for Docker Integration & Networking Isolation:
 
 ---
 
+## Tasks for Docker Container Feedback (Track F)
+
+- [ ] **F1: Docker Image Tagging & Package Integration** — Add support for custom tagging in `install_cpsl_sensors_docker.sh`. Update `Dockerfile` to copy local workspace and run without specific commit git clone.
+- [ ] **F2: Dependency Setup Robustness** — Ensure `apt-get update` runs before `rosdep` installation, configure tolerant quiet mode for `rosdep update`. Add support for `iputils-ping` and `iproute2`.
+- [ ] **F3: Shared Volume Mounting** — Update all four CPU/GPU/Simulation docker-compose files to mount the host workspace at `/workspace/CPSL_ROS2_Sensors`.
+- [ ] **F4: Lidar IP Discovery Refactor** — Install `fping` and write `find_ouster_ip.sh` to replace `find_ouster_ip.py`.
+- [ ] **F5: Rebuild Instructions** — Create `rebuild.sh` script and document workspace rebuilding steps.
+- [ ] **F6: Docker Networking Note** — Document host IP set to `0.0.0.0` in container networking configurations.
+
+
+---
+
 ## Docker Verification Plan & Commands
 
 To verify the Docker containerization, networking isolation, and GUI support, run the following verification steps.

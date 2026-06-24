@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
     locales \
     software-properties-common \
     curl \
+    ca-certificates \
     gnupg2 \
     lsb-release \
     git \
@@ -23,6 +24,9 @@ RUN apt-get update && apt-get install -y \
     vim \
     tmux \
     python3-pip \
+    iputils-ping \
+    iproute2 \
+    fping \
     && rm -rf /var/lib/apt/lists/*
 
 RUN locale-gen en_US en_US.UTF-8 && \
@@ -42,21 +46,32 @@ RUN apt-get update && apt-get install -y \
 RUN curl -sSL https://install.python-poetry.org | python3 - && \
     poetry config virtualenvs.options.system-site-packages true
 
-# Initialize and update rosdep
-RUN rosdep init && rosdep update
+# Initialize and update rosdep (ensuring apt update runs first and failing fast if update fails)
+RUN apt-get update && \
+    (rosdep init || true) && \
+    rosdep update && \
+    rm -rf /var/lib/apt/lists/*
 
 # Set workdir
 WORKDIR /workspace/CPSL_ROS2_Sensors
 
-# Clone repo and check out specified commit (default to e95438e00456904f7450786ea49bc83a87caa22c)
-ARG REPO_URL=https://github.com/cpsl-research/CPSL_ROS2_Sensors
-ARG COMMIT_HASH=e95438e00456904f7450786ea49bc83a87caa22c
-
-RUN git clone ${REPO_URL} . && \
-    git checkout ${COMMIT_HASH}
+# Copy the local repository files into the container
+COPY . /workspace/CPSL_ROS2_Sensors
 
 # Setup submodules and sensor dependencies depending on SENSORS build arg
 ARG SENSORS=all
+
+# Save the enabled sensors list to a system file so that build scripts can query it
+RUN echo "${SENSORS}" > /etc/cpsl_sensors_list
+
+# Disable unused sensor packages by adding COLCON_IGNORE
+RUN S_LIST="${SENSORS}" && \
+    if [ "$S_LIST" = "all" ]; then S_LIST="radar,livox,ouster,realsense,leapmotion,vicon"; fi && \
+    if ! echo ",$S_LIST," | grep -q ",radar,"; then touch src/CPSL_TI_Radar_ROS2/COLCON_IGNORE; fi && \
+    if ! echo ",$S_LIST," | grep -q ",livox,"; then touch src/CPSL_ROS_livox_ros_driver2/COLCON_IGNORE; fi && \
+    if ! echo ",$S_LIST," | grep -q ",ouster,"; then touch src/ouster-ros/COLCON_IGNORE; fi && \
+    if ! echo ",$S_LIST," | grep -q ",leapmotion,"; then touch src/CPSL_ROS2_LeapMotion/COLCON_IGNORE; fi && \
+    if ! echo ",$S_LIST," | grep -q ",vicon,"; then touch src/ros2-vicon-bridge/COLCON_IGNORE; fi
 
 # Install packages needed for selected sensors
 RUN apt-get update && \
@@ -64,25 +79,20 @@ RUN apt-get update && \
     if [ "$S_LIST" = "all" ]; then S_LIST="radar,livox,ouster,realsense,leapmotion,vicon"; fi && \
     # ── Radar ───────────────────────
     if echo ",$S_LIST," | grep -q ",radar,"; then \
-        echo "Initializing radar submodules..."; \
-        git submodule update --init --recursive src/CPSL_TI_Radar_ROS2; \
+        echo "Radar dependencies installed via rosdep"; \
     fi && \
     # ── Livox ───────────────────────
     if echo ",$S_LIST," | grep -q ",livox,"; then \
-        echo "Initializing livox submodules..."; \
-        git submodule update --init --recursive src/CPSL_ROS_livox_ros_driver2; \
         echo "Installing Livox dependencies..."; \
-        apt-get install -y gcc-9 g++-9 cmake; \
+        apt-get install -y gcc-9 g++-9 cmake && \
         git clone https://github.com/Livox-SDK/Livox-SDK2.git /opt/Livox-SDK2 && \
         cd /opt/Livox-SDK2 && mkdir build && cd build && \
         cmake .. -DCMAKE_C_COMPILER=gcc-9 -DCMAKE_CXX_COMPILER=g++-9 && \
-        make -j$(nproc) && make install && cd /workspace/CPSL_ROS2_Sensors; \
+        make -j$(nproc) && make install && cd /workspace/CPSL_ROS2_Sensors && \
         bash src/CPSL_ROS_livox_ros_driver2/build_CPSL_ROS2_Sensors.sh jazzy; \
     fi && \
     # ── Ouster ──────────────────────
     if echo ",$S_LIST," | grep -q ",ouster,"; then \
-        echo "Initializing ouster submodules..."; \
-        git submodule update --init --recursive src/ouster-ros; \
         echo "Installing Ouster dependencies..."; \
         apt-get install -y \
             ros-jazzy-pcl-ros \
@@ -103,9 +113,6 @@ RUN apt-get update && \
     fi && \
     # ── Leapmotion ──────────────────
     if echo ",$S_LIST," | grep -q ",leapmotion,"; then \
-        echo "Initializing leapmotion submodules..."; \
-        git submodule update --init --recursive src/CPSL_ROS2_LeapMotion; \
-        git submodule update --init --recursive submodules/leapc-python-bindings; \
         echo "Installing Leapmotion dependencies..."; \
         if curl -fsSL --connect-timeout 5 https://repo.ultraleap.com/apt/public.key > /tmp/ultraleap.key 2>/dev/null; then \
             gpg --dearmor -o /usr/share/keyrings/ultraleap-archive-keyring.gpg < /tmp/ultraleap.key && \
@@ -117,8 +124,6 @@ RUN apt-get update && \
     fi && \
     # ── Vicon ───────────────────────
     if echo ",$S_LIST," | grep -q ",vicon,"; then \
-        echo "Initializing vicon submodules..."; \
-        git submodule update --init --recursive src/ros2-vicon-bridge; \
         echo "Installing Vicon dependencies..."; \
         apt-get install -y libboost-thread-dev libboost-date-time-dev ros-jazzy-diagnostic-updater; \
     fi && \
@@ -161,7 +166,7 @@ RUN . /opt/ros/jazzy/setup.sh && \
     python3 -m colcon build --base-paths src --symlink-install
 
 # Copy docker entrypoint script
-COPY docker_entrypoint.sh /workspace/docker_entrypoint.sh
+COPY docker/docker_entrypoint.sh /workspace/docker_entrypoint.sh
 RUN chmod +x /workspace/docker_entrypoint.sh
 
 # Set the default entrypoint

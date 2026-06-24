@@ -110,6 +110,7 @@ poetry env use /usr/bin/python3.12
 poetry install
 
 header "Step 6: rosdep"
+sudo apt-get update
 source /opt/ros/jazzy/setup.bash
 rosdep install --from-paths src -y --rosdistro=jazzy --skip-keys "raw_radar_msgs"
 
@@ -181,6 +182,7 @@ fi
 if contains "$SENSORS" ouster; then
     echo "--- ouster ---"
     sudo apt install -y \
+        fping \
         ros-jazzy-pcl-ros \
         ros-jazzy-tf2-eigen \
         rviz2 \

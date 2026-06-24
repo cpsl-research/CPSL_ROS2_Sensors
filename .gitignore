@@ -1,6 +1,9 @@
 install/*
 build/*
 log/*
+install_docker/*
+build_docker/*
+log_docker/*
 *.pyc
 *.vscode
 .env

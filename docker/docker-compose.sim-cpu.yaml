@@ -23,28 +23,6 @@ services:
     volumes:
       - "/tmp/.X11-unix:/tmp/.X11-unix:ro"
       - "${HOME}/.Xauthority:/root/.Xauthority:ro"
+      - "../:/workspace/CPSL_ROS2_Sensors"
     stdin_open: true
     tty: true
-    networks:
-      cpsl_net:
-        ipv4_address: 192.168.1.42
-
-  gateway_simulator:
-    image: alpine:latest
-    container_name: gateway_simulator
-    command: ping localhost
-    profiles:
-      - test-router
-    networks:
-      cpsl_net:
-        ipv4_address: 192.168.1.1
-    restart: always
-
-networks:
-  cpsl_net:
-    name: cpsl_net
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 192.168.1.0/24
-          gateway: 192.168.1.254

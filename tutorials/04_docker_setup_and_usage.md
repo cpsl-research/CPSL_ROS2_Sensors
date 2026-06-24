@@ -56,6 +56,9 @@ bash docker/install_cpsl_sensors_docker.sh --gpu
 
 # Customize which sensors are built (e.g., only build for radar and livox lidar):
 bash docker/install_cpsl_sensors_docker.sh --sensors radar,livox
+
+# Build with a custom image tag:
+bash docker/install_cpsl_sensors_docker.sh --tag custom_name:v1
 ```
 
 ### Script Arguments
@@ -64,12 +67,13 @@ bash docker/install_cpsl_sensors_docker.sh --sensors radar,livox
 |---|---|---|
 | `--sensors` | Comma-separated list of sensors to build. Options: `radar`, `livox`, `ouster`, `realsense`, `leapmotion`, `vicon`, `all`. | `all` |
 | `--gpu` | Target NVIDIA GPU build using `nvidia/cuda:13.3` base image. | `false` (CPU) |
+| `-t`, `--tag` | Custom image tag/name to specify for the generated Docker image. | `cpsl_sensors:cpu` or `:gpu` |
 | `--livox-ip` | Last octet of the host Livox IP (patches `.env`). | `78` |
 | `--ouster-hostname` | Ouster Lidar hostname or IP (patches `.env`). | `169.254.1.1` |
 | `--parent-interface` | The parent physical network interface of your host for IPvlan (e.g. `eth0` or `enp0s31f6`). | `eth0` |
 | `--skip-build` | Skip building the image and only write `.env`. | `false` |
 
-The script automatically writes a `.env` file inside the `docker/` directory containing Display paths, parent interface name, sensor choices, and interface IPs for Docker Compose.
+The script automatically updates git submodules on the host for selected sensors, and then writes a `.env` file inside the `docker/` directory containing Display paths, parent interface name, sensor choices, and interface IPs for Docker Compose.
 
 ---
 
@@ -88,51 +92,55 @@ docker compose -f docker/docker-compose.cpu.yaml up
 docker compose -f docker/docker-compose.gpu.yaml up
 ```
 
-### B. Simulation / Mock Mode (Bridge + Gateway Simulator)
-If you are doing local testing and do not have a physical router or sensors connected, you can spin up the simulation environment. This creates a virtual Docker bridge network and automatically runs a lightweight `gateway_simulator` container at IP `192.168.1.1` to act as the mock network gateway.
-
-To activate the gateway simulator, pass the `--profile test-router` flag:
+### B. Simulation / Mock Mode (Default Docker Networking)
+If you are doing local testing and do not have a physical router or sensors connected, you can spin up the simulation environment. This launches the container connected to the default Docker bridge network. It preserves container UDP ports and serial device bindings on the host, making simulation/mock testing plug-and-play without network subnet configuration.
 
 ```bash
-# Start CPU simulation container and gateway simulator:
-docker compose -f docker/docker-compose.sim-cpu.yaml --profile test-router up
-
-# Start GPU simulation container and gateway simulator:
-docker compose -f docker/docker-compose.sim-gpu.yaml --profile test-router up
-```
-
-If you do not want to spin up the gateway simulator and only want to run the isolated sensors container in bridge mode, simply omit the `--profile` flag:
-```bash
+# Start CPU simulation container:
 docker compose -f docker/docker-compose.sim-cpu.yaml up
+
+# Start GPU simulation container:
+docker compose -f docker/docker-compose.sim-gpu.yaml up
 ```
 
-On launch, the entrypoint will automatically source ROS2 Jazzy and compile local workspace builds (`install/setup.bash`).
+On launch, the container entrypoint will automatically source ROS2 Jazzy and check for any local workspace builds (`install/setup.bash`).
 
 ---
 
 ## 4. Hardware and Peripherals Configuration
 
-When deploying containers in production, physical hardware interfaces must be connected and correctly mapped. If a peripheral device is not plugged in, modify the Compose configuration to prevent startup errors.
-
 ### A. TI Radar Serial Passthrough
 By default, the compose files expect the TI Radar serial interfaces to be available on the host at `/dev/ttyACM0` and `/dev/ttyACM1`.
 - **If connected:** Ensure you are in the `dialout` group on the host (`sudo usermod -aG dialout $USER`).
-- **If disconnected (Testing/Development):** Comment out or remove the `devices` block from `docker/docker-compose.cpu.yaml` and `docker/docker-compose.gpu.yaml` to prevent Docker from failing with a device gathering error:
+- **If disconnected (Testing/Development):** Comment out or remove the `devices` block from the compose file to prevent Docker from failing with a device gathering error:
   ```yaml
   # devices:
   #   - "/dev/ttyACM0:/dev/ttyACM0"
   #   - "/dev/ttyACM1:/dev/ttyACM1"
   ```
 
-### B. Ethernet Sensors Subnets
-Configure static or link-local IP addresses on the host machine network adapters:
+### B. Shared Workspace Volume Mounting
+All compose files mount the host workspace parent directory as a shared volume at `/workspace/CPSL_ROS2_Sensors` inside the container:
+```yaml
+    volumes:
+      - "../:/workspace/CPSL_ROS2_Sensors"
+```
+This enables **live code editing**. Any modification you make to source files on your host machine is immediately visible inside the container, and compilation builds (`build/`, `install/`, `log/`) are persisted on your host machine.
+
+### C. Ethernet Sensors Subnets & IP Discovery
+Configure static or link-local IP addresses on your host machine network adapters connected to the physical sensors:
 1. **TI Radar DCA1000:** Set host adapter to static IP `192.168.33.30`, netmask `255.255.255.0`.
 2. **Livox Mid360 Lidar:** Set host adapter to static IP `192.168.1.78`, netmask `255.255.255.0`.
 3. **Ouster Lidar:** Set host adapter to link-local IP `169.254.1.1`, netmask `255.255.0.0`.
-   - *Tip:* If Ouster hostname resolution is finicky, use the Poetry discovery script on the host to determine the exact IP address:
+   - *Tip:* If Ouster hostname resolution is finicky, use the fping discovery helper script on the host to scan for the lidar IP address:
      ```bash
-     poetry run python3 scripts/find_ouster_ip.py
+     bash scripts/find_ouster_ip.sh
      ```
+     This script sweeps the link-local IP range using `fping` to locate the sensor.
+
+> [!IMPORTANT]
+> **Docker Container Networking and Host IP Binding:**
+> When configuring host/system IPs for sensor drivers (such as the TI Radar config JSON files) within the Docker environment, set the host-ip parameter (or system IP) to `0.0.0.0`. This ensures the software inside the container binds to all internal network interfaces and correctly receives the incoming UDP streams forwarded from the host.
 
 ---
 
@@ -145,31 +153,59 @@ The containers launch inside a custom bridge network `cpsl_net` and run on `ROS_
 
 ---
 
-## 6. Multi-Terminal ROS2 Testing (Talker/Listener Example)
+## 6. Rebuilding the Workspace Packages
 
-To test ROS2 node discovery and communication within the isolated Docker network environment, you can run multiple commands in separate terminals on your host machine.
+Since the host workspace is mounted as a shared volume, you can modify any source code files on your host machine. To compile your changes, you must trigger a colcon build **inside** the container.
+
+We provide a helper script `scripts/rebuild.sh` to handle sourcing and compilation automatically.
+
+### Method A: Execute from the Host (Non-Interactive)
+You can trigger a rebuild from your host without entering the container shell:
+```bash
+docker exec -it cpsl_sensors_cpu bash /workspace/CPSL_ROS2_Sensors/scripts/rebuild.sh
+```
+
+### Method B: Execute from Inside the Container
+If you are already inside the container shell (`docker exec -it cpsl_sensors_cpu bash`), simply run:
+```bash
+bash scripts/rebuild.sh
+```
+Or run the standard colcon command:
+```bash
+colcon build --symlink-install
+```
+Remember to source the setup file in any active shells after rebuilding:
+```bash
+source install/setup.bash
+```
+
+---
+
+## 7. Multi-Terminal ROS2 Testing (Talker/Listener Example)
+
+To test ROS2 node discovery and communication within the Docker network environment, you can run multiple commands in separate terminals on your host machine.
 
 ### Step 1: Start the Docker Environment
 First, ensure that the Docker Compose stack is running (either in simulation or production mode). For example, start the simulation stack:
 ```bash
-docker compose -f docker/docker-compose.sim-cpu.yaml --profile test-router up -d
+docker compose -f docker/docker-compose.sim-cpu.yaml up -d
 ```
 
 ### Step 2: Open Terminal 1 (The Talker)
 On your host machine, open a new terminal window/tab and run the following command to execute a shell inside the running container and start a ROS2 talker node:
 ```bash
-docker exec -it cpsl_sensors bash -c "source install/setup.bash && ros2 run demo_nodes_cpp talker"
+docker exec -it cpsl_sensors_cpu bash -c "source install/setup.bash && ros2 run demo_nodes_cpp talker"
 ```
 *To stop the talker and close this container session, press `Ctrl + C`.*
 
 ### Step 3: Open Terminal 2 (The Listener)
 Open a second terminal window/tab on your host machine and run the following command to execute a shell inside the container and start a ROS2 listener node:
 ```bash
-docker exec -it cpsl_sensors bash -c "source install/setup.bash && ros2 run demo_nodes_py listener"
+docker exec -it cpsl_sensors_cpu bash -c "source install/setup.bash && ros2 run demo_nodes_py listener"
 ```
 *To stop the listener and close this container session, press `Ctrl + C`.*
 
-*(Alternatively, you can just run `docker exec -it cpsl_sensors bash` first in each terminal, source the workspace, and run any ROS2 commands interactively. In this case, press `Ctrl + C` to stop the running node, and type `exit` to close the container session).*
+*(Alternatively, you can just run `docker exec -it cpsl_sensors_cpu bash` first in each terminal, source the workspace, and run any ROS2 commands interactively. In this case, press `Ctrl + C` to stop the running node, and type `exit` to close the container session).*
 
 ### Step 4: Verify Communication
 Observe the listener terminal printing messages received from the talker (e.g., `[INFO] [listener]: I heard: [Hello World: 1]`). This confirms ROS2 discovery and communication is fully operational inside the container network.
@@ -177,7 +213,7 @@ Observe the listener terminal printing messages received from the talker (e.g., 
 ### Step 5: Shut Down the Stack
 Once testing is complete, stop the container stack:
 ```bash
-docker compose -f docker/docker-compose.sim-cpu.yaml --profile test-router down
+docker compose -f docker/docker-compose.sim-cpu.yaml down
 ```
 
 ---
@@ -228,9 +264,9 @@ Start the production container in IPvlan mode:
   ```
 
 ### Step 5: Verify GUI Forwarding and ROS2 Communication
-Open a shell inside the running container:
+Open a shell inside the running container (replace `_cpu` with `_gpu` if using the GPU stack):
 ```bash
-docker exec -it cpsl_sensors bash
+docker exec -it cpsl_sensors_cpu bash
 ```
 Run `rviz2` to verify that the GUI window successfully displays on your host screen:
 ```bash

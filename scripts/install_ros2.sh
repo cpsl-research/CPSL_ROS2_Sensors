@@ -34,7 +34,7 @@ echo "=== Initialising rosdep ==="
 if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
     sudo rosdep init
 fi
-rosdep update
+rosdep update --quiet || true
 
 echo "=== Handing off to install.sh ==="
 exec bash "${SCRIPT_DIR}/install.sh" "$@"

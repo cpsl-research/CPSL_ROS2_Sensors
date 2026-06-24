@@ -62,6 +62,17 @@ All work on branches `feat/phase1-dca1000-integration` (CPSL_TI_Radar_ROS2) and 
 
 ---
 
+## Track F: Feedback Improvements from Container Testing — IN PROGRESS
+
+- **F1: Docker Image Tagging & Package Integration** — Add support for custom tagging in `install_cpsl_sensors_docker.sh`. Install workspace packages inside Docker using `COPY` instead of `git clone` from a specific commit.
+- **F2: Dependency Setup Robustness** — Ensure `apt-get update` runs before `rosdep init/install` inside the Dockerfile and setup scripts. Make `rosdep update` run in quiet mode and tolerant of key resolution failures. Add support for `iputils-ping` and `iproute2`.
+- **F3: Shared Volume Mounting** — Update CPU/GPU/Simulation docker-compose files to mount the host's core ROS package workspace as a shared volume.
+- **F4: Lidar IP Discovery Refactor** — Install `fping` and replace the custom Python IP discovery script with a lightweight `find_ouster_ip.sh` bash script.
+- **F5: Rebuild Instructions** — Create a `rebuild.sh` script and document workspace rebuilding steps.
+- **F6: Docker Networking Note** — Add instructions/notes specifying that the host IP should default to `0.0.0.0` from the container's networking perspective.
+
+---
+
 ## Decisions Log
 
 | Date | Decision |
@@ -77,3 +88,8 @@ All work on branches `feat/phase1-dca1000-integration` (CPSL_TI_Radar_ROS2) and 
 | 2026-06-22 | Network isolation achieved via Compose bridge network and `ROS_DOMAIN_ID=42`. |
 | 2026-06-22 | Sub-sensory package builds configured via `ARG SENSORS=radar,livox` during Docker build to minimize image size. |
 | 2026-06-22 | Two-step verification for socket binding (first custom `0.0.0.0` JSON configs, then refactor C++ code to `INADDR_ANY`). |
+| 2026-06-23 | Add custom tagging support for docker images via `--tag` / `-t`. |
+| 2026-06-23 | Avoid cloning specific git commit inside Dockerfile; instead copy local workspace and mount core packages as shared volume for live updates. |
+| 2026-06-23 | Replace Python ouster discovery script with fping bash script (`find_ouster_ip.sh`). |
+| 2026-06-23 | Add rebuild.sh helper script and document rebuilding steps in the docker tutorial. |
+
