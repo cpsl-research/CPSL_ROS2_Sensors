@@ -20,6 +20,20 @@ Tasks for Docker Integration & Networking Isolation:
 
 ---
 
+## Tasks for Host Device Mapping, Ouster Networking, and Template Bringup (Track G)
+
+- [x] **G1: Host udev Setup Scripts** — Implement two separate setup scripts under `scripts/`:
+   - `scripts/setup_radar_udev.sh`: installs udev rules on the host for TI Radars (XDS110 and CP2105 bridges) with proper group permissions.
+   - `scripts/setup_realsense_udev.sh`: installs udev rules on the host for Intel RealSense cameras (matching librealsense rules for video and IMU/HID devices, inlined for offline use).
+- [x] **G2: Standalone Device Discovery Script & Role Mapping** — Create a standalone script `scripts/detect_devices.sh` and a JSON configuration file `docker/device_config.json` to scan the host for connected TI Radars and RealSense cameras, matching physical USB paths or serial numbers to specific roles (`FRONT_RADAR`, `BACK_RADAR`, `DOWN_RADAR`, `REALSENSE`) and writing to `.env` (defaulting any unassigned/missing roles to `/dev/null`).
+- [x] **G3: Compose Port and Device Passing** — Update the docker compose files (`docker-compose.cpu.yaml`, `docker-compose.gpu.yaml`, `docker-compose.sim-cpu.yaml`, `docker-compose.sim-gpu.yaml`) to map dynamic radar and camera devices (via role-based `.env` variables: `FRONT_RADAR_CLI`, `FRONT_RADAR_DATA`, `BACK_RADAR_CLI`, etc.) and add Ouster Lidar network port mappings (`7502`, `7503` UDP).
+- [x] **G4: Simple Default URDF** — Create `src/platform_descriptions/urdf/default_template.urdf.xml` connecting all potential sensor frames (Livox, Ouster, TI Radars, RealSense, Leap Motion, Vicon) to `base_link` at `0,0,0,0`.
+- [x] **G5: Default Template Bringup Launch** — Create `src/cpsl_ros2_sensors_bringup/launch/default_template_bringup.launch.py` to bring up all sensors with their parameters, with enables defaulted to `false` and staggered startup delays.
+- [x] **G6: Tutorials & Documentation Updates** — Document the dynamic device discovery script, role mapping configuration, Ouster port configuration, and template bringup usage. Write a new, detailed tutorial `tutorials/06_udev_setup.md` specifically explaining how to set up the host udev rules, find VID/PID/interface numbers for different radar boards, and run the udev setup scripts.
+
+
+---
+
 ## Docker Verification Plan & Commands
 
 To verify the Docker containerization, networking isolation, and GUI support, run the following verification steps.

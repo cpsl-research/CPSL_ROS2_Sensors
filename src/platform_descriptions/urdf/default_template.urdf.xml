@@ -1,0 +1,227 @@
+<?xml version="1.0"?>
+<robot name="default_template">
+
+    <!-- Robot's base link -->
+    <link name="default_template/base_link">
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <box size="0.2 0.2 0.1"/>
+            </geometry>
+            <material name="white">
+                <color rgba="1.0 1.0 1.0 0.5"/>
+            </material>
+        </visual>
+    </link>
+
+    <!-- Base link alternative names (without prefix) -->
+    <link name="base_link"/>
+    <joint name="base_link_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="base_link"/>
+    </joint>
+
+    <link name="base_footprint"/>
+    <joint name="base_footprint_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="base_footprint"/>
+    </joint>
+
+    <link name="default_template/base_footprint"/>
+    <joint name="prefixed_base_footprint_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="default_template/base_footprint"/>
+    </joint>
+
+    <!-- Livox Lidar Links -->
+    <link name="default_template/livox_frame"/>
+    <joint name="prefixed_livox_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="default_template/livox_frame"/>
+    </joint>
+
+    <link name="livox_frame"/>
+    <joint name="livox_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="livox_frame"/>
+    </joint>
+
+    <!-- Ouster Lidar Links -->
+    <link name="default_template/os_sensor"/>
+    <joint name="prefixed_ouster_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="default_template/os_sensor"/>
+    </joint>
+
+    <link name="os_sensor"/>
+    <joint name="ouster_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="os_sensor"/>
+    </joint>
+
+    <link name="default_template/os_lidar"/>
+    <joint name="prefixed_os_lidar_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/os_sensor"/>
+        <child link="default_template/os_lidar"/>
+    </joint>
+
+    <link name="os_lidar"/>
+    <joint name="os_lidar_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="os_sensor"/>
+        <child link="os_lidar"/>
+    </joint>
+
+    <link name="default_template/os_imu"/>
+    <joint name="prefixed_os_imu_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/os_sensor"/>
+        <child link="default_template/os_imu"/>
+    </joint>
+
+    <link name="os_imu"/>
+    <joint name="os_imu_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="os_sensor"/>
+        <child link="os_imu"/>
+    </joint>
+
+    <!-- Radar Links -->
+    <link name="default_template/radar_0"/>
+    <joint name="prefixed_radar_0_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="default_template/radar_0"/>
+    </joint>
+
+    <link name="radar_0"/>
+    <joint name="radar_0_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="radar_0"/>
+    </joint>
+
+    <link name="default_template/radar_1"/>
+    <joint name="prefixed_radar_1_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="default_template/radar_1"/>
+    </joint>
+
+    <link name="radar_1"/>
+    <joint name="radar_1_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="radar_1"/>
+    </joint>
+
+    <link name="default_template/front_radar"/>
+    <joint name="prefixed_front_radar_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="default_template/front_radar"/>
+    </joint>
+
+    <link name="front_radar"/>
+    <joint name="front_radar_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="front_radar"/>
+    </joint>
+
+    <link name="default_template/back_radar"/>
+    <joint name="prefixed_back_radar_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="default_template/back_radar"/>
+    </joint>
+
+    <link name="back_radar"/>
+    <joint name="back_radar_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="back_radar"/>
+    </joint>
+
+    <link name="default_template/down_radar"/>
+    <joint name="prefixed_down_radar_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="default_template/down_radar"/>
+    </joint>
+
+    <link name="down_radar"/>
+    <joint name="down_radar_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="down_radar"/>
+    </joint>
+
+    <!-- RealSense Camera Links -->
+    <link name="default_template/camera_link"/>
+    <joint name="prefixed_camera_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="default_template/camera_link"/>
+    </joint>
+
+    <link name="camera_link"/>
+    <joint name="camera_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="camera_link"/>
+    </joint>
+
+    <link name="default_template/camera_bottom_screw_frame"/>
+    <joint name="prefixed_camera_bottom_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/camera_link"/>
+        <child link="default_template/camera_bottom_screw_frame"/>
+    </joint>
+
+    <link name="camera_bottom_screw_frame"/>
+    <joint name="camera_bottom_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="camera_link"/>
+        <child link="camera_bottom_screw_frame"/>
+    </joint>
+
+    <!-- Leap Motion Links -->
+    <link name="default_template/leap_link"/>
+    <joint name="prefixed_leap_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="default_template/leap_link"/>
+    </joint>
+
+    <link name="leap_link"/>
+    <joint name="leap_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="leap_link"/>
+    </joint>
+
+    <!-- Vicon Bridge Links -->
+    <link name="default_template/vicon"/>
+    <joint name="prefixed_vicon_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="default_template/vicon"/>
+    </joint>
+
+    <link name="vicon"/>
+    <joint name="vicon_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="default_template/base_link"/>
+        <child link="vicon"/>
+    </joint>
+
+</robot>

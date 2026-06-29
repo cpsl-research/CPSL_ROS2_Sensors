@@ -73,6 +73,17 @@ All work on branches `feat/phase1-dca1000-integration` (CPSL_TI_Radar_ROS2) and 
 
 ---
 
+## Track G: Host Device Mapping, Ouster Networking, and Template Bringup — COMPLETE ✓
+
+- **G1: Host udev Setup Scripts** — Implement two host-side setup scripts under `scripts/`: `scripts/setup_radar_udev.sh` (for TI Radars supporting XDS110 and CP2105 bridges) and `scripts/setup_realsense_udev.sh` (inlining the official librealsense udev rules for video and IMU/HID support) to configure non-privileged host access to connected peripherals.
+- **G2: Standalone Device Discovery Script & Role Mapping** — Create a standalone script `scripts/detect_devices.sh` and a JSON configuration file `docker/device_config.json`. The script will scan the host for connected TI Radars and RealSense cameras, match their physical USB paths or serial numbers against user-defined mappings in the JSON file (for roles: `FRONT_RADAR`, `BACK_RADAR`, `DOWN_RADAR`, and `REALSENSE`), and write the resolved paths to `.env` (defaulting any unassigned/missing roles to `/dev/null`).
+- **G3: Compose Port and Device Passing** — Update the docker compose files (`docker-compose.cpu.yaml`, `docker-compose.gpu.yaml`, `docker-compose.sim-cpu.yaml`, `docker-compose.sim-gpu.yaml`) to map dynamic radar and camera devices (via role-based `.env` variables: `FRONT_RADAR_CLI`, `FRONT_RADAR_DATA`, `BACK_RADAR_CLI`, etc.) and add Ouster Lidar network port mappings (`7502`, `7503` UDP).
+- **G4: Simple Default URDF** — Create `src/platform_descriptions/urdf/default_template.urdf.xml` connecting all potential sensor frames (Livox, Ouster, TI Radars, RealSense, Leap Motion, Vicon) to `base_link` at `0,0,0,0`.
+- **G5: Default Template Bringup Launch** — Create `src/cpsl_ros2_sensors_bringup/launch/default_template_bringup.launch.py` to bring up all sensors with their parameters, with enables defaulted to `false` and staggered startup delays.
+- **G6: Tutorials & Documentation Updates** — Document the dynamic device discovery script, role mapping configuration, Ouster port configuration, and template bringup usage. Write a new, detailed tutorial `tutorials/06_udev_setup.md` specifically explaining how to set up the host udev rules, find VID/PID/interface numbers for different radar boards, and run the udev setup scripts.
+
+---
+
 ## Decisions Log
 
 | Date | Decision |
@@ -92,4 +103,8 @@ All work on branches `feat/phase1-dca1000-integration` (CPSL_TI_Radar_ROS2) and 
 | 2026-06-23 | Avoid cloning specific git commit inside Dockerfile; instead copy local workspace and mount core packages as shared volume for live updates. |
 | 2026-06-23 | Replace Python ouster discovery script with fping bash script (`find_ouster_ip.sh`). |
 | 2026-06-23 | Add rebuild.sh helper script and document rebuilding steps in the docker tutorial. |
+| 2026-06-28 | Grant udev permissions on host without privileged mode. Support multiple TI radars and RealSense cameras dynamically via USB hub/port matching in a host shell wrapper, defaulting unmatched variables to `/dev/null` in `.env` to prevent Compose launch failure. |
+| 2026-06-28 | Default all sensor enables to `false` in the default/template bringup launch script, requiring users to explicitly enable the sensors they wish to run. |
+| 2026-06-28 | Split the host udev rules installation into two separate scripts (`setup_radar_udev.sh` and `setup_realsense_udev.sh`) and create a dedicated tutorial (`06_udev_setup.md`) explaining custom udev settings, hardware VID/PID details, and how to verify device bindings on the host. |
+| 2026-06-28 | Decouple device discovery from the installer. Implement a standalone `detect_devices.sh` script reading from `docker/device_config.json` that maps physical hardware (USB path or serial number) to specific radar/camera roles (`FRONT_RADAR`, `BACK_RADAR`, `DOWN_RADAR`, `REALSENSE`) to output custom environment variables to `.env`. |
 

@@ -1,7 +1,7 @@
 services:
   cpsl_sensors:
     image: cpsl_sensors:cpu
-    container_name: cpsl_sensors_cpu
+    container_name: cpsl_sensors_dev_cpu
     ipc: host
     environment:
       - ROS_DOMAIN_ID=42
@@ -9,16 +9,16 @@ services:
       - QT_X11_NO_MITSHM=1
     ports:
       # TI Radar DCA1000 Streaming Port Forwarding
-      - "${HOST_RADAR_IP:-192.168.33.30}:4096:4096/udp"
-      - "${HOST_RADAR_IP:-192.168.33.30}:4098:4098/udp"
+      - "4096:4096/udp"
+      - "4098:4098/udp"
       # Livox Mid360 Lidar Port Forwarding
-      - "${HOST_LIVOX_IP:-192.168.1.78}:56101:56101/udp"
-      - "${HOST_LIVOX_IP:-192.168.1.78}:56201:56201/udp"
-      - "${HOST_LIVOX_IP:-192.168.1.78}:56301:56301/udp"
-      - "${HOST_LIVOX_IP:-192.168.1.78}:56401:56401/udp"
+      - "56101:56101/udp"
+      - "56201:56201/udp"
+      - "56301:56301/udp"
+      - "56401:56401/udp"
       # Ouster Lidar Port Forwarding
-      - "${HOST_OUSTER_IP:-169.254.1.1}:7502:7502/udp"
-      - "${HOST_OUSTER_IP:-169.254.1.1}:7503:7503/udp"
+      - "7502:7502/udp"
+      - "7503:7503/udp"
     devices:
       # TI Radars Serial Interfaces (Role Mapped)
       - "${FRONT_RADAR_CLI:-/dev/null}:${FRONT_RADAR_CLI:-/dev/null}"
@@ -39,21 +39,8 @@ services:
     volumes:
       - "/tmp/.X11-unix:/tmp/.X11-unix:ro"
       - "${HOME}/.Xauthority:/root/.Xauthority:ro"
+      - "../:/workspace/CPSL_ROS2_Sensors"
     device_cgroup_rules:
       - 'c *:* rmw'
     stdin_open: true
     tty: true
-    networks:
-      cpsl_net:
-        ipv4_address: 192.168.1.42
-
-networks:
-  cpsl_net:
-    name: cpsl_net
-    driver: ipvlan
-    driver_opts:
-      parent: ${HOST_PARENT_INTERFACE:-eth0}
-    ipam:
-      config:
-        - subnet: 192.168.1.0/24
-          gateway: 192.168.1.1

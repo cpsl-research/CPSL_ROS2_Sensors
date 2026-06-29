@@ -129,6 +129,7 @@ ros2 launch cpsl_ros2_sensors_bringup <file> [arg:=value ...]
 
 | Launch File | Default Namespace | Default Sensors On | Default Radar Configs |
 |-------------|-------------------|--------------------|-----------------------|
+| `default_template_bringup.launch.py` | `default_template` | _(none)_ | `front_radar_IWR1843_stress_test.json` |
 | `ugv_sensor_bringup.launch.py` | _(empty)_ | lidar, radar (×2), camera | `radar_0_IWR1843_vel_sr.json` / `radar_1_IWR1843_vel_sr.json` |
 | `ugv_sensor_bringup_ragnnarok.launch.py` | _(empty)_ | lidar, radar (×2), camera | `front_radar_IWR1843_RaGNNarok_UGV_5m.json` / `back_radar_IWR1843_RaGNNarok_UGV_5m.json` |
 | `uav_sensor_bringup_radsar.launch.py` | `cpsl_uav_1` | platform description only | `front/back_radar_IWR1843_dca_RadVel_10Hz.json`, `down_radar_IWR6843_ods_dca_RadVel.json` |
@@ -181,6 +182,7 @@ See [`tutorials/01_capturing_a_dataset.md`](tutorials/01_capturing_a_dataset.md)
 - [`tutorials/02_adding_a_new_platform.md`](tutorials/02_adding_a_new_platform.md) — add a new robot URDF and wire it into bringup
 - [`tutorials/03_writing_a_bringup_launch_file.md`](tutorials/03_writing_a_bringup_launch_file.md) — write a new bringup launch file from scratch
 - [`tutorials/04_docker_setup_and_usage.md`](tutorials/04_docker_setup_and_usage.md) — guide to build and run ROS2 containers
+- [`tutorials/06_udev_setup.md`](tutorials/06_udev_setup.md) — host udev rules and device mapping setup
 - [`src/CPSL_TI_Radar_ROS2/README.md`](src/CPSL_TI_Radar_ROS2/README.md) — TI radar driver details and config reference
 - [`src/CPSL_ROS_livox_ros_driver2/README.md`](src/CPSL_ROS_livox_ros_driver2/README.md) — Livox driver details
 - [`src/ouster-ros/README.md`](src/ouster-ros/README.md) — Ouster driver details
@@ -249,13 +251,23 @@ The script auto-generates a `.env` file inside the `docker/` directory containin
 
 #### 2. Running with Docker Compose
 Bring up the containers using the respective compose files inside `docker/`:
-```bash
-# Run CPU-only containers:
-docker compose -f docker/docker-compose.cpu.yaml run --rm cpsl_sensors
 
-# Run GPU hardware-accelerated containers:
-docker compose -f docker/docker-compose.gpu.yaml run --rm cpsl_sensors
-```
+*   **Production/Deployment Mode** (Runs the compiled codebase embedded directly in the Docker image layers; does NOT mount host files):
+    ```bash
+    # CPU:
+    docker compose -f docker/docker-compose.cpu.yaml run --rm cpsl_sensors
+
+    # GPU:
+    docker compose -f docker/docker-compose.gpu.yaml run --rm cpsl_sensors
+    ```
+*   **Development Mode** (Mounts the host repository parent directory at `/workspace/CPSL_ROS2_Sensors` to allow live-code editing):
+    ```bash
+    # CPU Dev:
+    docker compose -f docker/docker-compose.dev-cpu.yaml run --rm cpsl_sensors
+
+    # GPU Dev:
+    docker compose -f docker/docker-compose.dev-gpu.yaml run --rm cpsl_sensors
+    ```
 
 #### 3. Network Isolation
 The containers use a custom bridge network `cpsl_net` and run on `ROS_DOMAIN_ID=42`. This ensures that:
@@ -267,14 +279,9 @@ The containers use a custom bridge network `cpsl_net` and run on `ROS_DOMAIN_ID=
 When deploying containers in production, physical hardware interfaces must be connected and correctly mapped. If a peripheral device is not plugged in, you must modify the Compose configuration to prevent start errors.
 
 ##### TI Radar Serial Passthrough
-By default, `docker/docker-compose.cpu.yaml` and `docker/docker-compose.gpu.yaml` expect the TI Radar serial interfaces to be available on the host at `/dev/ttyACM0` and `/dev/ttyACM1`.
-- **If connected:** Ensure you are in the `dialout` group on the host.
-- **If disconnected (Testing/Development):** Comment out or remove the `devices` block from the compose file, otherwise Docker will throw a device gathering error and refuse to start:
-  ```yaml
-  # devices:
-  #   - "/dev/ttyACM0:/dev/ttyACM0"
-  #   - "/dev/ttyACM1:/dev/ttyACM1"
-  ```
+By default, the compose configuration expects the role-mapped serial interfaces `/dev/ti_front_radar_cli` and `/dev/ti_front_radar_data` to be available (which fallback to `/dev/null` if not mapped in the `.env` file).
+- **If connected:** Ensure host-level udev rules have been configured (see [Tutorial 06](tutorials/06_udev_setup.md)) so they are correctly mapped to `/dev/ti_*` symlinks.
+- **If disconnected (Testing/Development):** No actions are needed; the ports will automatically default to `/dev/null` inside the container without causing startup errors.
 
 ##### Ethernet Sensors (DCA1000, Livox Mid360, Ouster)
 Configure static or link-local IP addresses on the host machine network adapters:

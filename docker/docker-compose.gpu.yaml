@@ -18,14 +18,31 @@ services:
       - "${HOST_LIVOX_IP:-192.168.1.78}:56201:56201/udp"
       - "${HOST_LIVOX_IP:-192.168.1.78}:56301:56301/udp"
       - "${HOST_LIVOX_IP:-192.168.1.78}:56401:56401/udp"
+      # Ouster Lidar Port Forwarding
+      - "${HOST_OUSTER_IP:-169.254.1.1}:7502:7502/udp"
+      - "${HOST_OUSTER_IP:-169.254.1.1}:7503:7503/udp"
     devices:
-      # TI Radars serial CLI & data interfaces
-      - "/dev/ttyACM0:/dev/ttyACM0"
-      - "/dev/ttyACM1:/dev/ttyACM1"
+      # TI Radars Serial Interfaces (Role Mapped)
+      - "${FRONT_RADAR_CLI:-/dev/null}:${FRONT_RADAR_CLI:-/dev/null}"
+      - "${FRONT_RADAR_DATA:-/dev/null}:${FRONT_RADAR_DATA:-/dev/null}"
+      - "${BACK_RADAR_CLI:-/dev/null}:${BACK_RADAR_CLI:-/dev/null}"
+      - "${BACK_RADAR_DATA:-/dev/null}:${BACK_RADAR_DATA:-/dev/null}"
+      - "${DOWN_RADAR_CLI:-/dev/null}:${DOWN_RADAR_CLI:-/dev/null}"
+      - "${DOWN_RADAR_DATA:-/dev/null}:${DOWN_RADAR_DATA:-/dev/null}"
+      # Intel RealSense Camera Video Devices
+      - "${REALSENSE_DEV_0:-/dev/null}:${REALSENSE_DEV_0:-/dev/null}"
+      - "${REALSENSE_DEV_1:-/dev/null}:${REALSENSE_DEV_1:-/dev/null}"
+      - "${REALSENSE_DEV_2:-/dev/null}:${REALSENSE_DEV_2:-/dev/null}"
+      - "${REALSENSE_DEV_3:-/dev/null}:${REALSENSE_DEV_3:-/dev/null}"
+      - "${REALSENSE_DEV_4:-/dev/null}:${REALSENSE_DEV_4:-/dev/null}"
+      - "${REALSENSE_DEV_5:-/dev/null}:${REALSENSE_DEV_5:-/dev/null}"
+      # Intel RealSense Camera IMU/HID Devices
+      - "${REALSENSE_HID_0:-/dev/null}:${REALSENSE_HID_0:-/dev/null}"
     volumes:
       - "/tmp/.X11-unix:/tmp/.X11-unix:ro"
       - "${HOME}/.Xauthority:/root/.Xauthority:ro"
-      - "../:/workspace/CPSL_ROS2_Sensors"
+    device_cgroup_rules:
+      - 'c *:* rmw'
     deploy:
       resources:
         reservations:

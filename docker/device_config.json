@@ -1,0 +1,20 @@
+{
+  "radars": [
+    {
+      "role": "FRONT_RADAR",
+      "id": "019C697F"
+    },
+    {
+      "role": "BACK_RADAR",
+      "id": ""
+    },
+    {
+      "role": "DOWN_RADAR",
+      "id": ""
+    }
+  ],
+  "realsense": {
+    "role": "REALSENSE",
+    "id": "251343061404"
+  }
+}
