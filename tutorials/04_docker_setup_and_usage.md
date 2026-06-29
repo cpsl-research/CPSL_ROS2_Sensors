@@ -282,3 +282,40 @@ rviz2
 ```
 Verify that ROS2 nodes are communicating on `ROS_DOMAIN_ID=42` and are hidden from default domain traffic on the host.
 
+---
+
+## 8. Automated Integration Testing Framework
+
+To easily verify that the workspace compiles and that all physical sensors are fully operational, the repository includes a script: `scripts/test_integration.sh`. 
+
+This script automates environment scanning, workspace compilation, device mapping discovery, and ROS2 topic streaming validation (smoke tests).
+
+### Features
+1. **Auto Platform Detection**: Automatically detects if executing inside a Docker container (looking for `/.dockerenv`) or on the host machine.
+2. **Build Verification**: Performs a clean compilation of the workspace (`colcon build`).
+3. **Hardware-Attached Smoke Test**: Queries the udev device scanner to check which physical sensors are plugged in, starts their driver in the background, polls their ROS2 topics to confirm active data streams, and cleanly shuts them down.
+
+### CLI Usage
+You can run the script from the repository root:
+```bash
+# Auto-detect platform, compile workspace, and test all connected sensors:
+bash scripts/test_integration.sh
+
+# Force host-side testing mode (compiles in local host and tests host drivers):
+bash scripts/test_integration.sh --host
+
+# Force container-side testing mode (runs inside a running container):
+docker compose -f docker/docker-compose.dev-cpu.yaml run --rm cpsl_sensors bash -c "./scripts/test_integration.sh"
+
+# Test a specific subset of sensors (skipping others):
+bash scripts/test_integration.sh --sensors realsense
+
+# Configure the topic validation timeout (default: 20 seconds):
+bash scripts/test_integration.sh --timeout 15
+```
+
+### Smoke Test Criteria
+- **Intel RealSense**: Verifies that the camera node starts, registers on the ROS2 network, and streams active image data on `/default_template/camera/camera/color/image_raw`.
+- **TI Radar**: Verifies that the radar serial connection node (`ti_radar_connect`) initializes successfully on the udev cli port.
+
+

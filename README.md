@@ -289,6 +289,21 @@ Configure static or link-local IP addresses on the host machine network adapters
 2. **Livox Mid360 Lidar:** Set host adapter to static IP `192.168.1.78` (or matching custom `.env` IP), netmask `255.255.255.0`.
 3. **Ouster Lidar:** Set host adapter to link-local IP `169.254.1.1`, netmask `255.255.0.0`.
 
+#### 5. Automated Verification & Integration Testing
+You can verify the repository installation (both on the host and inside Docker containers) as well as the basic operation of any connected physical sensors (e.g. RealSense camera, TI Radar) using the automated integration testing script:
+```bash
+# Run on the host (auto-detects environment, builds, and smoke-tests connected hardware):
+bash scripts/test_integration.sh
+
+# Run inside the docker container environment:
+docker compose -f docker/docker-compose.dev-cpu.yaml run --rm cpsl_sensors bash -c "./scripts/test_integration.sh"
+
+# Test specific sensors only:
+bash scripts/test_integration.sh --sensors realsense
+```
+For more detailed information on test options, refer to the [Docker Setup and Usage Tutorial](tutorials/04_docker_setup_and_usage.md#8-automated-integration-testing-framework).
+
+
 > [!IMPORTANT]
 > **Docker Container Networking and Host IP Binding:**
 > When configuring host/system IPs for sensor drivers (such as the TI Radar config JSON files) within the Docker environment, set the host-ip parameter (or system IP) to `0.0.0.0`. This ensures the software inside the container binds to all internal network interfaces and correctly receives the incoming UDP streams forwarded from the host.
