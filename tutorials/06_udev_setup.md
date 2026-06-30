@@ -24,12 +24,19 @@ Ensure your devices are plugged in, and execute the discovery script:
 
 *Example Output:*
 ```text
+=== Running Host Device Discovery ===
+Loading device configuration from: device_config.json
 Scanning host for connected TI Radars...
 Found 1 connected TI Radar device(s).
   - Serial: 019C697F, Path: 3-7, CLI: /dev/ttyUSB0, Data: /dev/ttyUSB1
 Scanning host for connected Intel RealSense cameras...
 Found 1 connected RealSense camera(s).
   - Serial: 251343061404, Path: 4-1
+    Video Ports: /dev/video4, /dev/video5, /dev/video6, /dev/video7, /dev/video8, /dev/video9
+    HID Ports:   /dev/hidraw0, /dev/iio:device0, /dev/iio:device1
+Mapped Radar 019C697F to role FRONT_RADAR using symlinks /dev/ti_front_radar_cli -> /dev/ttyUSB0
+Mapped RealSense 251343061404 to REALSENSE role
+
 ```
 This tells you:
 - TI Radar Serial: `019C697F` (USB Path: `3-7`)
@@ -108,7 +115,7 @@ lrwxrwxrwx 1 root root 7 Jun 28 21:30 /dev/ti_front_radar_data -> ttyUSB1
 
 Confirm raw permissions are unlocked (`crw-rw-rw-`) for all ports:
 ```bash
-ls -l /dev/ttyUSB* /dev/video4 /dev/hidraw0 /dev/iio:device*
+ls -l /dev/ttyUSB* && ls -l /dev/video* && ls -l /dev/hidraw0 && ls -l /dev/iio:device*
 ```
 
 *(Note: RealSense cameras expose multiple nodes—video, hidraw, and iio—so udev only updates their permissions. Role mapping for RealSense is handled dynamically in user-space via the discovery script).*

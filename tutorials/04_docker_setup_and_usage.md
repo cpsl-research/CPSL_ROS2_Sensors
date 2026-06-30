@@ -92,10 +92,10 @@ Crucially, **Production Mode does not mount the host repository as a volume**. I
 
 ```bash
 # Start CPU production container:
-docker compose -f docker/docker-compose.cpu.yaml up
+docker compose -f docker/docker-compose.cpu.yaml up -d
 
 # Start GPU production container:
-docker compose -f docker/docker-compose.gpu.yaml up
+docker compose -f docker/docker-compose.gpu.yaml up -d
 ```
 
 ### B. Development Mode (Live Workspace Mounting)
@@ -103,10 +103,10 @@ If you are developing, testing local code changes, or running simulated sensor c
 
 ```bash
 # Start CPU development container:
-docker compose -f docker/docker-compose.dev-cpu.yaml up
+docker compose -f docker/docker-compose.dev-cpu.yaml up -d
 
 # Start GPU development container:
-docker compose -f docker/docker-compose.dev-gpu.yaml up
+docker compose -f docker/docker-compose.dev-gpu.yaml up -d
 ```
 
 On launch, the container entrypoint will automatically source ROS2 Jazzy and check for any local workspace builds (`install_docker/setup.bash` or `install/setup.bash`).

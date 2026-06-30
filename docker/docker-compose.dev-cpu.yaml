@@ -1,6 +1,6 @@
 services:
   cpsl_sensors:
-    image: cpsl_sensors:cpu
+    image: cpsl_sensors_testbench:v0.1-cpu
     container_name: cpsl_sensors_dev_cpu
     ipc: host
     environment:

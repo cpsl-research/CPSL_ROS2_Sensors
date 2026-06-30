@@ -49,7 +49,7 @@ RUN curl -sSL https://install.python-poetry.org | python3 - && \
 # Initialize and update rosdep (ensuring apt update runs first and failing fast if update fails)
 RUN apt-get update && \
     (rosdep init || true) && \
-    rosdep update && \
+    rosdep update --rosdistro=jazzy || true && \
     rm -rf /var/lib/apt/lists/*
 
 # Set workdir
@@ -154,6 +154,7 @@ RUN S_LIST="${SENSORS}" && \
 # Run rosdep install (skip raw_radar_msgs)
 RUN apt-get update && \
     . /opt/ros/jazzy/setup.sh && \
+    rosdep update --rosdistro=jazzy || true && \
     rosdep install --from-paths src -y --rosdistro=jazzy --skip-keys "raw_radar_msgs" && \
     rm -rf /var/lib/apt/lists/*
 
