@@ -108,8 +108,13 @@ RUN apt-get update && \
     fi && \
     # ── Realsense ───────────────────
     if echo ",$S_LIST," | grep -q ",realsense,"; then \
-        echo "Installing Realsense dependencies..."; \
-        apt-get install -y ros-jazzy-librealsense2* ros-jazzy-realsense2-*; \
+        echo "Installing Realsense dependencies and compiling SDK from source..."; \
+        apt-get install -y ros-jazzy-librealsense2* ros-jazzy-realsense2-* \
+            libusb-1.0-0-dev libudev-dev libssl-dev pkg-config libgtk-3-dev libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev && \
+        git clone --depth 1 https://github.com/IntelRealSense/librealsense.git /opt/librealsense && \
+        cd /opt/librealsense && mkdir build && cd build && \
+        cmake ../ -DFORCE_RSUSB_BACKEND=true -DCMAKE_BUILD_TYPE=release -DBUILD_EXAMPLES=true -DBUILD_GRAPHICAL_EXAMPLES=true && \
+        make -j$(nproc) && make install && ldconfig && cd /workspace/CPSL_ROS2_Sensors; \
     fi && \
     # ── Leapmotion ──────────────────
     if echo ",$S_LIST," | grep -q ",leapmotion,"; then \

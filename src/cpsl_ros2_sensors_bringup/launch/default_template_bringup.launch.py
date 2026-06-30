@@ -70,6 +70,12 @@ ARGUMENTS = [
                           default_value='true',
                           choices=['true', 'false'],
                           description='Publish the default template URDF robot description'),
+    DeclareLaunchArgument('livox_config_file',
+                          default_value='MID360_config.json',
+                          description='Configuration file for Livox Lidar'),
+    DeclareLaunchArgument('ouster_config_file',
+                          default_value='driver_params.yaml',
+                          description='Configuration file for Ouster Lidar'),
     DeclareLaunchArgument('rviz',
                           default_value='false',
                           choices=['true', 'false'],
@@ -80,7 +86,9 @@ def launch_setup(context, *args, **kwargs):
     # Load parameters
     namespace = LaunchConfiguration('namespace')
     livox_enable = LaunchConfiguration('livox_enable')
+    livox_config_file = LaunchConfiguration('livox_config_file')
     ouster_enable = LaunchConfiguration('ouster_enable')
+    ouster_config_file = LaunchConfiguration('ouster_config_file')
     front_radar_enable = LaunchConfiguration('front_radar_enable')
     front_radar_config_file = LaunchConfiguration('front_radar_config_file')
     back_radar_enable = LaunchConfiguration('back_radar_enable')
@@ -127,7 +135,7 @@ def launch_setup(context, *args, **kwargs):
     launch_radar = PathJoinSubstitution([pkg_ti_radar_connect, 'launch', 'connect_ti_radar_launch.py']) if pkg_ti_radar_connect else ""
     launch_platform_description = PathJoinSubstitution([pkg_platform_descriptions, 'launch', 'publish_platform_description.launch.py'])
     
-    ouster_params_file = PathJoinSubstitution([pkg_cpsl_ros2_sensors_bringup, 'ouster_configs', 'driver_params.yaml'])
+    ouster_params_file = PathJoinSubstitution([pkg_cpsl_ros2_sensors_bringup, 'ouster_configs', ouster_config_file])
     rviz_config_file = PathJoinSubstitution([pkg_cpsl_ros2_sensors_bringup, 'rviz_cfgs', 'default_template.rviz'])
 
     # Vicon config
@@ -141,7 +149,10 @@ def launch_setup(context, *args, **kwargs):
         # ── 1. LIVOX LIDAR (Immediate) ─────────────────────────────────────────
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(launch_livox),
-            launch_arguments=[('tf_prefix', tf_prefix)],
+            launch_arguments=[
+                ('tf_prefix', tf_prefix),
+                ('user_config_file', livox_config_file)
+            ],
             condition=IfCondition(livox_enable)
         ),
 

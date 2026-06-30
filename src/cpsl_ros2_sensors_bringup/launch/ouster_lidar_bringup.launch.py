@@ -20,6 +20,9 @@ pkg_cpsl_ros2_sensors_bringup = get_package_share_directory('cpsl_ros2_sensors_b
 
 #ROS2 launch arguments
 ARGUMENTS = [
+    DeclareLaunchArgument('ouster_config_file',
+                          default_value='driver_params.yaml',
+                          description='Configuration file for Ouster Lidar'),
     DeclareLaunchArgument('namespace', default_value='',
                           description='namespace'),
     DeclareLaunchArgument('lidar_enable',
@@ -43,6 +46,7 @@ ARGUMENTS = [
 def launch_setup(context, *args, **kwargs):
 
     #load parameters
+    ouster_config_file = LaunchConfiguration('ouster_config_file')
     namespace = LaunchConfiguration('namespace')
     lidar_enable = LaunchConfiguration('lidar_enable')
     lidar_scan_enable = LaunchConfiguration('lidar_scan_enable')
@@ -72,7 +76,7 @@ def launch_setup(context, *args, **kwargs):
     rviz_config_file = PathJoinSubstitution([pkg_cpsl_ros2_sensors_bringup, 'rviz_cfgs', 'ugv_view.rviz'])
 
     ouster_params_file = PathJoinSubstitution(
-        [pkg_cpsl_ros2_sensors_bringup, 'ouster_configs', 'driver_params.yaml']
+        [pkg_cpsl_ros2_sensors_bringup, 'ouster_configs', ouster_config_file]
     )
 
     # Apply the following re-mappings only within this group

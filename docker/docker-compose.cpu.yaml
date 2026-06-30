@@ -36,6 +36,12 @@ services:
       - "${REALSENSE_DEV_5:-/dev/null}:${REALSENSE_DEV_5:-/dev/null}"
       # Intel RealSense Camera IMU/HID Devices
       - "${REALSENSE_HID_0:-/dev/null}:${REALSENSE_HID_0:-/dev/null}"
+      - source: "${REALSENSE_HID_1:-/dev/null}"
+        target: "${REALSENSE_HID_1:-/dev/null}"
+        permissions: rmw
+      - source: "${REALSENSE_HID_2:-/dev/null}"
+        target: "${REALSENSE_HID_2:-/dev/null}"
+        permissions: rmw
     volumes:
       - "/tmp/.X11-unix:/tmp/.X11-unix:ro"
       - "${HOME}/.Xauthority:/root/.Xauthority:ro"

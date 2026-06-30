@@ -34,6 +34,21 @@ Tasks for Docker Integration & Networking Isolation:
 
 ---
 
+## Tasks for RealSense, Docker-Specific Configs, and Env Integrity (Track H)
+
+- [x] **H1: USBGuard & RealSense HID/USB3.0 Research & Documentation** — Research usbguard rules for RealSense and add them to `tutorials/06_udev_setup.md`. Relies on host-side device recognition and udev/usbguard authorization, so do NOT mount `/dev/bus/usb` inside containers.
+- [x] **H2: RealSense Parameter & Docker Streaming Verification** — Verify full RGB, Depth, and RGB+D streaming and parameter configuration inside Docker container.
+- [x] **H3: Non-Destructive Env Configuration** — Modify `install_cpsl_sensors_docker.sh` to update `.env` and `docker/.env` in-place, preserving variables like dynamic device mappings.
+- [x] **H4: Docker-Specific Configuration Files for Sensors** — Create Docker-specific JSON configurations:
+   - TI Radar system config with `/dev/ti_..._cli` / `/dev/ti_..._data` and DCA1000 host IP as `0.0.0.0`.
+   - Livox Lidar config (`MID360_docker_config.json`) with `0.0.0.0` IP binding.
+   - Ouster Lidar config (`driver_params_docker.yaml`) with container port setup.
+- [x] **H5: Align Dev Compose Devices** — Make sure device mapping arrays in dev compose files are fully aligned with the production compose files (e.g. including all `REALSENSE_DEV_*` and `REALSENSE_HID_*` devices).
+- [x] **H6: Install `librealsense` and `realsense-viewer` in Container** — Compile and install the full graphical SDK from source inside the Docker image using the user-space `FORCE_RSUSB_BACKEND` driver.
+- [x] **H7: RealSense Viewer Debugging Tutorial** — Create a tutorial/section explaining X11 permission configuration and launching the viewer.
+
+---
+
 ## Docker Verification Plan & Commands
 
 To verify the Docker containerization, networking isolation, and GUI support, run the following verification steps.

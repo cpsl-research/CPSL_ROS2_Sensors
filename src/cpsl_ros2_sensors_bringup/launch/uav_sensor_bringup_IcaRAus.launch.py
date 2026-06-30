@@ -21,6 +21,9 @@ pkg_cpsl_ros2_sensors_bringup = get_package_share_directory('cpsl_ros2_sensors_b
 
 # ROS2 launch arguments
 ARGUMENTS = [
+    DeclareLaunchArgument('livox_config_file',
+                          default_value='MID360_config.json',
+                          description='Configuration file for Livox Lidar'),
     DeclareLaunchArgument('namespace', default_value='cpsl_uav_1',
                           description='namespace'),
     DeclareLaunchArgument('lidar_enable',
@@ -72,6 +75,7 @@ ARGUMENTS = [
 
 def launch_setup(context, *args, **kwargs):
 
+    livox_config_file = LaunchConfiguration('livox_config_file')
     namespace = LaunchConfiguration('namespace')
     lidar_enable = LaunchConfiguration('lidar_enable')
     lidar_scan_enable = LaunchConfiguration('lidar_scan_enable')
@@ -115,7 +119,8 @@ def launch_setup(context, *args, **kwargs):
         # livox lidar (immediate)
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(launch_livox),
-            launch_arguments=[('tf_prefix', tf_prefix)],
+            launch_arguments=[
+                ('user_config_file', livox_config_file),('tf_prefix', tf_prefix)],
             condition=IfCondition(lidar_enable)
         ),
 

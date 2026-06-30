@@ -55,7 +55,10 @@ ARGUMENTS = [
     DeclareLaunchArgument('rviz',
                           default_value='false',
                           choices=['true','false'],
-                          description='Display an RViz window with all odometry displayed')
+                          description='Display an RViz window with all odometry displayed'),
+    DeclareLaunchArgument('livox_config_file',
+                          default_value='MID360_config.json',
+                          description='Configuration file for Livox Lidar')
 ]
 
 def launch_setup(context, *args, **kwargs):
@@ -63,6 +66,7 @@ def launch_setup(context, *args, **kwargs):
     #load parameters
     namespace = LaunchConfiguration('namespace')
     lidar_enable = LaunchConfiguration('lidar_enable')
+    livox_config_file = LaunchConfiguration('livox_config_file')
     lidar_scan_enable = LaunchConfiguration('lidar_scan_enable')
     camera_enable = LaunchConfiguration('camera_enable')
     radar_enable = LaunchConfiguration('radar_enable')
@@ -111,7 +115,8 @@ def launch_setup(context, *args, **kwargs):
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(launch_livox),
             launch_arguments=[
-                ('tf_prefix',tf_prefix)
+                ('tf_prefix',tf_prefix),
+                ('user_config_file', livox_config_file)
             ],
             condition=IfCondition(lidar_enable)
         ),

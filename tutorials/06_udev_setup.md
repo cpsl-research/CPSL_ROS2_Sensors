@@ -189,3 +189,38 @@ If you connect multiple RealSense cameras, the dynamic architecture scales **aut
    - The `devices:` mapping section of the Compose files.
 3. **Automatic IMU Mapping**: When the container boots, the entrypoint script loops through *every* device found in `/sys/bus/iio/devices/iio:device*`. If there are 2 cameras (exposing 4 IIO devices: `iio:device0` to `iio:device3`), it will automatically create all 4 character nodes inside the container. No manual modifications to the entrypoint are needed!
 
+---
+
+## 8. USBGuard Configuration (Troubleshooting HID/IMU & USB3.0)
+
+If your host machine runs **USBGuard** (a software framework that blocks unauthorized USB devices at the kernel level), you may experience issues where the RealSense camera only exposes its `/dev/video*` ports but fails to show its HID/IMU device nodes (`/dev/hidraw*` or `/dev/iio:device*`), is not read with a serial number, or falls back to USB 2.0 speeds even when plugged into a USB 3.0 interface.
+
+This happens because USBGuard treats the composite sub-interfaces of the RealSense camera (video, control, HID) as separate logical entities, or blocks USB 3.0 descriptor handshakes.
+
+### Step A: Identify RealSense IDs in USBGuard
+Plug in the camera and run:
+```bash
+sudo usbguard list-devices
+```
+Search the output list for the Intel RealSense camera (Vendor ID `8086`, e.g. Product ID `0b3a`). Take note of the device ID (integer index) or serial number.
+
+### Step B: Temporarily Authorize the Device
+To test if USBGuard is causing the issue, run:
+```bash
+sudo usbguard allow-device <ID> --temp
+```
+Check if the HID and IIO nodes appear on the host.
+
+### Step C: Add a Permanent Rule
+To permanently authorize the RealSense camera on the host, append a rule to `/etc/usbguard/rules.conf` or run:
+```bash
+sudo usbguard allow-device <ID>
+```
+A typical rule looks like this:
+```text
+allow id 8086:0b3a serial "251343061404" name "Intel RealSense D435i"
+```
+Ensure you restart the USBGuard daemon after modifying the rules config file:
+```bash
+sudo systemctl restart usbguard
+```

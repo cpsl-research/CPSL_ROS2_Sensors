@@ -84,6 +84,21 @@ All work on branches `feat/phase1-dca1000-integration` (CPSL_TI_Radar_ROS2) and 
 
 ---
 
+## Track H: RealSense, Docker-Specific Configs, and Env Integrity — COMPLETE ✓
+
+- [x] **H1: USBGuard & RealSense HID/USB3.0 Research & Documentation** — Investigate how `usbguard` blocks RealSense HID/IMU interfaces and restricts USB3.0 bandwidth on the host machine. Document rule configurations to authorize these devices on the host. Do NOT mount the full `/dev/bus/usb` tree into the containers; rely on host-side detection and selective device passing.
+- [x] **H2: RealSense Parameter & Docker Streaming Verification** — Test the docker containers to verify that RGB, Depth, and RGB+D streams are functional and that launch parameters are correctly applied instead of falling back to only depth.
+- [x] **H3: Non-Destructive Env Configuration** — Refactor `install_cpsl_sensors_docker.sh` to update/merge settings in `.env` and `docker/.env` in-place, preserving dynamically detected device roles from `detect_devices.sh`.
+- [x] **H4: Docker-Specific Configuration Files for Sensors** — Create Docker-specific JSON configurations:
+   - TI Radars (use role-mapped `/dev/ti_...` symlink paths and set `system_IP` to `0.0.0.0` for DCA1000).
+   - Livox Lidars (set `host_net_info` IP interfaces to `0.0.0.0` to permit container interface binding).
+   - Ouster Lidars (create Docker-specific config matching required ports/nomenclature).
+- [x] **H5: Align Dev Compose Devices** — Keep full port and device mappings in `docker-compose.dev-cpu.yaml` and `docker-compose.dev-gpu.yaml` identical to the production compose variants (including all `REALSENSE_DEV_*` and `REALSENSE_HID_*` variables).
+- [x] **H6: Install `librealsense` and `realsense-viewer` in Container** — Compile and install the full graphical SDK from source inside the Docker image using the user-space `FORCE_RSUSB_BACKEND` driver.
+- [x] **H7: RealSense Viewer Debugging Tutorial** — Create a tutorial/section explaining X11 permission configuration and launching the viewer.
+
+---
+
 ## Decisions Log
 
 | Date | Decision |
@@ -103,8 +118,9 @@ All work on branches `feat/phase1-dca1000-integration` (CPSL_TI_Radar_ROS2) and 
 | 2026-06-23 | Avoid cloning specific git commit inside Dockerfile; instead copy local workspace and mount core packages as shared volume for live updates. |
 | 2026-06-23 | Replace Python ouster discovery script with fping bash script (`find_ouster_ip.sh`). |
 | 2026-06-23 | Add rebuild.sh helper script and document rebuilding steps in the docker tutorial. |
+| 2026-06-23 | Add instructions/notes specifying that the host IP should default to `0.0.0.0` from the container's networking perspective. |
 | 2026-06-28 | Grant udev permissions on host without privileged mode. Support multiple TI radars and RealSense cameras dynamically via USB hub/port matching in a host shell wrapper, defaulting unmatched variables to `/dev/null` in `.env` to prevent Compose launch failure. |
 | 2026-06-28 | Default all sensor enables to `false` in the default/template bringup launch script, requiring users to explicitly enable the sensors they wish to run. |
 | 2026-06-28 | Split the host udev rules installation into two separate scripts (`setup_radar_udev.sh` and `setup_realsense_udev.sh`) and create a dedicated tutorial (`06_udev_setup.md`) explaining custom udev settings, hardware VID/PID details, and how to verify device bindings on the host. |
 | 2026-06-28 | Decouple device discovery from the installer. Implement a standalone `detect_devices.sh` script reading from `docker/device_config.json` that maps physical hardware (USB path or serial number) to specific radar/camera roles (`FRONT_RADAR`, `BACK_RADAR`, `DOWN_RADAR`, `REALSENSE`) to output custom environment variables to `.env`. |
-
+| 2026-06-30 | Add Track H to design/verify RealSense, special docker configs, usbguard workaround, and non-destructive .env script updates. |
