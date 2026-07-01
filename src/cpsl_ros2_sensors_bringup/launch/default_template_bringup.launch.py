@@ -224,6 +224,7 @@ def launch_setup(context, *args, **kwargs):
                     ('enable_sync', 'true'),
                     ('enable_color', 'true'),
                     ('enable_depth', 'true'),
+                    ('pointcloud.enable', 'true'),
                 ],
                 condition=IfCondition(realsense_enable)
             )]

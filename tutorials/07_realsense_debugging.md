@@ -27,6 +27,11 @@ Look for the `Intel(R) RealSense(TM)` device in the tree. Ensure it is connected
 
 The Docker image is built with the full graphical Intel RealSense SDK and tools compiled from source via the RSUSB (libusb) user-space driver backend.
 
+> [!IMPORTANT]
+> **Use the Kernel-Backend Diagnostics (V4L2):**
+> Because the source-compiled SDK (in `/usr/local/bin`) uses the `RSUSB` backend, it requires direct, raw access to the host's `/dev/bus/usb` which is blocked in non-privileged Docker sandboxes.
+> To run the diagnostic tools securely without privileged mode, you **must use the APT-installed versions** located under `/opt/ros/jazzy/bin/` (e.g., `/opt/ros/jazzy/bin/realsense-viewer` and `/opt/ros/jazzy/bin/rs-enumerate-devices`). These utilize the standard Linux kernel V4L2 backend and pair successfully using the character device nodes passed into the container.
+
 ### Step 1: Configure X11 Forwarding Permissions on Host
 To allow GUI applications from the container to display on your monitor, authorize X11 access on the host:
 ```bash
@@ -38,12 +43,12 @@ Run the viewer container using your preferred docker-compose target.
 
 For CPU configurations:
 ```bash
-docker compose -f docker/docker-compose.cpu.yaml run --rm cpsl_sensors realsense-viewer
+docker compose -f docker/docker-compose.cpu.yaml run --rm cpsl_sensors /opt/ros/jazzy/bin/realsense-viewer
 ```
 
 For GPU configurations:
 ```bash
-docker compose -f docker/docker-compose.gpu.yaml run --rm cpsl_sensors realsense-viewer
+docker compose -f docker/docker-compose.gpu.yaml run --rm cpsl_sensors /opt/ros/jazzy/bin/realsense-viewer
 ```
 
 This will launch the graphical realsense-viewer window. You can toggle the stereo depth module, RGB module, and Motion (IMU) module from the side panel to confirm they are capturing frames.
@@ -55,9 +60,9 @@ This will launch the graphical realsense-viewer window. You can toggle the stere
 If you do not have an active X11 display server or want a text-based status report:
 
 ### A. List connected devices & profiles
-Run `rs-enumerate-devices` inside the container:
+Run `/opt/ros/jazzy/bin/rs-enumerate-devices` inside the container:
 ```bash
-docker compose -f docker/docker-compose.cpu.yaml run --rm cpsl_sensors rs-enumerate-devices
+docker compose -f docker/docker-compose.cpu.yaml run --rm cpsl_sensors /opt/ros/jazzy/bin/rs-enumerate-devices
 ```
 This utility will output:
 - Detected device names and firmware versions.
@@ -101,8 +106,9 @@ ros2 launch cpsl_ros2_sensors_bringup default_template_bringup.launch.py \
   enable_gyro:=false \
   enable_accel:=false
 ```
-*(If IMU data is required, you must mount `/sys/devices` as read-write (`rw`) inside the docker-compose configuration files, which is done by default. Attempting to mount only specific subdirectories for the RealSense device (e.g. `/sys/devices/pci0000:00/...`) will fail due to:
+*(If IMU data is required, you must mount `/sys/devices` as read-write (`rw`) AND configure `security_opt: ["apparmor=unconfined"]` inside the docker-compose configuration files, which is done by default. Attempting to mount only specific subdirectories for the RealSense device (e.g. `/sys/devices/pci0000:00/...`) or omitting the AppArmor security option will fail due to:
 1. **Docker Delimiter Parsing Conflict:** Docker interprets any colon (`:`) as a field separator in volume mounts (even in long syntax binds), causing daemon-level parsing failure on PCI paths (like `pci0000:00`).
 2. **SDK Association Constraints:** The RealSense SDK matches cameras and IMU devices by walking up the host `/sys/devices` path structure to check parent descriptors. Mapping target paths to customized locations without colons breaks this pairing logic, disabling the IMU stream.
-Hence, mounting the entire `/sys/devices` folder as `rw` is structurally necessary for IMU support).*
+3. **AppArmor Write Restrictions:** By default, Docker's default AppArmor profile blocks all write operations under `/sys/**` inside containers. Setting `security_opt: ["apparmor=unconfined"]` unconfines AppArmor for the container. Since other directories in `/sys` are still mounted read-only by Docker's default layout, the write capability remains securely limited only to our read-write `/sys/devices` volume mount.
+Hence, mounting the entire `/sys/devices` folder as `rw` with unconfined AppArmor is structurally and operationally necessary for IMU support).*
 

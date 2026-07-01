@@ -146,6 +146,12 @@ Configure static or link-local IP addresses on your host machine network adapter
      ```
      This script sweeps the link-local IP range using `fping` to locate the sensor.
 
+### D. Intel RealSense Camera (USB3 / IMU)
+To enable Intel RealSense camera IMU streaming (gyroscope/accelerometer) inside containerized environments:
+1. **Sysfs Mount:** The container must mount `/sys/devices` as read-write (`rw`) to allow the RealSense SDK to set the power state of the IIO/IMU scan elements and walk up the device hierarchy.
+2. **AppArmor Unconfining:** The container must run with `security_opt: ["apparmor=unconfined"]` (which is configured by default in all four compose targets). This allows the SDK to write enabling flags to the camera sysfs directories without being blocked by AppArmor's default `/sys/**` write prevention. Other parts of `/sys` remain safely read-only as defined by Docker's layout.
+
+
 > [!IMPORTANT]
 > **Docker Container Networking and Host IP Binding:**
 > When configuring host/system IPs for sensor drivers (such as the TI Radar config JSON files) within the Docker environment, set the host-ip parameter (or system IP) to `0.0.0.0`. This ensures the software inside the container binds to all internal network interfaces and correctly receives the incoming UDP streams forwarded from the host.

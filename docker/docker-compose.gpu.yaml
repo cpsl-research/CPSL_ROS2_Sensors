@@ -9,6 +9,7 @@ services:
       - QT_X11_NO_MITSHM=1
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=all,graphics,utility,compute
+      - LD_LIBRARY_PATH=/opt/ros/jazzy/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}
     ports:
       # TI Radar DCA1000 Streaming Port Forwarding
       - "${HOST_RADAR_IP:-192.168.33.30}:4096:4096/udp"
@@ -53,6 +54,8 @@ services:
       - "/sys/devices:/sys/devices:rw"
     device_cgroup_rules:
       - 'c *:* rmw'
+    security_opt:
+      - "apparmor=unconfined"
     deploy:
       resources:
         reservations:

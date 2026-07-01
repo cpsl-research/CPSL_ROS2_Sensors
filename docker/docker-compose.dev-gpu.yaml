@@ -7,6 +7,7 @@ services:
       - ROS_DOMAIN_ID=42
       - DISPLAY=${DISPLAY:-:0}
       - QT_X11_NO_MITSHM=1
+      - LD_LIBRARY_PATH=/opt/ros/jazzy/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}
     ports:
       # TI Radar DCA1000 Streaming Port Forwarding
       - "4096:4096/udp"
@@ -52,6 +53,8 @@ services:
       - "/sys/devices:/sys/devices:rw"
     device_cgroup_rules:
       - 'c *:* rmw'
+    security_opt:
+      - "apparmor=unconfined"
     deploy:
       resources:
         reservations:

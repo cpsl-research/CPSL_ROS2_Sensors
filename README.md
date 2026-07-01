@@ -289,6 +289,12 @@ Configure static or link-local IP addresses on the host machine network adapters
 2. **Livox Mid360 Lidar:** Set host adapter to static IP `192.168.1.78` (or matching custom `.env` IP), netmask `255.255.255.0`.
 3. **Ouster Lidar:** Set host adapter to link-local IP `169.254.1.1`, netmask `255.255.0.0`.
 
+##### Intel RealSense Camera (USB3 / IMU)
+To enable Intel RealSense camera IMU streaming (gyroscope/accelerometer) inside containerized environments:
+1. **Sysfs Mount:** The container must mount `/sys/devices` as read-write (`rw`) to allow the RealSense SDK to set the power state of the IIO/IMU scan elements and walk up the device hierarchy.
+2. **AppArmor Unconfining:** The container must run with `security_opt: ["apparmor=unconfined"]` (which is configured by default in all four compose targets). This allows the SDK to write enabling flags to the camera sysfs directories without being blocked by AppArmor's default `/sys/**` write prevention. Other parts of `/sys` remain safely read-only as defined by Docker's layout.
+
+
 #### 5. Automated Verification & Integration Testing
 You can verify the repository installation (both on the host and inside Docker containers) as well as the basic operation of any connected physical sensors (e.g. RealSense camera, TI Radar) using the automated integration testing script:
 ```bash
