@@ -237,11 +237,15 @@ def resolve_device_roles(connected_radars, connected_realsenses, config):
         "BACK_RADAR_DATA": "/dev/null",
         "DOWN_RADAR_CLI": "/dev/null",
         "DOWN_RADAR_DATA": "/dev/null",
+        "HOST_DRI_PATH": "/dev/null",
     }
     for i in range(6):
         mappings[f"REALSENSE_DEV_{i}"] = "/dev/null"
     for i in range(3):
         mappings[f"REALSENSE_HID_{i}"] = "/dev/null"
+
+    if os.path.exists("/dev/dri"):
+        mappings["HOST_DRI_PATH"] = "/dev/dri"
 
     # 1. Map Radars
     radar_config = config.get("radars", [])

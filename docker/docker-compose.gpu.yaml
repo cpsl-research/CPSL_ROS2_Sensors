@@ -44,9 +44,13 @@ services:
       - source: "${REALSENSE_HID_2:-/dev/null}"
         target: "${REALSENSE_HID_2:-/dev/null}"
         permissions: rmw
+      # GPU/DRM Acceleration Devices
+      - "${HOST_DRI_PATH:-/dev/null}:${HOST_DRI_PATH:-/dev/null}"
     volumes:
       - "/tmp/.X11-unix:/tmp/.X11-unix:ro"
       - "${HOME}/.Xauthority:/root/.Xauthority:ro"
+      # Intel RealSense Camera IIO Sysfs (most specific path containing devices without colons)
+      - "/sys/devices:/sys/devices:rw"
     device_cgroup_rules:
       - 'c *:* rmw'
     deploy:

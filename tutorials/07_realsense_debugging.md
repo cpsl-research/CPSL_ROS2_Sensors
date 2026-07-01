@@ -101,5 +101,8 @@ ros2 launch cpsl_ros2_sensors_bringup default_template_bringup.launch.py \
   enable_gyro:=false \
   enable_accel:=false
 ```
-*(If IMU data is strictly required, you must run the container with higher privileges or mount `/sys` as read-write (`rw`) inside the compose configuration files).*
+*(If IMU data is required, you must mount `/sys/devices` as read-write (`rw`) inside the docker-compose configuration files, which is done by default. Attempting to mount only specific subdirectories for the RealSense device (e.g. `/sys/devices/pci0000:00/...`) will fail due to:
+1. **Docker Delimiter Parsing Conflict:** Docker interprets any colon (`:`) as a field separator in volume mounts (even in long syntax binds), causing daemon-level parsing failure on PCI paths (like `pci0000:00`).
+2. **SDK Association Constraints:** The RealSense SDK matches cameras and IMU devices by walking up the host `/sys/devices` path structure to check parent descriptors. Mapping target paths to customized locations without colons breaks this pairing logic, disabling the IMU stream.
+Hence, mounting the entire `/sys/devices` folder as `rw` is structurally necessary for IMU support).*
 

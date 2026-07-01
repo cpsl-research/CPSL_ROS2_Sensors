@@ -13,5 +13,4 @@ MESA: error: Failed to query drm device.
 glx: failed to create dri3 screen
 failed to load driver: iris
 
-
 6. expand the detect devices to include all possible sensors (e.g. lidars, dca1000's if possible) [DON"T ACT ON THIS ONE YET]

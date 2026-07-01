@@ -92,6 +92,11 @@ fi
 
 HOST_RADAR_IP="192.168.33.30" # Default Radar Host IP
 
+HOST_DRI_PATH_VAL="/dev/null"
+if [[ -e "/dev/dri" ]]; then
+    HOST_DRI_PATH_VAL="/dev/dri"
+fi
+
 update_env_file() {
     local target_file="$1"
     if [[ -f "$target_file" ]]; then
@@ -135,6 +140,11 @@ update_env_file() {
                         echo "HOST_PARENT_INTERFACE=$HOST_PARENT_INTERFACE" >> "$temp_env"
                         updated_keys[HOST_PARENT_INTERFACE]=1
                         ;;
+                    HOST_DRI_PATH)
+                        echo "HOST_DRI_PATH=$HOST_DRI_PATH_VAL" >> "$temp_env"
+                        updated_keys[HOST_DRI_PATH]=1
+                        ;;
+
                     *)
                         echo "$line" >> "$temp_env"
                         ;;
@@ -150,6 +160,7 @@ update_env_file() {
         [[ -z "${updated_keys[HOST_RADAR_IP]:-}" ]] && echo "HOST_RADAR_IP=$HOST_RADAR_IP" >> "$temp_env"
         [[ -z "${updated_keys[DISPLAY]:-}" ]] && echo "DISPLAY=$DISPLAY_VAL" >> "$temp_env"
         [[ -z "${updated_keys[HOST_PARENT_INTERFACE]:-}" ]] && echo "HOST_PARENT_INTERFACE=$HOST_PARENT_INTERFACE" >> "$temp_env"
+        [[ -z "${updated_keys[HOST_DRI_PATH]:-}" ]] && echo "HOST_DRI_PATH=$HOST_DRI_PATH_VAL" >> "$temp_env"
         
         mv "$temp_env" "$target_file"
     else
@@ -162,6 +173,7 @@ HOST_OUSTER_IP=$HOST_OUSTER_IP
 HOST_RADAR_IP=$HOST_RADAR_IP
 DISPLAY=$DISPLAY_VAL
 HOST_PARENT_INTERFACE=$HOST_PARENT_INTERFACE
+HOST_DRI_PATH=$HOST_DRI_PATH_VAL
 EOF
     fi
 }

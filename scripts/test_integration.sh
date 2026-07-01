@@ -254,10 +254,16 @@ RADAR_TEST="SKIPPED"
 if [[ "$RADAR_ACTIVE" == true ]]; then
     info "Starting TI Radar ROS2 Smoke Test (Timeout: ${TIMEOUT}s)..."
     
+    # Select appropriate config file (container paths vs host paths)
+    CONFIG_FILE="front_radar_IWR1843_stress_test.json"
+    if [[ "$IS_DOCKER" == true ]]; then
+        CONFIG_FILE="front_radar_IWR1843_stress_test_docker.json"
+    fi
+
     # Run bringup launch in the background
-    # (Only tests the bringup loader node since radar configuration might fail if mismatch)
     ros2 launch cpsl_ros2_sensors_bringup default_template_bringup.launch.py \
         front_radar_enable:=true \
+        front_radar_config_file:="$CONFIG_FILE" \
         rviz:=false > radar_test_run.log 2>&1 &
     LAUNCH_PID=$!
     
@@ -287,15 +293,48 @@ if [[ "$RADAR_ACTIVE" == true ]]; then
     fi
 fi
 
+header "Phase 5: GUI / RViz2 Driver Smoke Test"
+GUI_TEST="SKIPPED"
+if [[ -n "${DISPLAY:-}" ]]; then
+    info "Starting RViz2 GUI Smoke Test (Timeout: 5s)..."
+    
+    # Run rviz2 in the background using timeout
+    set +e
+    timeout 5 rviz2 > rviz2_test_run.log 2>&1
+    RV_STATUS=$?
+    set -e
+    
+    # If the exit status is 124, it means the process timed out, which implies
+    # it started and ran for 5 seconds without crashing!
+    if [ $RV_STATUS -eq 124 ]; then
+        # Double check log for Mesa or iris driver failures
+        if grep -qE "MESA: error|failed to load driver|failed to create dri3 screen" rviz2_test_run.log; then
+            error "RViz2 launched but encountered MESA driver/DRI3 errors:"
+            grep -E "MESA: error|failed to load driver|failed to create dri3 screen" rviz2_test_run.log || true
+            GUI_TEST="FAILED"
+        else
+            success "RViz2 launched and initialized hardware rendering successfully."
+            GUI_TEST="PASSED"
+        fi
+    else
+        error "RViz2 failed to launch (Exit code: $RV_STATUS). Log output:"
+        cat rviz2_test_run.log
+        GUI_TEST="FAILED"
+    fi
+else
+    info "DISPLAY environment variable not set. Skipping GUI smoke test."
+fi
+
 # ── Summary Report ────────────────────────────────────────────────────────────
 header "Test Verification Summary"
 echo "-----------------------------------------------"
 echo -e "Compilation Test         : \e[32mPASSED\e[0m"
 echo -e "Intel RealSense Camera   : $( [[ "$REALSENSE_TEST" == "PASSED" ]] && echo -e "\e[32mPASSED\e[0m" || ( [[ "$REALSENSE_TEST" == "FAILED" ]] && echo -e "\e[31mFAILED\e[0m" || echo -e "\e[33mSKIPPED (Not connected)\e[0m" ) )"
 echo -e "TI Radar Sensor          : $( [[ "$RADAR_TEST" == "PASSED" ]] && echo -e "\e[32mPASSED\e[0m" || ( [[ "$RADAR_TEST" == "FAILED" ]] && echo -e "\e[31mFAILED\e[0m" || echo -e "\e[33mSKIPPED (Not connected)\e[0m" ) )"
+echo -e "GUI / RViz2 Rendering    : $( [[ "$GUI_TEST" == "PASSED" ]] && echo -e "\e[32mPASSED\e[0m" || ( [[ "$GUI_TEST" == "FAILED" ]] && echo -e "\e[31mFAILED\e[0m" || echo -e "\e[33mSKIPPED (No Display)\e[0m" ) )"
 echo "-----------------------------------------------"
 
-if [[ "$REALSENSE_TEST" == "FAILED" || "$RADAR_TEST" == "FAILED" ]]; then
+if [[ "$REALSENSE_TEST" == "FAILED" || "$RADAR_TEST" == "FAILED" || "$GUI_TEST" == "FAILED" ]]; then
     error "Some integration checks failed. Refer to logs (*_test_run.log)."
     exit 1
 else
