@@ -43,7 +43,21 @@ This tells you:
 - RealSense Serial: `251343061404` (USB Path: `4-1`)
 
 ### Step B: Configure Roles in `device_config.json`
+
+> `docker/device_config.json` holds **this machine's** board serials, so it is
+> gitignored. The tracked template is `docker/device_config.example.json`.
+> Copy it, or just run `setup_radar_udev.sh`, which seeds it for you:
+>
+> ```bash
+> cp docker/device_config.example.json docker/device_config.json
+> ```
+
 Open the configuration file at 📁 **`docker/device_config.json`** and map these IDs to roles:
+
+> **A role with an empty `id` produces no symlink and no error.** If every role
+> is empty the rules file still installs and still grants permissions — the only
+> symptom is that `/dev/ti_*_cli` never appears. `setup_radar_udev.sh` now warns
+> about this explicitly, but it is worth knowing why it happens.
 
 *   **Mapping by Serial Number (Recommended for single-machine setups)**:
     ```json

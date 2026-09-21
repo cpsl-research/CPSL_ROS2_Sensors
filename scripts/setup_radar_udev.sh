@@ -15,9 +15,37 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_FILE="$SCRIPT_DIR/../docker/device_config.json"
 RULES_FILE="/etc/udev/rules.d/98-ti-radar.rules"
 
+# device_config.json is machine-specific (it holds this host's board serials)
+# and is gitignored. Seed it from the tracked example so a fresh checkout has
+# something to edit rather than an error.
+EXAMPLE_FILE="$SCRIPT_DIR/../docker/device_config.example.json"
 if [[ ! -f "$CONFIG_FILE" ]]; then
-    echo "Error: device_config.json not found at $CONFIG_FILE" 1>&2
-    exit 1
+    if [[ -f "$EXAMPLE_FILE" ]]; then
+        cp "$EXAMPLE_FILE" "$CONFIG_FILE"
+        echo "Created $CONFIG_FILE from device_config.example.json."
+    else
+        echo "Error: neither device_config.json nor device_config.example.json found" 1>&2
+        exit 1
+    fi
+fi
+
+# A role with no id generates no SYMLINK line. With every role empty the rules
+# file still installs cleanly and still contains the permissions fallback, so
+# the only symptom is that /dev/ti_*_cli never appears and nothing says why.
+# Say why.
+if ! python3 -c '
+import json, sys
+cfg = json.load(open(sys.argv[1]))
+sys.exit(0 if any((r.get("id") or "").strip() for r in cfg.get("radars", [])) else 1)
+' "$CONFIG_FILE"; then
+    echo ""
+    echo "WARNING: no radar role in $CONFIG_FILE has a device id."
+    echo "         Permissions rules will be installed, but NO /dev/ti_*_cli or"
+    echo "         /dev/ti_*_data symlinks will be created."
+    echo "         Find your board's serial with:"
+    echo "           udevadm info -q property -n /dev/ttyACM0 | grep ID_SERIAL_SHORT"
+    echo "         then set it as the \"id\" for the appropriate role and re-run."
+    echo ""
 fi
 
 echo "Generating TI Radar udev rules from $CONFIG_FILE..."

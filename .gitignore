@@ -8,3 +8,4 @@ log_docker/*
 *.vscode
 .env
 docker/.env
+docker/device_config.json

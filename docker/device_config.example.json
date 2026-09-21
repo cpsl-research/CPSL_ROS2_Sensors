@@ -2,7 +2,7 @@
   "radars": [
     {
       "role": "FRONT_RADAR",
-      "id": "R2101050"
+      "id": ""
     },
     {
       "role": "BACK_RADAR",
@@ -15,6 +15,6 @@
   ],
   "realsense": {
     "role": "REALSENSE",
-    "id": "251343061404"
+    "id": ""
   }
 }
