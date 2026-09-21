@@ -36,9 +36,14 @@ RUN locale-gen en_US en_US.UTF-8 && \
 RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null
 
-# Install ROS2 Jazzy Desktop & ros-dev-tools
+# ROS 2 variant. ros-base is the default because this image runs headless on a
+# robot: ros-jazzy-desktop was measured at 203.7 s and the bulk of a 9.35 GB
+# image, almost all of it rviz2 and the GUI stack that a robot never displays.
+# Pass ROS_PACKAGES=ros-jazzy-desktop for a workstation image. Note that the
+# ouster block below installs ros-jazzy-rviz2 explicitly when it needs it.
+ARG ROS_PACKAGES="ros-jazzy-ros-base"
 RUN apt-get update && apt-get install -y \
-    ros-jazzy-desktop \
+    ${ROS_PACKAGES} \
     ros-dev-tools \
     && rm -rf /var/lib/apt/lists/*
 
@@ -55,23 +60,13 @@ RUN apt-get update && \
 # Set workdir
 WORKDIR /workspace/CPSL_ROS2_Sensors
 
-# Copy the local repository files into the container
-COPY . /workspace/CPSL_ROS2_Sensors
-
-# Setup submodules and sensor dependencies depending on SENSORS build arg
+# Everything from here down to the COPY below is a DEPENDENCY layer: none of it
+# reads the workspace source, so editing source no longer invalidates the
+# Livox-SDK2 compile and the apt installs. The source copy happens afterwards.
 ARG SENSORS=all
 
 # Save the enabled sensors list to a system file so that build scripts can query it
 RUN echo "${SENSORS}" > /etc/cpsl_sensors_list
-
-# Disable unused sensor packages by adding COLCON_IGNORE
-RUN S_LIST="${SENSORS}" && \
-    if [ "$S_LIST" = "all" ]; then S_LIST="radar,livox,ouster,realsense,leapmotion,vicon"; fi && \
-    if ! echo ",$S_LIST," | grep -q ",radar,"; then touch src/CPSL_TI_Radar_ROS2/COLCON_IGNORE; fi && \
-    if ! echo ",$S_LIST," | grep -q ",livox,"; then touch src/CPSL_ROS_livox_ros_driver2/COLCON_IGNORE; fi && \
-    if ! echo ",$S_LIST," | grep -q ",ouster,"; then touch src/ouster-ros/COLCON_IGNORE; fi && \
-    if ! echo ",$S_LIST," | grep -q ",leapmotion,"; then touch src/CPSL_ROS2_LeapMotion/COLCON_IGNORE; fi && \
-    if ! echo ",$S_LIST," | grep -q ",vicon,"; then touch src/ros2-vicon-bridge/COLCON_IGNORE; fi
 
 # Install packages needed for selected sensors
 RUN apt-get update && \
@@ -88,8 +83,7 @@ RUN apt-get update && \
         git clone https://github.com/Livox-SDK/Livox-SDK2.git /opt/Livox-SDK2 && \
         cd /opt/Livox-SDK2 && mkdir build && cd build && \
         cmake .. -DCMAKE_C_COMPILER=gcc-9 -DCMAKE_CXX_COMPILER=g++-9 && \
-        make -j$(nproc) && make install && cd /workspace/CPSL_ROS2_Sensors && \
-        bash src/CPSL_ROS_livox_ros_driver2/build_CPSL_ROS2_Sensors.sh jazzy; \
+        make -j$(nproc) && make install && cd /workspace/CPSL_ROS2_Sensors; \
     fi && \
     # ── Ouster ──────────────────────
     if echo ",$S_LIST," | grep -q ",ouster,"; then \
@@ -134,9 +128,32 @@ RUN apt-get update && \
     fi && \
     rm -rf /var/lib/apt/lists/*
 
-# Run poetry setup inside workspace
+# Python dependencies from the manifests only. package-mode = false, so poetry
+# never builds the root project and does not need the source tree.
+COPY pyproject.toml poetry.lock README.md ./
 RUN poetry env use /usr/bin/python3.12 && \
     poetry install
+
+# ---- source copy. Everything below re-runs when source changes. ----
+COPY . /workspace/CPSL_ROS2_Sensors
+
+# Disable unused sensor packages by adding COLCON_IGNORE
+RUN S_LIST="${SENSORS}" && \
+    if [ "$S_LIST" = "all" ]; then S_LIST="radar,livox,ouster,realsense,leapmotion,vicon"; fi && \
+    if ! echo ",$S_LIST," | grep -q ",radar,"; then touch src/CPSL_TI_Radar_ROS2/COLCON_IGNORE; fi && \
+    if ! echo ",$S_LIST," | grep -q ",livox,"; then touch src/CPSL_ROS_livox_ros_driver2/COLCON_IGNORE; fi && \
+    if ! echo ",$S_LIST," | grep -q ",ouster,"; then touch src/ouster-ros/COLCON_IGNORE; fi && \
+    if ! echo ",$S_LIST," | grep -q ",leapmotion,"; then touch src/CPSL_ROS2_LeapMotion/COLCON_IGNORE; fi && \
+    if ! echo ",$S_LIST," | grep -q ",vicon,"; then touch src/ros2-vicon-bridge/COLCON_IGNORE; fi
+
+# livox_ros_driver2 ships package_ROS1.xml / package_ROS2.xml and a script that
+# picks one; without it colcon fails with "package.xml does not exist", which
+# reads like a corrupt checkout rather than a missing prep step.
+RUN S_LIST="${SENSORS}" && \
+    if [ "$S_LIST" = "all" ]; then S_LIST="radar,livox,ouster,realsense,leapmotion,vicon"; fi && \
+    if echo ",$S_LIST," | grep -q ",livox,"; then \
+        bash src/CPSL_ROS_livox_ros_driver2/build_CPSL_ROS2_Sensors.sh jazzy; \
+    fi
 
 # Extra build step for leapmotion python bindings if selected
 RUN S_LIST="${SENSORS}" && \
