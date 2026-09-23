@@ -1,6 +1,9 @@
 build/
 install/
 log/
+build_docker/
+install_docker/
+log_docker/
 .git/
 .venv/
 .poetry/

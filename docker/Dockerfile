@@ -6,7 +6,6 @@ FROM ${BASE_IMAGE}
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
-ENV PATH="/root/.local/bin:$PATH"
 
 # Prevent services from starting during installation
 RUN echo '#!/bin/sh\nexit 101' > /usr/sbin/policy-rc.d && chmod +x /usr/sbin/policy-rc.d
@@ -47,9 +46,13 @@ RUN apt-get update && apt-get install -y \
     ros-dev-tools \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry
-RUN curl -sSL https://install.python-poetry.org | python3 - && \
-    poetry config virtualenvs.options.system-site-packages true
+# uv from its published image rather than an install script. The venv lives
+# OUTSIDE the source tree: the compose files bind-mount the host workspace over
+# /workspace/CPSL_ROS2_Sensors, and a venv in there would be shadowed by (or
+# collide with) the host's own .venv.
+COPY --from=ghcr.io/astral-sh/uv:0.12.16 /uv /usr/local/bin/uv
+ENV UV_PROJECT_ENVIRONMENT=/opt/cpsl-sensors-venv \
+    UV_LINK_MODE=copy
 
 # Initialize and update rosdep (ensuring apt update runs first and failing fast if update fails)
 RUN apt-get update && \
@@ -68,71 +71,30 @@ ARG SENSORS=all
 # Save the enabled sensors list to a system file so that build scripts can query it
 RUN echo "${SENSORS}" > /etc/cpsl_sensors_list
 
-# Install packages needed for selected sensors
-RUN apt-get update && \
-    S_LIST="${SENSORS}" && \
+# Per-driver system dependencies, one script each under scripts/deps/ — the
+# same scripts install.sh runs on a host and console runs when a driver is
+# enabled from its GUI, so the three can no longer drift apart. Only the deps
+# scripts are copied here, so editing source does not invalidate this layer.
+# Leap Motion's SDK comes from a repo that is not always reachable; as before,
+# the image still builds without it and says so.
+COPY scripts/deps/ /workspace/CPSL_ROS2_Sensors/scripts/deps/
+RUN S_LIST="${SENSORS}" && \
     if [ "$S_LIST" = "all" ]; then S_LIST="radar,livox,ouster,realsense,leapmotion,vicon"; fi && \
-    # ── Radar ───────────────────────
-    if echo ",$S_LIST," | grep -q ",radar,"; then \
-        echo "Radar dependencies installed via rosdep"; \
-    fi && \
-    # ── Livox ───────────────────────
-    if echo ",$S_LIST," | grep -q ",livox,"; then \
-        echo "Installing Livox dependencies..."; \
-        apt-get install -y gcc-9 g++-9 cmake && \
-        git clone https://github.com/Livox-SDK/Livox-SDK2.git /opt/Livox-SDK2 && \
-        cd /opt/Livox-SDK2 && mkdir build && cd build && \
-        cmake .. -DCMAKE_C_COMPILER=gcc-9 -DCMAKE_CXX_COMPILER=g++-9 && \
-        make -j$(nproc) && make install && cd /workspace/CPSL_ROS2_Sensors; \
-    fi && \
-    # ── Ouster ──────────────────────
-    if echo ",$S_LIST," | grep -q ",ouster,"; then \
-        echo "Installing Ouster dependencies..."; \
-        apt-get install -y \
-            ros-jazzy-pcl-ros \
-            ros-jazzy-tf2-eigen \
-            ros-jazzy-rviz2 \
-            build-essential \
-            libeigen3-dev \
-            libjsoncpp-dev \
-            libspdlog-dev \
-            libcurl4-openssl-dev \
-            libpcap-dev \
-            ros-jazzy-rmw-cyclonedds-cpp; \
-    fi && \
-    # ── Realsense ───────────────────
-    if echo ",$S_LIST," | grep -q ",realsense,"; then \
-        echo "Installing Realsense dependencies and compiling SDK from source..."; \
-        apt-get install -y ros-jazzy-librealsense2* ros-jazzy-realsense2-* \
-            libusb-1.0-0-dev libudev-dev libssl-dev pkg-config libgtk-3-dev libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev && \
-        git clone --depth 1 https://github.com/IntelRealSense/librealsense.git /opt/librealsense && \
-        cd /opt/librealsense && mkdir build && cd build && \
-        cmake ../ -DFORCE_RSUSB_BACKEND=true -DCMAKE_BUILD_TYPE=release -DBUILD_EXAMPLES=true -DBUILD_GRAPHICAL_EXAMPLES=true && \
-        make -j$(nproc) && make install && ldconfig && cd /workspace/CPSL_ROS2_Sensors; \
-    fi && \
-    # ── Leapmotion ──────────────────
-    if echo ",$S_LIST," | grep -q ",leapmotion,"; then \
-        echo "Installing Leapmotion dependencies..."; \
-        if curl -fsSL --connect-timeout 5 https://repo.ultraleap.com/apt/public.key > /tmp/ultraleap.key 2>/dev/null; then \
-            gpg --dearmor -o /usr/share/keyrings/ultraleap-archive-keyring.gpg < /tmp/ultraleap.key && \
-            echo "deb [signed-by=/usr/share/keyrings/ultraleap-archive-keyring.gpg] https://repo.ultraleap.com/apt stable main" | tee /etc/apt/sources.list.d/ultraleap.list > /dev/null && \
-            apt-get update && apt-get install -y ultraleap-hand-tracking; \
+    for s in $(echo "$S_LIST" | tr ',' ' '); do \
+        echo "=== deps: $s ==="; \
+        if [ "$s" = "leapmotion" ]; then \
+            bash scripts/deps/leapmotion.sh || echo "WARNING: Leap Motion SDK not installed."; \
         else \
-            echo "WARNING: repo.ultraleap.com is unreachable. Skipping Leapmotion SDK installation."; \
+            bash scripts/deps/$s.sh; \
         fi; \
-    fi && \
-    # ── Vicon ───────────────────────
-    if echo ",$S_LIST," | grep -q ",vicon,"; then \
-        echo "Installing Vicon dependencies..."; \
-        apt-get install -y libboost-thread-dev libboost-date-time-dev ros-jazzy-diagnostic-updater; \
-    fi && \
+    done && \
     rm -rf /var/lib/apt/lists/*
 
-# Python dependencies from the manifests only. package-mode = false, so poetry
+# Python dependencies from the manifests only. [tool.uv] package = false, so uv
 # never builds the root project and does not need the source tree.
-COPY pyproject.toml poetry.lock README.md ./
-RUN poetry env use /usr/bin/python3.12 && \
-    poetry install
+COPY pyproject.toml uv.lock README.md ./
+COPY scripts/setup_venv.sh ./scripts/setup_venv.sh
+RUN bash scripts/setup_venv.sh
 
 # ---- source copy. Everything below re-runs when source changes. ----
 COPY . /workspace/CPSL_ROS2_Sensors
@@ -155,16 +117,15 @@ RUN S_LIST="${SENSORS}" && \
         bash src/CPSL_ROS_livox_ros_driver2/build_CPSL_ROS2_Sensors.sh jazzy; \
     fi
 
-# Extra build step for leapmotion python bindings if selected
+# Leap Motion python bindings + cffi build, into the venv, when selected and
+# the SDK made it in.
 RUN S_LIST="${SENSORS}" && \
     if [ "$S_LIST" = "all" ]; then S_LIST="radar,livox,ouster,realsense,leapmotion,vicon"; fi && \
     if echo ",$S_LIST," | grep -q ",leapmotion,"; then \
         if [ ! -f /usr/share/keyrings/ultraleap-archive-keyring.gpg ]; then \
             echo "WARNING: Leapmotion SDK was not installed. Skipping cffi build."; \
         else \
-            poetry install --with leapmotion && \
-            cd submodules/leapc-python-bindings && \
-            poetry run python build_cffi.py; \
+            bash scripts/setup_venv.sh --leapmotion; \
         fi; \
     fi
 
@@ -177,7 +138,7 @@ RUN apt-get update && \
 
 # Colcon build
 RUN . /opt/ros/jazzy/setup.sh && \
-    eval "$(poetry env activate)" && \
+    . "$UV_PROJECT_ENVIRONMENT/bin/activate" && \
     S_LIST="${SENSORS}" && \
     if [ "$S_LIST" = "all" ]; then S_LIST="radar,livox,ouster,realsense,leapmotion,vicon"; fi && \
     if echo ",$S_LIST," | grep -q ",radar,"; then \

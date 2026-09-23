@@ -6,7 +6,6 @@ authors = [{ name = "David Hunt", email = "dmh89@duke.edu" }]
 license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.10, <3.13"
-package-mode = false
 dependencies = [
     "build (>=1.2.2.post1,<2.0.0)",
     "cffi (>=1.17.1,<2.0.0)",
@@ -16,16 +15,15 @@ dependencies = [
     "requests (>=2.31.0)"
 ]
 
-[tool.poetry.group.leapmotion]
-optional = true
-
-[tool.poetry.group.leapmotion.dependencies]
-leap = {path="./submodules/leapc-python-bindings/leapc-python-api", develop = true}
-
-[tool.poetry]
-package-mode = false
-
-
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+# The venv only carries python dependencies for the ROS nodes; this repo is a
+# colcon workspace, not a python package, so uv never builds or installs it.
+#
+# The venv must be created with --system-site-packages so rclpy, colcon and the
+# rest of /opt/ros stay importable (see scripts/setup_venv.sh).
+#
+# The Leap Motion bindings (submodules/leapc-python-bindings/leapc-python-api)
+# are deliberately NOT listed here: that submodule is normally not checked out,
+# and uv cannot lock a path dependency that is not on disk. When leapmotion is
+# selected, scripts/setup_venv.sh installs them into the venv directly.
+[tool.uv]
+package = false

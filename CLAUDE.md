@@ -25,12 +25,20 @@ The user leaves comments as `> **COMMENT (David):**` blocks directly in the plan
 
 ## Build Commands
 
-All builds require the Poetry virtual environment to be active first:
+Python dependencies are managed with **uv** (not poetry). Create the venv once
+— it is made with `--system-site-packages` so the ROS python packages stay
+visible — then activate it before every build:
 
 ```bash
-eval $(poetry env activate)
+bash scripts/setup_venv.sh          # add --leapmotion for the Leap Motion bindings
+source .venv/bin/activate           # or $UV_PROJECT_ENVIRONMENT/bin/activate
 source install/setup.bash  # after building
 ```
+
+Per-driver **system** dependencies (apt packages, Livox-SDK2, librealsense) live
+in `scripts/deps/<driver>.sh` — one script per driver, run as root, idempotent.
+The Dockerfile, `scripts/install.sh` and the `console` repo all call these; add
+or change a driver's system deps there and nowhere else.
 
 **First-time / full build:**
 ```bash

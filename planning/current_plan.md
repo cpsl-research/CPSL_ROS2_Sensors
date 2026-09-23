@@ -1,5 +1,85 @@
 # Current Session Plan
 
+## Tasks for Per-Driver Dependency Scripts (Track I) — COMPLETE 2026-09-23 (host install.sh run pending)
+
+Why: the per-driver system dependencies are written twice today — once in
+`docker/Dockerfile` (one `RUN` block gated on `ARG SENSORS`) and once in
+`scripts/install.sh` (with `sudo`) — and the two have already drifted (host
+RealSense is apt-only, the image compiles librealsense from source). The
+`console` repo also needs them: it runs one container and installs a driver's
+dependencies only when that driver is enabled from its GUI, so it wants to call
+this repo's steps rather than keep a third copy. Goal: one script per driver,
+called by all three, and this repo keeps working standalone exactly as today.
+
+- [x] **I0: Poetry → uv** — the whole repo moves to uv (David, 2026-09-23).
+  - `pyproject.toml`: drop `[tool.poetry]` and the poetry build backend; it is
+    already PEP 621. Add `[tool.uv] package = false`. Commit a `uv.lock`,
+    delete `poetry.lock`.
+  - The venv must see the system ROS python (rclpy, colcon), as poetry's
+    `system-site-packages = true` did: `uv venv --system-site-packages
+    --python /usr/bin/python3.12`, then `uv sync`. `.venv/` goes in `.gitignore`.
+    Builds keep the current pattern: activate the venv, then
+    `python -m colcon build ...`.
+  - Callers that share the tree between host and container (console's bind
+    mount) set `UV_PROJECT_ENVIRONMENT` so the two never share one venv.
+  - Leap Motion: `leap` is a path dependency inside a submodule that is usually
+    not checked out, and uv would fail to lock it. It leaves `pyproject.toml`;
+    when leapmotion is selected the caller runs
+    `uv pip install -e submodules/leapc-python-bindings/leapc-python-api` and
+    the cffi build, and syncs use `uv sync --inexact` so a later sync does not
+    uninstall it.
+  - Update every poetry call site: `docker/Dockerfile`, `scripts/install.sh`,
+    `scripts/rebuild.sh`, `CLAUDE.md`, README/tutorials. (The nested
+    `CPSL_TI_Radar_ROS2` repo's README mentions poetry too — out of scope, it
+    is its own repo.)
+- [x] **I1: `scripts/deps/<driver>.sh`** — one script each for `radar`, `livox`,
+  `ouster`, `realsense`, `leapmotion`, `vicon`. Contract:
+  - system dependencies only (apt packages, SDKs built into `/opt`); no
+    `sudo` inside — the caller runs it as root (Dockerfile, console's
+    container) or via `sudo bash scripts/deps/x.sh` (install.sh);
+  - idempotent and fast when already satisfied (e.g. skip the Livox-SDK2
+    compile if `/opt/Livox-SDK2/build` is installed), so it is safe to re-run
+    on every container start;
+  - no workspace/user/host-config side effects — `usermod`, `.bashrc` edits,
+    Livox/Ouster IP patching and `build_CPSL_ROS2_Sensors.sh` stay in
+    `install.sh`;
+  - `radar.sh` exists but is (near) empty — its deps come from rosdep — so
+    callers never special-case a driver.
+  - Added during implementation: `usb_cam.sh` (apt `ros-jazzy-usb-cam`), since
+    console configures USB cameras; `install.sh --sensors` accepts `usb_cam`.
+- [x] **I2: Dockerfile uses them** — replace the big per-sensor `RUN` block with
+  `COPY scripts/deps/ ...` + a loop over `${SENSORS}` calling each script. Keep
+  it before the source `COPY` so the dependency layer cache is unchanged in
+  spirit (only `scripts/deps/` invalidates it).
+- [x] **I3: `install.sh` uses them** — replace each per-sensor apt/SDK block
+  with `sudo bash scripts/deps/<driver>.sh`; keep the host-only steps.
+- [x] **I4: Verify** — `docker build` with `SENSORS=radar` and
+  `SENSORS=radar,livox` still succeeds and the radar launch still runs; run
+  `install.sh --sensors radar --skip-build` on a host.
+  - Done 2026-09-23: both image builds exit 0; the deps scripts also ran as
+    root in console's container (Livox-SDK2 compiled, re-runs are no-ops) and
+    the generated launch brought up robot_state_publisher/joint_state_publisher
+    there. `scripts/setup_venv.sh` verified on the host (rclpy + numpy 1.26.4 +
+    cv2 import). **Not done:** a host `install.sh` run — it needs sudo, so David
+    should run it once on a host.
+- [x] **I5: Docs** — README/tutorial note describing `scripts/deps/` and that
+  external tools (console) call them; note that console's own container runs
+  `privileged` for hot-plug and dynamic driver enable, while this repo's
+  compose files keep the non-privileged device mapping (decision 2026-06-28).
+
+> **Resolved (David, 2026-09-23):**
+> 1. RealSense: `deps/realsense.sh` does the from-source librealsense build
+>    (`FORCE_RSUSB_BACKEND`), matching the image that H2 verified. The host
+>    `install.sh` switches to it as well, replacing the apt-only path. The
+>    script does exactly what the image's realsense block does today (apt
+>    `ros-jazzy-librealsense2*`/`realsense2-*` + build deps, then the source
+>    build into `/usr/local`).
+> 2. Leap Motion: `deps/leapmotion.sh` does the Ultraleap apt repo + package
+>    only; the venv install + cffi build stay with the callers (see I0).
+> 3. Poetry → uv for the whole repo (I0).
+
+---
+
 Tasks for Docker Integration & Networking Isolation:
 
 - [x] **C1: Script `install_cpsl_sensors_docker.sh`** — Implement a non-interactive setup script suitable for checking the Docker Engine and running/building containers.

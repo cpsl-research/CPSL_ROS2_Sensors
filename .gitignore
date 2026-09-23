@@ -5,6 +5,7 @@ install_docker/*
 build_docker/*
 log_docker/*
 *.pyc
+.venv/
 *.vscode
 .env
 docker/.env

@@ -22,12 +22,18 @@ source install/setup.$(basename $SHELL)
 
 | Flag | Argument | Default | Description |
 |------|----------|---------|-------------|
-| `--sensors` | comma-separated | `radar,livox` | Which sensors to install. Valid values: `radar`, `livox`, `ouster`, `realsense`, `leapmotion`, `vicon`. Controls which submodules are cloned and which SDK dependencies are installed. |
+| `--sensors` | comma-separated | `radar,livox` | Which sensors to install. Valid values: `radar`, `livox`, `ouster`, `realsense`, `leapmotion`, `vicon`, `usb_cam`. Controls which submodules are cloned and which SDK dependencies are installed. |
 | `--livox-ip` | `XX` (two digits) | _(none)_ | Last two digits of the Livox Mid360 serial number. Auto-patches `host_ip` in `MID360_config.json`. |
 | `--ouster-hostname` | hostname or IP | _(none)_ | Auto-patches `sensor_hostname` in `ouster_configs/driver_params.yaml`. |
 | `--skip-build` | _(flag)_ | off | Skip the colcon build step. Useful for setting up dependencies before hardware is connected. |
 
 If ROS2 Jazzy is not yet installed, run `bash scripts/install_ros2.sh` instead — it installs ROS2 first, then hands off to `install.sh`.
+
+### Where dependencies come from
+
+- **System dependencies, one script per driver:** `scripts/deps/<driver>.sh` (`radar`, `livox`, `ouster`, `realsense`, `leapmotion`, `vicon`, `usb_cam`). Each installs only that driver's apt packages / SDKs (Livox-SDK2 and librealsense are built from source under `/opt` and installed to `/usr/local`), runs as root, and is a quick no-op when already satisfied. `install.sh`, the Docker image and the [console](https://github.com/cpsl-research/console) GUI all call these same scripts, so a driver's dependencies are changed in exactly one place.
+- **ROS dependencies:** `rosdep install --from-paths src ...`, for whichever driver submodules are checked out.
+- **Python dependencies:** [uv](https://docs.astral.sh/uv/) (`pyproject.toml` + `uv.lock`). `bash scripts/setup_venv.sh` creates `.venv` with `--system-site-packages`, so the ROS python packages stay importable; activate it before building (`source .venv/bin/activate`). Set `UV_PROJECT_ENVIRONMENT` to put the venv elsewhere — do this whenever a host and a container share the same checkout, so they never share one venv.
 
 ---
 
@@ -295,7 +301,17 @@ To enable Intel RealSense camera IMU streaming (gyroscope/accelerometer) inside 
 2. **AppArmor Unconfining:** The container must run with `security_opt: ["apparmor=unconfined"]` (which is configured by default in all four compose targets). This allows the SDK to write enabling flags to the camera sysfs directories without being blocked by AppArmor's default `/sys/**` write prevention. Other parts of `/sys` remain safely read-only as defined by Docker's layout.
 
 
-#### 5. Automated Verification & Integration Testing
+#### 5. Running inside console (privileged)
+
+The [console](https://github.com/cpsl-research/console) GUI vendors this repo as a submodule and runs the drivers in **its own** container rather than this repo's image. That container:
+
+- installs a driver's dependencies only when the driver is enabled in its Settings > Sensors page, by running `scripts/deps/<driver>.sh` from this repo, then `rosdep` and `scripts/setup_venv.sh`;
+- builds into `build_docker/` / `install_docker/` (like this repo's own image and `rebuild.sh`), never the host's `install/`;
+- runs **`privileged: true`** with `/dev` mounted. This is a deliberate difference from this repo's compose files, which stay non-privileged and map named devices (decision 2026-06-28). console enables and disables drivers at run time and must see devices plugged in after it starts, which a fixed `devices:` list cannot do. The trade-off — root in that container is close to root on the host — and how console's token guards it are documented in console's `README.md` and `docs/DOCKERIZATION.md`.
+
+Nothing in this repo depends on console: the deps scripts are plain root shell scripts with no console-specific behaviour.
+
+#### 6. Automated Verification & Integration Testing
 You can verify the repository installation (both on the host and inside Docker containers) as well as the basic operation of any connected physical sensors (e.g. RealSense camera, TI Radar) using the automated integration testing script:
 ```bash
 # Run on the host (auto-detects environment, builds, and smoke-tests connected hardware):

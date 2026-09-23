@@ -99,6 +99,19 @@ All work on branches `feat/phase1-dca1000-integration` (CPSL_TI_Radar_ROS2) and 
 
 ---
 
+## Track I: Per-Driver Dependency Scripts, Poetry → uv — COMPLETE ✓ (host install.sh run pending)
+
+- **I0** — Replace poetry with uv across the repo (venv with system site
+  packages so ROS python stays visible; Leap Motion bindings installed by the
+  caller, outside the lock).
+- **I1–I5** — Extract each driver's system dependencies into
+  `scripts/deps/<driver>.sh`, called by the Dockerfile, `install.sh`, and
+  external tools (the `console` repo installs a driver's deps when it is
+  enabled from its GUI). See `planning/current_plan.md` for the task list and
+  open questions.
+
+---
+
 ## Decisions Log
 
 | Date | Decision |
@@ -124,3 +137,6 @@ All work on branches `feat/phase1-dca1000-integration` (CPSL_TI_Radar_ROS2) and 
 | 2026-06-28 | Split the host udev rules installation into two separate scripts (`setup_radar_udev.sh` and `setup_realsense_udev.sh`) and create a dedicated tutorial (`06_udev_setup.md`) explaining custom udev settings, hardware VID/PID details, and how to verify device bindings on the host. |
 | 2026-06-28 | Decouple device discovery from the installer. Implement a standalone `detect_devices.sh` script reading from `docker/device_config.json` that maps physical hardware (USB path or serial number) to specific radar/camera roles (`FRONT_RADAR`, `BACK_RADAR`, `DOWN_RADAR`, `REALSENSE`) to output custom environment variables to `.env`. |
 | 2026-06-30 | Add Track H to design/verify RealSense, special docker configs, usbguard workaround, and non-destructive .env script updates. |
+| 2026-09-23 | Per-driver system dependencies move to `scripts/deps/<driver>.sh` (root, idempotent), the single source for the Dockerfile, `install.sh` and console. RealSense uses the from-source librealsense build everywhere (what H2 verified). |
+| 2026-09-23 | Poetry replaced by uv: `uv.lock`, `scripts/setup_venv.sh` (venv with system site-packages); Leap Motion bindings installed by the caller, outside the lock. |
+| 2026-09-23 | console runs these drivers in its own privileged container; this repo's compose files stay non-privileged. |

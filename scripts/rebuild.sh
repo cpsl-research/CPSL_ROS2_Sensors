@@ -12,15 +12,20 @@ if [ -f /.dockerenv ]; then
     set +u
     . /opt/ros/jazzy/setup.sh
     set -u
-    if command -v poetry &>/dev/null; then
-        eval "$(poetry env activate)"
-    fi
 else
     if [ -f /opt/ros/jazzy/setup.bash ]; then
         set +u
         source /opt/ros/jazzy/setup.bash
         set -u
     fi
+fi
+
+# The uv venv (scripts/setup_venv.sh), so python nodes get its interpreter.
+VENV="${UV_PROJECT_ENVIRONMENT:-$WORKSPACE_ROOT/.venv}"
+if [ -f "$VENV/bin/activate" ]; then
+    set +u
+    source "$VENV/bin/activate"
+    set -u
 fi
 
 BUILD_BASE="build"

@@ -6,7 +6,7 @@
 #   bash scripts/install.sh [--sensors <list>] [--livox-ip <XX>] \
 #                           [--ouster-hostname <host>] [--skip-build]
 #
-# --sensors   Comma-separated subset of: radar,livox,ouster,realsense,leapmotion,vicon
+# --sensors   Comma-separated subset of: radar,livox,ouster,realsense,leapmotion,vicon,usb_cam
 #             Default: radar,livox
 # --livox-ip  Last two digits of the Livox Mid360 serial number (sets static host IP)
 # --ouster-hostname  Hostname or IP of the Ouster sensor
@@ -34,7 +34,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-VALID_SENSORS="radar livox ouster realsense leapmotion vicon"
+VALID_SENSORS="radar livox ouster realsense leapmotion vicon usb_cam"
 for s in $(echo "$SENSORS" | tr ',' ' '); do
     if ! echo "$VALID_SENSORS" | grep -qw "$s"; then
         echo "ERROR: unknown sensor '$s'. Valid options: $VALID_SENSORS"
@@ -93,21 +93,31 @@ for i in "${!SUBMODULE_PATHS[@]}"; do
     fi
 done
 
-# ── Poetry ─────────────────────────────────────────────────────────────────────
-header "Step 3: Poetry"
-if ! command -v poetry &>/dev/null; then
-    echo "Poetry not found — installing..."
-    curl -sSL https://install.python-poetry.org | python3 -
+# ── uv + venv ──────────────────────────────────────────────────────────────────
+header "Step 3: uv"
+if ! command -v uv &>/dev/null; then
+    echo "uv not found — installing..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
     export PATH="${HOME}/.local/bin:$PATH"
 fi
-echo "Poetry version: $(poetry --version)"
+echo "uv version: $(uv --version)"
 
-header "Step 4: Poetry system-site-packages"
-poetry config virtualenvs.options.system-site-packages true
+header "Step 4: Per-sensor system dependencies"
+# One script per driver (scripts/deps/), shared with the Dockerfile and with
+# console. Each runs as root, installs system packages/SDKs only, and is a no-op
+# when already satisfied.
+for s in $(echo "$SENSORS" | tr ',' ' '); do
+    echo "--- deps: $s ---"
+    sudo bash scripts/deps/"$s".sh
+done
 
 header "Step 5: Python environment"
-poetry env use /usr/bin/python3.12
-poetry install
+# .venv with system site-packages, so the ROS python packages stay visible.
+if contains "$SENSORS" leapmotion; then
+    bash scripts/setup_venv.sh --leapmotion
+else
+    bash scripts/setup_venv.sh
+fi
 
 header "Step 6: rosdep"
 sudo apt-get update
@@ -135,20 +145,7 @@ fi
 if contains "$SENSORS" livox; then
     echo "--- livox ---"
 
-    # Install gcc-9 for Livox-SDK2 build
-    sudo apt install -y gcc-9 g++-9 cmake
-
-    # Clone and build Livox-SDK2 if not already present
-    LIVOX_SDK_DIR="/opt/Livox-SDK2"
-    if [ ! -d "$LIVOX_SDK_DIR" ]; then
-        sudo git clone https://github.com/Livox-SDK/Livox-SDK2.git "$LIVOX_SDK_DIR"
-    fi
-    pushd "$LIVOX_SDK_DIR" > /dev/null
-    sudo mkdir -p build && cd build
-    sudo cmake .. -DCMAKE_C_COMPILER=gcc-9 -DCMAKE_CXX_COMPILER=g++-9
-    sudo make -j"$(nproc)"
-    sudo make install
-    popd > /dev/null
+    # Livox-SDK2 itself was installed by scripts/deps/livox.sh in Step 4.
 
     # Configure Livox driver package.xml
     bash src/CPSL_ROS_livox_ros_driver2/build_CPSL_ROS2_Sensors.sh jazzy
@@ -181,19 +178,7 @@ fi
 # ouster ───────────────────────────────────────────────────────────────────────
 if contains "$SENSORS" ouster; then
     echo "--- ouster ---"
-    sudo apt install -y \
-        fping \
-        ros-jazzy-pcl-ros \
-        ros-jazzy-tf2-eigen \
-        rviz2 \
-        build-essential \
-        libeigen3-dev \
-        libjsoncpp-dev \
-        libspdlog-dev \
-        libcurl4-openssl-dev \
-        libpcap-dev \
-        ros-jazzy-rmw-cyclonedds-cpp
-
+    # Build dependencies were installed by scripts/deps/ouster.sh in Step 4.
     if ! grep -q "RMW_IMPLEMENTATION=rmw_cyclonedds_cpp" "$RC_FILE" 2>/dev/null; then
         echo "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp" >> "$RC_FILE"
         echo "  Appended RMW_IMPLEMENTATION to $RC_FILE"
@@ -213,45 +198,20 @@ PYEOF
     fi
 fi
 
-# realsense ────────────────────────────────────────────────────────────────────
-if contains "$SENSORS" realsense; then
-    echo "--- realsense ---"
-    sudo apt install -y "ros-jazzy-librealsense2*" "ros-jazzy-realsense2-*"
+# usb_cam ──────────────────────────────────────────────────────────────────────
+if contains "$SENSORS" usb_cam; then
+    echo "--- usb_cam ---"
+    sudo usermod -a -G video "$USER"
+    echo "  Log out and back in so the video group takes effect."
 fi
 
-# leapmotion ───────────────────────────────────────────────────────────────────
-if contains "$SENSORS" leapmotion; then
-    echo "--- leapmotion ---"
-    # Add Ultraleap apt repo
-    if [ ! -f /etc/apt/sources.list.d/ultraleap.list ]; then
-        curl -fsSL https://repo.ultraleap.com/apt/public.key \
-            | sudo gpg --dearmor -o /usr/share/keyrings/ultraleap-archive-keyring.gpg
-        echo "deb [signed-by=/usr/share/keyrings/ultraleap-archive-keyring.gpg] \
-https://repo.ultraleap.com/apt stable main" \
-            | sudo tee /etc/apt/sources.list.d/ultraleap.list > /dev/null
-        sudo apt update
-    fi
-    sudo apt install -y ultraleap-hand-tracking
-    poetry install --with leapmotion
-    # Build cffi bindings
-    pushd submodules/leapc-python-bindings > /dev/null
-    poetry run python build_cffi.py
-    popd > /dev/null
-fi
-
-# vicon ────────────────────────────────────────────────────────────────────────
-if contains "$SENSORS" vicon; then
-    echo "--- vicon ---"
-    sudo apt install -y \
-        libboost-thread-dev \
-        libboost-date-time-dev \
-        ros-jazzy-diagnostic-updater
-fi
+# realsense, leapmotion, vicon: system dependencies only, installed in Step 4
+# (the Leap Motion python bindings in Step 5). Nothing host-specific to add.
 
 # ── colcon build ───────────────────────────────────────────────────────────────
 if [[ "$SKIP_BUILD" == false ]]; then
     header "Step 8: Colcon build"
-    eval "$(poetry env activate)"
+    source "${UV_PROJECT_ENVIRONMENT:-$WORKSPACE_ROOT/.venv}/bin/activate"
     source /opt/ros/jazzy/setup.bash
 
     if contains "$SENSORS" radar; then
