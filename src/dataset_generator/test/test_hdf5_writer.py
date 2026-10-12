@@ -276,6 +276,6 @@ def test_rover_pro_radar_streams_and_mount_in_config_streams(tmp_path):
         back = json.loads(back) if isinstance(back, (str, bytes)) else back
     m = back['radar_adc']
     assert m['mount_frame'] == 'base_link'
-    assert list(m['mount_xyz']) == [-0.05, 0.02, 0.0]
-    assert list(m['mount_rpy']) == [0.0, 0.0, 1.5708]
-    assert 'left-looking' in m['mount_note']
+    assert list(m['mount_xyz']) == [-0.05, -0.02, 0.0]
+    assert list(m['mount_rpy']) == [0.0, 0.0, -1.5708]
+    assert 'right-looking' in m['mount_note']

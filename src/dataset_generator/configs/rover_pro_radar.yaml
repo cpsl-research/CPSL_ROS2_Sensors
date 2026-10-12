@@ -16,9 +16,9 @@ dataset_generator:
         qos_depth: 10
         # Radar mount relative to base_link (FLU). Annotation only, stored in config_streams.
         mount_frame: "base_link"
-        mount_xyz: [-0.05, 0.02, 0.0]
-        mount_rpy: [0.0, 0.0, 1.5708]
-        mount_note: "rough user estimate; FLU; boresight +Y (left-looking)"
+        mount_xyz: [-0.05, -0.02, 0.0]
+        mount_rpy: [0.0, 0.0, -1.5708]
+        mount_note: "rough user estimate; FLU; boresight -Y (right-looking)"
       adc_meta:
         topic: "sar_radar/adc_meta"
         type: "raw_radar_msgs/msg/ADCChirpMeta"
