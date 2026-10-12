@@ -34,7 +34,7 @@ Found 1 connected RealSense camera(s).
   - Serial: 251343061404, Path: 4-1
     Video Ports: /dev/video4, /dev/video5, /dev/video6, /dev/video7, /dev/video8, /dev/video9
     HID Ports:   /dev/hidraw0, /dev/iio:device0, /dev/iio:device1
-Mapped Radar 019C697F to role FRONT_RADAR using symlinks /dev/ti_front_radar_cli -> /dev/ttyUSB0
+Mapped Radar 019C697F to role FRONT_RADAR using symlinks /dev/radar/019C697F-cli -> /dev/ttyUSB0
 Mapped RealSense 251343061404 to REALSENSE role
 
 ```
@@ -46,7 +46,7 @@ This tells you:
 
 > `docker/device_config.json` holds **this machine's** board serials, so it is
 > gitignored. The tracked template is `docker/device_config.example.json`.
-> Copy it, or just run `setup_radar_udev.sh`, which seeds it for you:
+> Copy it:
 >
 > ```bash
 > cp docker/device_config.example.json docker/device_config.json
@@ -54,10 +54,7 @@ This tells you:
 
 Open the configuration file at 📁 **`docker/device_config.json`** and map these IDs to roles:
 
-> **A role with an empty `id` produces no symlink and no error.** If every role
-> is empty the rules file still installs and still grants permissions — the only
-> symptom is that `/dev/ti_*_cli` never appears. `setup_radar_udev.sh` now warns
-> about this explicitly, but it is worth knowing why it happens.
+> Radar symlinks no longer depend on `device_config.json`: `host_setup.py --udev` links every XDS110/CP2105 radar board by id.
 
 *   **Mapping by Serial Number (Recommended for single-machine setups)**:
     ```json
@@ -98,10 +95,10 @@ Open the configuration file at 📁 **`docker/device_config.json`** and map thes
 Now that `device_config.json` is configured, run the setup scripts as `root` (using `sudo`).
 
 ### A. TI Radar Rules Setup
-The setup script reads `device_config.json` dynamically and generates serial/port-specific rules. For mapped radars, it automatically creates descriptive host symlinks (e.g., `/dev/ti_front_radar_cli` and `/dev/ti_front_radar_data`) and unlocks `0666` read/write permissions.
+Radar rules come from `CPSL_TI_Radar`. It writes `/etc/udev/rules.d/99-radar.rules`, creating `/dev/radar/<id>-cli` and `/dev/radar/<id>-data` for every radar board (`<id>` is the USB serial, or the USB port path if boards share a serial):
 
 ```bash
-sudo ./scripts/setup_radar_udev.sh
+src/CPSL_TI_Radar/tools/setup/host_setup.py --udev --apply
 ```
 
 ### B. Intel RealSense Rules Setup
@@ -119,12 +116,12 @@ For udev to apply the newly written rules, **unplug the TI Radar and Intel RealS
 ### A. Verify Symlinks and Permissions
 Check if the TI Radar symlinks were created and target the active tty device nodes:
 ```bash
-ls -l /dev/ti_*
+ls -l /dev/radar/
 ```
 *Expected Output:*
 ```text
-lrwxrwxrwx 1 root root 7 Jun 28 21:30 /dev/ti_front_radar_cli -> ttyUSB0
-lrwxrwxrwx 1 root root 7 Jun 28 21:30 /dev/ti_front_radar_data -> ttyUSB1
+lrwxrwxrwx 1 root root 7 Jun 28 21:30 /dev/radar/019C697F-cli -> ttyUSB0
+lrwxrwxrwx 1 root root 7 Jun 28 21:30 /dev/radar/019C697F-data -> ttyUSB1
 ```
 
 Confirm raw permissions are unlocked (`crw-rw-rw-`) for all ports:
@@ -143,9 +140,9 @@ With the udev symlinks created, run the discovery script again:
 ./scripts/detect_devices.sh
 ```
 
-The script will detect that the `/dev/ti_*` symlinks target the active hardware and will write the symlinks directly to the environment file:
-*   `FRONT_RADAR_CLI=/dev/ti_front_radar_cli`
-*   `FRONT_RADAR_DATA=/dev/ti_front_radar_data`
+The script will detect that the `/dev/radar/` symlinks target the active hardware and will write the symlinks directly to the environment file:
+*   `FRONT_RADAR_CLI=/dev/radar/019C697F-cli`
+*   `FRONT_RADAR_DATA=/dev/radar/019C697F-data`
 
 This guarantees that the Docker containers receive stable symlink targets, and the Compose configuration remains completely identical and uniform across all developer machines.
 

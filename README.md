@@ -285,8 +285,8 @@ The containers use a custom bridge network `cpsl_net` and run on `ROS_DOMAIN_ID=
 When deploying containers in production, physical hardware interfaces must be connected and correctly mapped. If a peripheral device is not plugged in, you must modify the Compose configuration to prevent start errors.
 
 ##### TI Radar Serial Passthrough
-By default, the compose configuration expects the role-mapped serial interfaces `/dev/ti_front_radar_cli` and `/dev/ti_front_radar_data` to be available (which fallback to `/dev/null` if not mapped in the `.env` file).
-- **If connected:** Ensure host-level udev rules have been configured (see [Tutorial 06](tutorials/06_udev_setup.md)) so they are correctly mapped to `/dev/ti_*` symlinks.
+By default, the compose configuration expects the radar's stable serial links `/dev/radar/<id>-cli` and `/dev/radar/<id>-data` (written by `CPSL_TI_Radar`'s `tools/setup/host_setup.py --udev --apply`) to be available (which fallback to `/dev/null` if not mapped in the `.env` file).
+- **If connected:** Run `src/CPSL_TI_Radar/tools/setup/host_setup.py --udev --apply` once on the host so the `/dev/radar/<id>-*` symlinks exist.
 - **If disconnected (Testing/Development):** No actions are needed; the ports will automatically default to `/dev/null` inside the container without causing startup errors.
 
 ##### Ethernet Sensors (DCA1000, Livox Mid360, Ouster)

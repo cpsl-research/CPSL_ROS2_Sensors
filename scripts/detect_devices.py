@@ -228,6 +228,19 @@ def load_device_config(config_path):
         print(f"Error reading device config: {e}")
         return None
 
+def radar_links(radar, *ids):
+    """host_setup.py --udev links (/dev/radar/<id>-cli|-data) for this radar, or None.
+
+    <id> is the USB serial, or the USB port path when boards share a serial; the first
+    candidate whose -cli link resolves to the radar's CLI port wins."""
+    for rid in ids + (radar.get("serial"), radar.get("usb_path")):
+        if not rid:
+            continue
+        cli = f"/dev/radar/{rid}-cli"
+        if os.path.exists(cli) and os.path.realpath(cli) == os.path.realpath(radar["cli_port"]):
+            return cli, f"/dev/radar/{rid}-data"
+    return None
+
 def resolve_device_roles(connected_radars, connected_realsenses, config):
     """Resolve roles (FRONT_RADAR, etc.) based on serial, USB path, or default fallback mapping."""
     mappings = {
@@ -263,9 +276,9 @@ def resolve_device_roles(connected_radars, connected_realsenses, config):
             if radar_ref in used_radars:
                 continue
             if target_id == radar["serial"] or target_id == radar["usb_path"]:
-                sym_cli = f"/dev/ti_{role.lower()}_cli"
-                sym_data = f"/dev/ti_{role.lower()}_data"
-                if os.path.exists(sym_cli) and os.path.realpath(sym_cli) == os.path.realpath(radar["cli_port"]):
+                links = radar_links(radar, target_id)
+                if links:
+                    sym_cli, sym_data = links
                     mappings[f"{role}_CLI"] = sym_cli
                     mappings[f"{role}_DATA"] = sym_data
                     print(f"Mapped Radar {target_id} to role {role} using symlinks {sym_cli} -> {radar['cli_port']}")
@@ -287,9 +300,9 @@ def resolve_device_roles(connected_radars, connected_realsenses, config):
         for radar in connected_radars:
             radar_ref = f"{radar['cli_port']}:{radar['data_port']}"
             if radar_ref not in used_radars:
-                sym_cli = f"/dev/ti_{role.lower()}_cli"
-                sym_data = f"/dev/ti_{role.lower()}_data"
-                if os.path.exists(sym_cli) and os.path.realpath(sym_cli) == os.path.realpath(radar["cli_port"]):
+                links = radar_links(radar)
+                if links:
+                    sym_cli, sym_data = links
                     mappings[cli_key] = sym_cli
                     mappings[f"{role}_DATA"] = sym_data
                     print(f"Auto-mapped connected Radar (Serial: {radar['serial']}, Path: {radar['usb_path']}) to role {role} using symlinks {sym_cli} -> {radar['cli_port']}")
