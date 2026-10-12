@@ -176,3 +176,74 @@ def test_legacy_export(tmp_path):
     a = np.load(tmp_path / 'out' / 'radar_0_adc' / 'frame_1.npy')
     assert a.dtype == np.complex128 and a.shape == (1, 8, 4)
     assert os.path.exists(tmp_path / 'out' / 'radar_pc' / 'frame_2.npy')
+
+
+def test_close_survives_second_sigint(tmp_path, monkeypatch):
+    import signal
+    cap = CaptureFile(tmp_path / 'c.h5')
+    cap.add_stream('s')
+    orig = cap._write_stream_attrs
+
+    def interrupted():
+        signal.raise_signal(signal.SIGINT)   # a second ^C mid-close
+        orig()
+    monkeypatch.setattr(cap, '_write_stream_attrs', interrupted)
+    before = signal.getsignal(signal.SIGINT)
+    cap.close()
+    assert signal.getsignal(signal.SIGINT) is before
+    with h5py.File(tmp_path / 'c.h5', 'r') as f:
+        assert bool(f.attrs['closed_cleanly']) is True
+
+
+def _launch_path_params(param_file, ns=''):
+    """Load a shipped YAML the way record_dataset.launch.py does."""
+    import yaml
+    from dataset_generator.launch_params import write_params
+    cfg = os.path.join(os.path.dirname(__file__), '..', 'configs', param_file)
+    with open(write_params(cfg, ns)) as f:
+        return yaml.safe_load(f)
+
+
+def _configs():
+    d = os.path.join(os.path.dirname(__file__), '..', 'configs')
+    return sorted(x for x in os.listdir(d) if x.endswith('.yaml'))
+
+
+def _lists(node, key=''):
+    if isinstance(node, dict):
+        for k, v in node.items():
+            yield from _lists(v, k)
+    elif isinstance(node, list):
+        yield key, node
+
+
+@pytest.mark.parametrize('name', _configs())
+def test_shipped_config_loads_through_launch_path(name):
+    doc = _launch_path_params(name)
+    assert 'ros__parameters' in doc['dataset_generator']
+    for k, v in _lists(doc):
+        # rclpy rejects mixed-type sequences ("Sequence should be of same type")
+        assert len({type(x) for x in v}) <= 1, k
+        if k == 'fields':
+            assert all(isinstance(x, str) for x in v), (name, v)
+
+
+def test_radar_sar_field_names_stay_strings():
+    doc = _launch_path_params('radar_sar.yaml')
+    fields = dict(_lists(doc))['fields']
+    assert fields == ['x', 'y', 'z', 'vel']
+
+
+@pytest.mark.parametrize('name', _configs())
+def test_shipped_config_parses_in_rcl(name):
+    """The real check: rcl's own parser must accept the generated file."""
+    rclpy = pytest.importorskip('rclpy')
+    from dataset_generator.launch_params import write_params
+    cfg = os.path.join(os.path.dirname(__file__), '..', 'configs', name)
+    path = write_params(cfg)
+    rclpy.init(args=['--ros-args', '--params-file', path])
+    try:
+        node = rclpy.create_node('dataset_generator')
+        node.destroy_node()
+    finally:
+        rclpy.shutdown()

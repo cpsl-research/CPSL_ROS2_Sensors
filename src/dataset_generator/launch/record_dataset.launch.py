@@ -13,7 +13,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import PushRosNamespace, SetRemap, Node
 from launch_ros.descriptions import ComposableNode, ParameterFile
-from nav2_common.launch import RewrittenYaml
+from dataset_generator.launch_params import write_params
 import yaml
 
 
@@ -49,7 +49,6 @@ def launch_setup(context, *args, **kwargs):
 
     # Resolve the actual path to the parameter file
     actual_param_file_path = os.path.join(pkg_dataset_generator, 'configs', param_file_str)
-    param_file_path = PathJoinSubstitution([pkg_dataset_generator, 'configs', param_file_str])
 
     param_substitutions = {}
 
@@ -68,14 +67,11 @@ def launch_setup(context, *args, **kwargs):
         except Exception as e:
             print(f"Error updating dataset_path with subpath: {e}")
 
-    #update the parameter file with 
+    # Not nav2's RewrittenYaml: it re-dumps unquoted strings, and rcl reads a
+    # bare "y" (radar_pc fields) as a bool. See dataset_generator.launch_params.
     configured_params = ParameterFile(
-        RewrittenYaml(
-            source_file=param_file_path,
-            root_key=namespace,
-            param_rewrites=param_substitutions,
-            convert_types=True,
-        ),
+        write_params(actual_param_file_path, namespace.perform(context),
+                     param_substitutions),
         allow_substs=True,
     )
 

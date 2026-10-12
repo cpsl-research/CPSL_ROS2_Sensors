@@ -220,6 +220,10 @@ def main(args=None):
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
+        # Closing has begun: further ^C / SIGTERM must not interrupt the
+        # drain or the final h5py attribute writes (closed_cleanly).
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
         node.finish()
         node.destroy_node()
         rclpy.try_shutdown()

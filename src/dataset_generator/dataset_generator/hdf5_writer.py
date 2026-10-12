@@ -10,6 +10,8 @@ One file per capture. Every stream is a group ``/<stream>`` holding
 See docs/hdf5_format.md for the full layout.
 """
 import json
+import signal
+import threading
 import time
 
 import h5py
@@ -241,9 +243,23 @@ class CaptureFile:
     def close(self):
         if self._closed:
             return
-        self._write_stream_attrs()
-        self._f.attrs['end_recv_ns'] = time.time_ns()
-        self._f.attrs['closed_cleanly'] = True
-        self._f.flush()
-        self._f.close()
-        self._closed = True
+        # Once closing starts, SIGINT/SIGTERM are ignored until the file is
+        # flushed and closed_cleanly is written: a KeyboardInterrupt inside an
+        # h5py attribute write would leave closed_cleanly False.
+        saved = {}
+        if threading.current_thread() is threading.main_thread():
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                try:
+                    saved[sig] = signal.signal(sig, signal.SIG_IGN)
+                except (ValueError, OSError):
+                    pass
+        try:
+            self._write_stream_attrs()
+            self._f.attrs['end_recv_ns'] = time.time_ns()
+            self._f.attrs['closed_cleanly'] = True
+            self._f.flush()
+            self._f.close()
+            self._closed = True
+        finally:
+            for sig, h in saved.items():
+                signal.signal(sig, h)
