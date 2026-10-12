@@ -247,3 +247,35 @@ def test_shipped_config_parses_in_rcl(name):
         node.destroy_node()
     finally:
         rclpy.shutdown()
+
+
+def test_rover_pro_radar_streams_and_mount_in_config_streams(tmp_path):
+    doc = _launch_path_params('rover_pro_radar.yaml')
+    raw = {}
+    for n, c in doc['dataset_generator']['ros__parameters']['streams'].items():
+        for k, v in c.items():          # flatten like get_parameters_by_prefix
+            raw['%s.%s' % (n, k)] = v
+    streams = parse_streams(raw)
+    got = {n: (c['type'], c['qos']) for n, c in streams.items()}
+    assert got == {
+        'radar_adc': ('raw_radar_msgs/msg/ADCDataCube', 'reliable'),
+        'adc_meta': ('raw_radar_msgs/msg/ADCChirpMeta', 'reliable'),
+        'odom': ('nav_msgs/msg/Odometry', 'reliable'),
+        'cmd_vel': ('geometry_msgs/msg/Twist', 'reliable')}
+    assert streams['adc_meta']['meta_for'] == 'radar_adc'
+    # same dict shape the recorder stores as the root attr
+    cs = {n: {k: (list(v) if isinstance(v, (list, tuple)) else v)
+              for k, v in c.items()} for n, c in streams.items()}
+    path = tmp_path / 'r.h5'
+    cap = CaptureFile(path, {'config_streams': cs}, flush_period_s=0.0)
+    cap.add_stream('radar_adc', {'topic': 't'}, keep_stamps=True)
+    cap.close()
+    import json
+    with h5py.File(path, 'r') as f:
+        back = f.attrs['config_streams']
+        back = json.loads(back) if isinstance(back, (str, bytes)) else back
+    m = back['radar_adc']
+    assert m['mount_frame'] == 'base_link'
+    assert list(m['mount_xyz']) == [-0.05, 0.02, 0.0]
+    assert list(m['mount_rpy']) == [0.0, 0.0, 1.5708]
+    assert 'left-looking' in m['mount_note']

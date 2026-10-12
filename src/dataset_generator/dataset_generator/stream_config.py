@@ -3,6 +3,8 @@
 _STREAM_KEYS = ('topic', 'type', 'enabled', 'qos', 'qos_depth', 'mode',
                 'fields', 'skip_nans', 'compression', 'legacy_folder',
                 'meta_for')
+# Free-form `mount_*` keys (mount_frame, mount_xyz, ...) are annotations only:
+# accepted here and stored verbatim in the file's config_streams attr.
 
 
 def parse_streams(params):
@@ -14,7 +16,7 @@ def parse_streams(params):
         if not sub:
             raise ValueError("streams.%s must be a table with at least "
                              "'topic' and 'type'" % key)
-        if sub not in _STREAM_KEYS:
+        if sub not in _STREAM_KEYS and not sub.startswith('mount_'):
             raise ValueError('streams.%s: unknown key %r (allowed: %s)' %
                              (name, sub, ', '.join(_STREAM_KEYS)))
         out.setdefault(name, {})[sub] = val

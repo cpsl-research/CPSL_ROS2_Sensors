@@ -1,0 +1,37 @@
+# Rover Pro, radar only (IWR1843 SAR + DCA1000): ADC cube + chirp meta + wheel odometry + cmd_vel.
+# Usage: ros2 launch dataset_generator record_dataset.launch.py param_file:=rover_pro_radar.yaml
+# Run radar and recorder on the same ROS_DOMAIN_ID/RMW as the rover driver. Check free disk first
+# (ADC is ~400 MB/min); the output dir below must exist on a disk with >10 GB free.
+dataset_generator:
+  ros__parameters:
+    dataset_path: "/home/rover/Documents/console-radar/data/datasets"
+    capture_mode: "all"
+    sample_rate_hz: 10.0
+    flush_period_s: 5.0
+    streams:
+      radar_adc:
+        topic: "sar_radar/adc_data_cube"
+        type: "raw_radar_msgs/msg/ADCDataCube"
+        qos: reliable
+        qos_depth: 10
+        # Radar mount relative to base_link (FLU). Annotation only, stored in config_streams.
+        mount_frame: "base_link"
+        mount_xyz: [-0.05, 0.02, 0.0]
+        mount_rpy: [0.0, 0.0, 1.5708]
+        mount_note: "rough user estimate; FLU; boresight +Y (left-looking)"
+      adc_meta:
+        topic: "sar_radar/adc_meta"
+        type: "raw_radar_msgs/msg/ADCChirpMeta"
+        qos: reliable
+        qos_depth: 10
+        meta_for: radar_adc
+      odom:
+        topic: "/odometry/wheels"
+        type: "nav_msgs/msg/Odometry"
+        qos: reliable          # converter default is best_effort
+        qos_depth: 10
+      cmd_vel:                 # Twist has no header: stamp_recv_ns only
+        topic: "/cmd_vel"
+        type: "geometry_msgs/msg/Twist"
+        qos: reliable
+        qos_depth: 10
