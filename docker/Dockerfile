@@ -79,6 +79,7 @@ RUN echo "${SENSORS}" > /etc/cpsl_sensors_list
 # the image still builds without it and says so.
 COPY scripts/deps/ /workspace/CPSL_ROS2_Sensors/scripts/deps/
 RUN S_LIST="${SENSORS}" && \
+    echo "=== deps: dataset ===" && bash scripts/deps/dataset.sh && \
     if [ "$S_LIST" = "all" ]; then S_LIST="radar,livox,ouster,realsense,leapmotion,vicon"; fi && \
     for s in $(echo "$S_LIST" | tr ',' ' '); do \
         echo "=== deps: $s ==="; \

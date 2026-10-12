@@ -102,4 +102,4 @@ which is the v1 "latest message" rule. ADC cubes become complex `[rx, sample, ch
 Differences from v1: no base-frame transform of point clouds, camera frames are `.npy` not
 PNG, IMU/odometry are the single latest sample, not the buffered high-rate window.
 
-`h5py` is a runtime dependency (`python3-h5py`, declared as `exec_depend` in package.xml).
+**Install:** `sudo apt install python3-h5py` (or `sudo bash scripts/deps/dataset.sh`). It is declared as `exec_depend` in package.xml, so `rosdep install --from-paths src`, `scripts/install.sh`, the Docker image and console's container (which runs rosdep) install it automatically; on a plain host, install it yourself.

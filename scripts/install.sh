@@ -114,6 +114,9 @@ for s in $(echo "$SENSORS" | tr ',' ' '); do
     echo "--- deps: $s ---"
     sudo bash scripts/deps/"$s".sh
 done
+# Not a driver: dataset_generator (HDF5 recorder) is always built and needs h5py.
+echo "--- deps: dataset ---"
+sudo bash scripts/deps/dataset.sh
 
 header "Step 5: Python environment"
 # .venv with system site-packages, so the ROS python packages stay visible.

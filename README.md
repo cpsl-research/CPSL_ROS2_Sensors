@@ -176,7 +176,10 @@ ros2 launch dataset_generator record_dataset.launch.py \
 
 - `param_file` — bare filename (no path); resolved inside the installed `configs/` directory
 - `dataset_subpath` — appended to `dataset_path` from the YAML; useful for numbered runs
-- Output path: `<dataset_path>/<dataset_subpath>/frame_XXXXXX.npy` with per-sensor subdirectories
+- `output_file` — full path of the `.h5` file (default `<dataset_path>/<dataset_subpath>/capture_<time>.h5`)
+- Output (v2 YAMLs, those with a `streams:` table, e.g. `ugv_dataset.yaml`, `radar_sar.yaml`): one HDF5 file per capture with per-message header and receive stamps. Pre-v2 per-sensor YAMLs (`*_v1.yaml`, `uav_*`, `human_movement`) still write folders of `.npy` files. Format and YAML schema: [`src/dataset_generator/docs/hdf5_format.md`](src/dataset_generator/docs/hdf5_format.md)
+
+**Install:** the HDF5 recorder needs `python3-h5py` (`sudo apt install python3-h5py`, or `sudo bash scripts/deps/dataset.sh`). `scripts/install.sh`, the Docker image and `rosdep install --from-paths src` (package.xml `exec_depend`) all install it. console's Sensors tab runs the same rosdep step in its container, so nothing extra is needed there; on a plain host install it yourself.
 
 See [`tutorials/01_capturing_a_dataset.md`](tutorials/01_capturing_a_dataset.md) for a full walkthrough.
 
