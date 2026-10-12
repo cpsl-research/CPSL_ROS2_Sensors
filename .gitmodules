@@ -1,9 +1,6 @@
 [submodule "src/CPSL_ROS_livox_ros_driver2"]
 	path = src/CPSL_ROS_livox_ros_driver2
 	url = https://github.com/cpsl-research/CPSL_ROS_livox_ros_driver2.git
-[submodule "src/CPSL_TI_Radar_ROS2"]
-	path = src/CPSL_TI_Radar_ROS2
-	url = https://github.com/cpsl-research/CPSL_TI_Radar_ROS2.git
 [submodule "src/CPSL_ROS2_LeapMotion"]
 	path = src/CPSL_ROS2_LeapMotion
 	url = https://github.com/cpsl-research/CPSL_ROS2_LeapMotion.git
@@ -16,3 +13,6 @@
 [submodule "src/ouster-ros"]
 	path = src/ouster-ros
 	url = https://github.com/ouster-lidar/ouster-ros.git
+[submodule "src/CPSL_TI_Radar"]
+	path = src/CPSL_TI_Radar
+	url = https://github.com/davidmhunt/CPSL_TI_Radar.git

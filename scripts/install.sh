@@ -59,7 +59,7 @@ header "Step 2: Submodule setup"
 
 # Parallel arrays: submodule path → sensor name that requires it
 SUBMODULE_PATHS=(
-    "src/CPSL_TI_Radar_ROS2"
+    "src/CPSL_TI_Radar"
     "src/CPSL_ROS_livox_ros_driver2"
     "src/ouster-ros"
     "src/ros2-vicon-bridge"
@@ -82,6 +82,10 @@ for i in "${!SUBMODULE_PATHS[@]}"; do
         echo "  [init]   $path ($sensor)"
         git submodule init "$path"
         git submodule update "$path"
+        # CPSL_TI_Radar: only the json header lib is needed; skip its firmware/.friday submodules
+        if [ "$path" = "src/CPSL_TI_Radar" ]; then
+            git -C "$path" submodule update --init CPSL_TI_Radar_cpp/include/json
+        fi
     else
         # Only deinit if the directory is currently populated
         if [ -n "$(ls -A "$path" 2>/dev/null)" ]; then

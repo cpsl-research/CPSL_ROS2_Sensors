@@ -41,8 +41,8 @@ If ROS2 Jazzy is not yet installed, run `bash scripts/install_ros2.sh` instead �
 
 | Sensor | Package / Submodule | Topics Published | Notes |
 |--------|---------------------|------------------|-------|
-| TI Radar (serial) | `CPSL_TI_Radar_ROS2` → `ti_radar_connect` | `<ns>/radar_N/ti_radar` (point cloud), `<ns>/radar_N/ti_radar_scan` | IWR1843 / IWR6843 via `/dev/ttyACM*` or `/dev/ttyUSB*` |
-| TI Radar (DCA1000) | `CPSL_TI_Radar_ROS2` → `ti_radar_connect` | same as serial | Ethernet capture; requires IP config (see Hardware Setup) |
+| TI Radar (serial) | `CPSL_TI_Radar` (`ros2/`) → `ti_radar_connect` | `<ns>/radar_N/ti_radar` (point cloud), `<ns>/radar_N/ti_radar_scan` | IWR1843 / IWR6843 via `/dev/ttyACM*` or `/dev/ttyUSB*` |
+| TI Radar (DCA1000) | `CPSL_TI_Radar` (`ros2/`) → `ti_radar_connect` | same as serial | Ethernet capture; requires IP config (see Hardware Setup) |
 | Livox Mid360 | `CPSL_ROS_livox_ros_driver2` | `<ns>/livox/lidar` (point cloud), `<ns>/livox/imu` | Static-IP ethernet; requires `MID360_config.json` update |
 | Ouster | `ouster-ros` | `<ns>/ouster/points`, `<ns>/ouster/imu`, `<ns>/ouster/scan` | Link-local ethernet; requires Eclipse Cyclone DDS |
 | Intel RealSense | `realsense2_camera` (apt) | `<ns>/cpsl_realsense/color/image_raw`, `.../depth/image_rect_raw` | USB3; plug and play after apt install |
@@ -63,7 +63,7 @@ If ROS2 Jazzy is not yet installed, run `bash scripts/install_ros2.sh` instead �
 2. Port order when multiple radars are connected:
    - IWR1843: `/dev/ttyACM0` = front radar (config), `/dev/ttyACM1` = front radar (data); `/dev/ttyACM2` = back, `/dev/ttyACM3` = back data
    - IWR6843: `/dev/ttyUSB0` (config), `/dev/ttyUSB1` (data)
-3. Edit the JSON config in `src/CPSL_TI_Radar_ROS2/.../configs/` to match the assigned ports.
+3. Edit the JSON config in `src/CPSL_TI_Radar/ros2/ti_radar_connect/config/system/` to match the assigned ports.
 
 ### TI Radar — DCA1000 Ethernet Capture
 
@@ -72,7 +72,7 @@ If ROS2 Jazzy is not yet installed, run `bash scripts/install_ros2.sh` instead �
 - DCA1000 factory FPGA IP: `192.168.33.180`
 
 **Multi-radar or co-located with Livox Mid360:**
-- Both share one adapter; reprogram DCA1000 EEPROM to the `192.168.1.x` subnet using the CLI tool in `src/CPSL_TI_Radar_ROS2/DCA_Programming/`
+- Both share one adapter; reprogram DCA1000 EEPROM to the `192.168.1.x` subnet using the CLI tool in `src/CPSL_TI_Radar/DCA_Programming/`
 - PC adapter: `192.168.1.XX` (subnet 255.255.255.0)
 - Front DCA1000: `192.168.1.180` (port pair `4096/4098`)
 - Back DCA1000: `192.168.1.182` (port pair `4088/4090`)
@@ -189,7 +189,7 @@ See [`tutorials/01_capturing_a_dataset.md`](tutorials/01_capturing_a_dataset.md)
 - [`tutorials/03_writing_a_bringup_launch_file.md`](tutorials/03_writing_a_bringup_launch_file.md) — write a new bringup launch file from scratch
 - [`tutorials/04_docker_setup_and_usage.md`](tutorials/04_docker_setup_and_usage.md) — guide to build and run ROS2 containers
 - [`tutorials/06_udev_setup.md`](tutorials/06_udev_setup.md) — host udev rules and device mapping setup
-- [`src/CPSL_TI_Radar_ROS2/README.md`](src/CPSL_TI_Radar_ROS2/README.md) — TI radar driver details and config reference
+- [`src/CPSL_TI_Radar/ros2/README.md`](src/CPSL_TI_Radar/ros2/README.md) — TI radar driver details and config reference
 - [`src/CPSL_ROS_livox_ros_driver2/README.md`](src/CPSL_ROS_livox_ros_driver2/README.md) — Livox driver details
 - [`src/ouster-ros/README.md`](src/ouster-ros/README.md) — Ouster driver details
 

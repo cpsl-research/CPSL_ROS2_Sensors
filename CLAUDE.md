@@ -83,7 +83,7 @@ The three packages above are written by CPSL. Everything else in `src/` is a thi
 
 | Submodule | What it provides |
 |-----------|-----------------|
-| `CPSL_TI_Radar_ROS2` | `ti_radar_connect_node` — serial/Ethernet driver for TI IWR radars |
+| `CPSL_TI_Radar` (`ros2/`) | `ti_radar_connect_node` — serial/Ethernet driver for TI IWR radars |
 | `CPSL_ROS_livox_ros_driver2` | `livox_ros_driver2_node` — Livox Mid360 driver |
 | `ouster-ros` | `os_driver_node` — Ouster OS-series LiDAR driver |
 | `ros2-vicon-bridge` | `vicon_bridge` — Vicon motion capture → `/tf` |
@@ -92,7 +92,7 @@ The three packages above are written by CPSL. Everything else in `src/` is a thi
 ### Configuration Pattern
 
 **Radar profiles** live in:
-`src/CPSL_TI_Radar_ROS2/src/ti_radar_connect/include/CPSL_TI_Radar/CPSL_TI_Radar_cpp/configs/*.json`
+`src/CPSL_TI_Radar/ros2/ti_radar_connect/config/system/*.json`
 
 Key fields in each JSON: `CLI_port`, `data_port`, `DCA1000_streaming.enabled`, `TI_Radar_config_path`.
 
