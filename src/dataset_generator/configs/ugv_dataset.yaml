@@ -1,22 +1,42 @@
+# v2 recorder config (dataset_recorder): one HDF5 file per capture.
+# The pre-v2 per-sensor *_enable/*_topic version is configs/ugv_dataset_v1.yaml
+# (used by the old dataset_generator node, which the launch file still picks
+# automatically for any YAML without a `streams:` table).
 dataset_generator:
   ros__parameters:
-    radar_enable: True
-    lidar_enable: False
-    lidar_topic: "livox/lidar"
-    camera_enable: True
-    camera_topic: "/cpsl_ugv_1/image_raw"
-    camera_depth_enable: False
-    camera_depth_topic: "/cpsl_ugv_1/camera/cpsl_realsense/depth/image_rect_raw"
-    hand_tracking_enable: False
-    hand_tracking_left_topic: "/cpsl_human_movement/left_hand_joints"
-    hand_tracking_right_topic: "/cpsl_human_movement/right_hand_joints"
-    imu_enable: False
-    imu_topic: "livox/imu"
-    vicon_enable: False
-    vehicle_odom_enable: True
-    vehicle_odom_topic: "odom_repub"
-    base_frame: "cpsl_ugv_1/base_footprint"
-    frame_rate_save_data: 10.0
-    frame_rate_high_speed_sensors: 50.0
-    dataset_path: "/home/cpsl/Downloads/datasets/icaRAus_ugv"
-    
+    dataset_path: "/home/cpsl/Downloads/datasets/icaRAus_ugv"   # capture_<time>.h5 goes here
+    capture_mode: "all"        # all = every message; sampled = latest per tick
+    sample_rate_hz: 10.0       # only used by streams in sampled mode
+    flush_period_s: 5.0
+    streams:
+      radar_adc:               # name = HDF5 group; legacy_folder = old folder name
+        topic: "radar_0/adc_data_cube"
+        type: "raw_radar_msgs/msg/ADCDataCube"
+        qos: reliable          # 3.4 MB SAR frames are lost with best_effort
+        qos_depth: 10
+        legacy_folder: "radar_0_adc"
+      radar_pc:
+        topic: "radar_0/detected_points"
+        type: "sensor_msgs/msg/PointCloud2"
+        fields: ["x", "y", "z", "vel"]
+        legacy_folder: "radar_0_pc"
+      camera:
+        topic: "/cpsl_ugv_1/image_raw"
+        type: "sensor_msgs/msg/Image"
+        compression: gzip
+        legacy_folder: "camera"
+      vehicle_odom:
+        topic: "odom_repub"
+        type: "nav_msgs/msg/Odometry"
+        legacy_folder: "vehicle_odom"
+      # off in the v1 config; set enabled: true to record
+      lidar:
+        enabled: false
+        topic: "livox/lidar"
+        type: "sensor_msgs/msg/PointCloud2"
+        legacy_folder: "lidar"
+      imu:
+        enabled: false
+        topic: "livox/imu"
+        type: "sensor_msgs/msg/Imu"
+        legacy_folder: "imu_data"
