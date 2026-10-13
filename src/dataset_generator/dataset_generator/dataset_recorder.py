@@ -4,6 +4,11 @@ Replaces the per-sensor ``*_enable`` / ``*_topic`` parameters of the v1
 ``dataset_generator`` node with a ``streams:`` table (see configs/radar_sar.yaml
 and docs/hdf5_format.md). Every sample is stored with its header stamp and the
 host receive time.
+
+Start gate: nothing is written until every enabled stream has delivered a
+message (``start_timeout_s``; ``allow_missing`` starts anyway at the timeout).
+On timeout without ``allow_missing`` the node logs ``GATE abort`` and exits
+with code 2, having created no file.
 """
 import datetime
 import hashlib
@@ -12,6 +17,7 @@ import os
 import queue
 import signal
 import socket
+import sys
 import threading
 import time
 
@@ -22,13 +28,14 @@ from rclpy.qos import (QoSDurabilityPolicy, QoSHistoryPolicy, QoSProfile,
                        QoSReliabilityPolicy)
 from rosidl_runtime_py.utilities import get_message
 
-from dataset_generator import radar_cfg
+from dataset_generator import radar_cfg, start_gate
 from dataset_generator.converters import get_converter, normalize_type
 from dataset_generator.hdf5_writer import CaptureFile
 from dataset_generator.stream_config import parse_streams
 from std_msgs.msg import String
 
 _CFG = object()   # queue tag: (_CFG, stream, radar cfg path)
+GATE_EXIT_CODE = 2   # exit status when the start gate aborts
 
 
 class DatasetRecorder(Node):
@@ -41,7 +48,8 @@ class DatasetRecorder(Node):
                 ('output_file', ''), ('dataset_path', ''),
                 ('capture_mode', 'all'), ('sample_rate_hz', 10.0),
                 ('flush_period_s', 5.0), ('duration_s', 0.0),
-                ('queue_size', 256)):
+                ('queue_size', 256), ('start_timeout_s', 30.0),
+                ('allow_missing', False)):
             if not self.has_parameter(name):
                 self.declare_parameter(name, default)
             self._p[name] = self.get_parameter(name).value
@@ -52,11 +60,16 @@ class DatasetRecorder(Node):
                self.get_parameters_by_prefix('streams').items()}
         self.cfgs = parse_streams(raw)
         self.out_path = self._output_path()
-        os.makedirs(os.path.dirname(self.out_path) or '.', exist_ok=True)
-        self.cap = CaptureFile(
-            self.out_path, self._root_attrs(),
-            flush_period_s=float(self._p['flush_period_s']))
-
+        # The file is created when the start gate opens (_open_gate).
+        self.cap = None
+        self.exit_code = 0
+        self.writer = None
+        self._gate_open = False
+        self._gate_last = None
+        self._seen = set()
+        self._pending = []         # (name, attrs, compression, keep_stamps)
+        self._pending_attrs = {}   # name -> attrs set before the file exists
+        self._held_cfg = {}        # name -> radar cfg paths seen before open
         self.q = queue.Queue(maxsize=int(self._p['queue_size']))
         self.dropped = {}
         self._described = set()
@@ -73,8 +86,74 @@ class DatasetRecorder(Node):
                 continue
             self._add_stream(name, cfg)
 
+        self._enabled = [n for n, c in self.cfgs.items()
+                         if c.get('enabled', True)]
+        self._topics = {n: self.cfgs[n]['topic'] for n in self._enabled}
+        self._t0 = time.monotonic()
+        # latched, so a late subscriber still sees the last gate state
+        self._gate_pub = self.create_publisher(
+            String, '~/gate', QoSProfile(
+                reliability=QoSReliabilityPolicy.RELIABLE,
+                durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+                history=QoSHistoryPolicy.KEEP_LAST, depth=1))
+        self._gate_timer = self.create_timer(0.1, self._gate_tick)
+        self._gate_tick()
+
+    # ---- start gate -------------------------------------------------------
+    def _gate_tick(self):
+        if self._gate_open or self.exit_code:
+            return
+        wait_s = time.monotonic() - self._t0
+        timeout = float(self._p['start_timeout_s'])
+        allow = bool(self._p['allow_missing'])
+        state, missing = start_gate.evaluate(
+            self._enabled, self._seen, wait_s, timeout, allow)
+        topics = [self._topics[n] for n in missing]
+        key = (state, tuple(missing))
+        if key != self._gate_last:
+            self._gate_last = key
+            line = start_gate.gate_line(state, topics, wait_s)
+            if state == start_gate.ABORT:
+                self.get_logger().error(line)
+            else:
+                self.get_logger().info(line)
+            self._gate_pub.publish(String(data=start_gate.gate_json(
+                state, missing, topics, wait_s, timeout, allow)))
+        if state == start_gate.WAITING:
+            return
+        self._gate_timer.cancel()
+        if state == start_gate.ABORT:
+            self.exit_code = GATE_EXIT_CODE
+            rclpy.try_shutdown()
+            return
+        self._open_gate(missing, wait_s)
+
+    def _open_gate(self, missing, wait_s):
+        opened_ns = time.time_ns()
+        attrs = self._root_attrs()
+        attrs['start_gate'] = {
+            'timeout_s': float(self._p['start_timeout_s']),
+            'allow_missing': bool(self._p['allow_missing']),
+            'wait_s': round(wait_s, 3), 'opened_recv_ns': opened_ns}
+        attrs['streams_missing'] = list(missing)
+        os.makedirs(os.path.dirname(self.out_path) or '.', exist_ok=True)
+        self.cap = CaptureFile(
+            self.out_path, attrs,
+            flush_period_s=float(self._p['flush_period_s']))
+        for name, a, compression, keep in self._pending:
+            self.cap.add_stream(name, a, compression=compression,
+                                keep_stamps=keep)
+        for name, a in self._pending_attrs.items():
+            self.cap.update_stream_attrs(name, a)
+        self._pending = []
+        self._pending_attrs = {}
+        self._gate_open = True
         self.writer = threading.Thread(target=self._writer_loop, daemon=True)
         self.writer.start()
+        for name, paths in self._held_cfg.items():
+            for path in paths:
+                self._queue_cfg(name, path)
+        self._held_cfg = {}
         if any(self._mode(c) == 'sampled' for c in self.cfgs.values()):
             self.create_timer(1.0 / float(self._p['sample_rate_hz']),
                               self._sample_tick)
@@ -82,7 +161,14 @@ class DatasetRecorder(Node):
             self._stop_timer = self.create_timer(
                 float(self._p['duration_s']), self._duration_done)
         self.get_logger().info('recording %d stream(s) to %s' %
-                               (len(self.subs), self.out_path))
+                               (len(self._enabled), self.out_path))
+
+    def _set_attrs(self, name, attrs):
+        """Stream attrs now if the file exists, else when the gate opens."""
+        if self.cap is not None:
+            self.cap.update_stream_attrs(name, attrs)
+        else:
+            self._pending_attrs.setdefault(name, {}).update(attrs)
 
     # ---- config ---------------------------------------------------------
     def _output_path(self):
@@ -135,8 +221,8 @@ class DatasetRecorder(Node):
             attrs['legacy_folder'] = cfg['legacy_folder']
         keep = bool(cfg.get('meta_for')) or \
             msg_type.endswith('ADCDataCube') or msg_type.endswith('ADCChirpMeta')
-        self.cap.add_stream(name, attrs, compression=cfg.get('compression'),
-                            keep_stamps=keep)
+        self._pending.append(
+            (name, attrs, cfg.get('compression'), keep))
         if cfg.get('meta_for'):
             self.meta_pairs.append((name, cfg['meta_for']))
         self.seq[name] = 0
@@ -156,8 +242,7 @@ class DatasetRecorder(Node):
     def _add_cfg_sub(self, name, cfg):
         topic = cfg.get('config_topic') or \
             cfg['topic'].replace('adc_data_cube', 'radar_config_path')
-        self.cap.update_stream_attrs(
-            name, {'radar_cfg_status': 'not_received'})
+        self._set_attrs(name, {'radar_cfg_status': 'not_received'})
         if topic == cfg['topic']:
             self.get_logger().warning(
                 'stream %s: cannot derive the radar cfg topic from %r; set '
@@ -170,7 +255,7 @@ class DatasetRecorder(Node):
             durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
             history=QoSHistoryPolicy.KEEP_LAST, depth=5)
         self.cfg_streams[name] = topic
-        self.cap.update_stream_attrs(name, {'radar_cfg_topic': topic})
+        self._set_attrs(name, {'radar_cfg_topic': topic})
         self.subs.append(self.create_subscription(
             String, topic, lambda m, n=name: self._on_cfg_path(n, m), qos))
         self.get_logger().info('stream %s: radar cfg path from %s' %
@@ -178,6 +263,14 @@ class DatasetRecorder(Node):
 
     def _on_cfg_path(self, name, msg):
         path = str(msg.data)
+        if not self._gate_open:   # latched: keep it until the file exists
+            held = self._held_cfg.setdefault(name, [])
+            if not held or held[-1] != path:
+                held.append(path)
+            return
+        self._queue_cfg(name, path)
+
+    def _queue_cfg(self, name, path):
         first = self._cfg_first.get(name)
         if first is not None and first == path:
             return
@@ -221,6 +314,9 @@ class DatasetRecorder(Node):
     # ---- receive --------------------------------------------------------
     def _on_msg(self, name, conv, opts, mode, msg):
         recv_ns = time.time_ns()
+        if not self._gate_open:   # before the gate opens: note it, discard it
+            self._seen.add(name)
+            return
         if mode == 'sampled':
             self.seq[name] += 1
             self.latest[name] = (self.seq[name], msg, recv_ns, conv, opts)
@@ -282,6 +378,10 @@ class DatasetRecorder(Node):
 
     def finish(self):
         """Drain the queue, write capture metadata, close the file."""
+        if self.cap is None:
+            self.get_logger().info(
+                'no file written: the start gate never opened')
+            return
         self.q.put(None)
         self.writer.join(timeout=60.0)
         for meta, cube in self.meta_pairs:
@@ -303,6 +403,7 @@ class DatasetRecorder(Node):
 
 
 def main(args=None):
+    """Run the recorder; returns the process exit code (2 = gate abort)."""
     rclpy.init(args=args)
     node = DatasetRecorder()
     signal.signal(signal.SIGTERM, lambda *_: rclpy.try_shutdown())
@@ -318,7 +419,8 @@ def main(args=None):
         node.finish()
         node.destroy_node()
         rclpy.try_shutdown()
+    return node.exit_code
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
