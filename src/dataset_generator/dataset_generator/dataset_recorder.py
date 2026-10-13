@@ -9,6 +9,11 @@ Start gate: nothing is written until every enabled stream has delivered a
 message (``start_timeout_s``; ``allow_missing`` starts anyway at the timeout).
 On timeout without ``allow_missing`` the node logs ``GATE abort`` and exits
 with code 2, having created no file.
+
+Transforms (format v4): the last ``/tf_static`` transform per frame pair is
+written to group ``/tf_static``, and every direct ``parent->child`` edge named
+in ``tf_track`` is recorded from ``tf_topic`` as stream ``/tf/<p>__<c>``.
+These never gate the start.
 """
 import datetime
 import hashlib
@@ -21,6 +26,7 @@ import sys
 import threading
 import time
 
+import numpy as np
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
@@ -29,12 +35,16 @@ from rclpy.qos import (QoSDurabilityPolicy, QoSHistoryPolicy, QoSProfile,
 from rosidl_runtime_py.utilities import get_message
 
 from dataset_generator import radar_cfg, start_gate
-from dataset_generator.converters import get_converter, normalize_type
+from dataset_generator.converters import (get_converter, normalize_type,
+                                          Sample, TF_COLUMNS, tf_transforms)
 from dataset_generator.hdf5_writer import CaptureFile
-from dataset_generator.stream_config import parse_streams
+from dataset_generator.stream_config import (parse_streams, parse_tf_track,
+                                             TF_RESERVED, tf_stream_name)
 from std_msgs.msg import String
+from tf2_msgs.msg import TFMessage
 
 _CFG = object()   # queue tag: (_CFG, stream, radar cfg path)
+_CALL = object()  # queue tag: (_CALL, fn) - run fn on the writer thread
 GATE_EXIT_CODE = 2   # exit status when the start gate aborts
 
 
@@ -49,7 +59,10 @@ class DatasetRecorder(Node):
                 ('capture_mode', 'all'), ('sample_rate_hz', 10.0),
                 ('flush_period_s', 5.0), ('duration_s', 0.0),
                 ('queue_size', 256), ('start_timeout_s', 30.0),
-                ('allow_missing', False)):
+                ('allow_missing', False), ('tf_topic', '/tf'),
+                ('tf_static_topic', '/tf_static'),
+                ('tf_track', ['odom->base_link']),
+                ('robot_description_topic', 'robot_description')):
             if not self.has_parameter(name):
                 self.declare_parameter(name, default)
             self._p[name] = self.get_parameter(name).value
@@ -59,6 +72,14 @@ class DatasetRecorder(Node):
         raw = {k: v.value for k, v in
                self.get_parameters_by_prefix('streams').items()}
         self.cfgs = parse_streams(raw)
+        for name in self.cfgs:
+            if name in TF_RESERVED:
+                raise ValueError('stream name %r is reserved for the '
+                                 "recorder's transform groups" % name)
+        self.tf_pairs = parse_tf_track(self._p['tf_track'])
+        self.tf_names = {p: tf_stream_name(*p) for p in self.tf_pairs}
+        self._tfs = {}         # (parent, child) -> (stamp_ns, data, recv_ns)
+        self._urdf = None
         self.out_path = self._output_path()
         # The file is created when the start gate opens (_open_gate).
         self.cap = None
@@ -86,6 +107,7 @@ class DatasetRecorder(Node):
                 continue
             self._add_stream(name, cfg)
 
+        self._add_tf()
         self._enabled = [n for n, c in self.cfgs.items()
                          if c.get('enabled', True)]
         self._topics = {n: self.cfgs[n]['topic'] for n in self._enabled}
@@ -98,6 +120,92 @@ class DatasetRecorder(Node):
                 history=QoSHistoryPolicy.KEEP_LAST, depth=1))
         self._gate_timer = self.create_timer(0.1, self._gate_tick)
         self._gate_tick()
+
+    # ---- transforms (format v4) -------------------------------------------
+    def _add_tf(self):
+        rel = QoSProfile(
+            reliability=QoSReliabilityPolicy.RELIABLE,
+            durability=QoSDurabilityPolicy.VOLATILE,
+            history=QoSHistoryPolicy.KEEP_LAST, depth=100)
+        latched = QoSProfile(
+            reliability=QoSReliabilityPolicy.RELIABLE,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+            history=QoSHistoryPolicy.KEEP_LAST, depth=100)
+        if self.tf_pairs:
+            topic = self._p['tf_topic']
+            for pair, name in self.tf_names.items():
+                self.seq[name] = 0
+                self.dropped[name] = 0
+                self._pending.append((name, {
+                    'topic': topic, 'msg_type': 'tf2_msgs/msg/TFMessage',
+                    'qos': 'reliable', 'qos_depth': 100, 'mode': 'all',
+                    'columns': list(TF_COLUMNS),
+                    'parent_frame': pair[0], 'child_frame': pair[1]},
+                    None, False))
+            self.subs.append(self.create_subscription(
+                TFMessage, topic, self._on_tf, rel))
+            self.get_logger().info('tracking tf %s from %s' % (
+                ', '.join('%s->%s' % p for p in self.tf_pairs), topic))
+        if self._p['tf_static_topic']:
+            self.subs.append(self.create_subscription(
+                TFMessage, self._p['tf_static_topic'], self._on_tf_static,
+                latched))
+        if self._p['robot_description_topic']:
+            self.subs.append(self.create_subscription(
+                String, self._p['robot_description_topic'], self._on_urdf,
+                QoSProfile(
+                    reliability=QoSReliabilityPolicy.RELIABLE,
+                    durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+                    history=QoSHistoryPolicy.KEEP_LAST, depth=1)))
+
+    def _on_tf(self, msg):
+        recv_ns = time.time_ns()
+        if not self._gate_open:
+            return
+        # filter here, before the queue: /tf carries the whole robot
+        for r in tf_transforms(msg, self.tf_names):
+            name = self.tf_names[(r.parent, r.child)]
+            try:
+                self.q.put_nowait((name, Sample(
+                    r.stamp_ns, {'data': r.data}, ()), recv_ns, {}))
+            except queue.Full:
+                self.dropped[name] += 1
+                self.get_logger().warning(
+                    '%s: write queue full, sample dropped' % name,
+                    throttle_duration_sec=5.0)
+
+    def _on_tf_static(self, msg):
+        recv_ns = time.time_ns()
+        changed = False
+        for r in tf_transforms(msg):
+            old = self._tfs.get((r.parent, r.child))
+            if old is None or not np.array_equal(old[1], r.data):
+                self._tfs[(r.parent, r.child)] = (r.stamp_ns, r.data, recv_ns)
+                changed = True
+        if changed and self._gate_open:
+            self._queue_call(self._write_tf_static)
+
+    def _write_tf_static(self):
+        """Writer thread (or main thread at close): rewrite /tf_static."""
+        self.cap.write_tf_static(
+            (p, c, v[1][:3], v[1][3:], v[0], v[2])
+            for (p, c), v in list(self._tfs.items()))
+
+    def _on_urdf(self, msg):
+        self._urdf = str(msg.data)
+        if self._gate_open:
+            self._queue_call(self._write_urdf)
+
+    def _write_urdf(self):
+        if self._urdf:
+            self.cap.set_root_attr('robot_description', self._urdf)
+
+    def _queue_call(self, fn):
+        try:
+            self.q.put((_CALL, fn), timeout=2.0)
+        except queue.Full:
+            self.get_logger().error('write queue full, %s skipped' %
+                                    fn.__name__)
 
     # ---- start gate -------------------------------------------------------
     def _gate_tick(self):
@@ -136,6 +244,9 @@ class DatasetRecorder(Node):
             'allow_missing': bool(self._p['allow_missing']),
             'wait_s': round(wait_s, 3), 'opened_recv_ns': opened_ns}
         attrs['streams_missing'] = list(missing)
+        attrs['tf_track'] = ['%s->%s' % p for p in self.tf_pairs]
+        attrs['tf_topic'] = self._p['tf_topic']
+        attrs['tf_static_topic'] = self._p['tf_static_topic']
         os.makedirs(os.path.dirname(self.out_path) or '.', exist_ok=True)
         self.cap = CaptureFile(
             self.out_path, attrs,
@@ -154,6 +265,9 @@ class DatasetRecorder(Node):
             for path in paths:
                 self._queue_cfg(name, path)
         self._held_cfg = {}
+        self._queue_call(self._write_tf_static)
+        if self._urdf:
+            self._queue_call(self._write_urdf)
         if any(self._mode(c) == 'sampled' for c in self.cfgs.values()):
             self.create_timer(1.0 / float(self._p['sample_rate_hz']),
                               self._sample_tick)
@@ -356,6 +470,13 @@ class DatasetRecorder(Node):
             item = self.q.get()
             if item is None:
                 return
+            if item[0] is _CALL:
+                try:
+                    item[1]()
+                except Exception as e:  # noqa: BLE001
+                    self.get_logger().error('%s failed: %s' %
+                                            (item[1].__name__, e))
+                continue
             if item[0] is _CFG:
                 try:
                     self._store_cfg(item[1], item[2])
@@ -384,6 +505,16 @@ class DatasetRecorder(Node):
             return
         self.q.put(None)
         self.writer.join(timeout=60.0)
+        try:   # the final word on static transforms (writer is stopped)
+            self._write_tf_static()
+            self._write_urdf()
+        except Exception as e:  # noqa: BLE001
+            self.get_logger().error('final /tf_static write failed: %s' % e)
+        for pair, name in self.tf_names.items():
+            if self.cap.count(name) == 0:
+                self.get_logger().warning(
+                    'tf %s->%s: no transforms on %s (n_samples=0)' %
+                    (pair[0], pair[1], self._p['tf_topic']))
         for meta, cube in self.meta_pairs:
             res = self.cap.cross_check(meta, cube)
             if res:

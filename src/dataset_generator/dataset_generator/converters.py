@@ -172,6 +172,44 @@ def _transform_stamped(msg, opts):
         t.x, t.y, t.z, q.x, q.y, q.z, q.w)}, ())
 
 
+TfRow = namedtuple('TfRow', 'parent child stamp_ns data')
+TF_COLUMNS = ['x', 'y', 'z', 'qx', 'qy', 'qz', 'qw']
+
+
+def _frame_name(name):
+    return str(name).lstrip('/')
+
+
+def tf_transforms(msg, pairs=None):
+    """
+    Return one ``TfRow`` per transform in a TFMessage / tf_static message.
+
+    ``pairs`` is None (keep all) or a collection of (parent, child) tuples;
+    only direct edges that match are kept, so an untracked child is dropped.
+    Leading ``/`` on frame names is stripped before matching. ``data`` is a
+    float64 vector ``x y z qx qy qz qw`` (the TransformStamped layout).
+    """
+    keep = None if pairs is None else set(pairs)
+    rows = []
+    for t in msg.transforms:
+        parent = _frame_name(t.header.frame_id)
+        child = _frame_name(t.child_frame_id)
+        if keep is not None and (parent, child) not in keep:
+            continue
+        s = stamp_ns(t)
+        tr, q = t.transform.translation, t.transform.rotation
+        rows.append(TfRow(parent, child, s,
+                          _f64(tr.x, tr.y, tr.z, q.x, q.y, q.z, q.w)))
+    return rows
+
+
+def _tf_message(msg, opts):
+    rows = tf_transforms(msg, opts.get('pairs'))
+    data = (np.stack([r.data for r in rows]) if rows
+            else np.zeros((0, 7), np.float64))
+    return Sample(-1, {'data': data}, ('data',))
+
+
 def _vector3_stamped(msg, opts):
     v = msg.vector
     return Sample(stamp_ns(msg), {'data': _f64(v.x, v.y, v.z)}, ())
@@ -202,6 +240,8 @@ CONVERTERS = {
         'vx', 'vy', 'vz', 'wx', 'wy', 'wz'), 'best_effort'),
     'geometry_msgs/msg/TransformStamped': Converter(_transform_stamped, _cols(
         'x', 'y', 'z', 'qx', 'qy', 'qz', 'qw'), 'best_effort'),
+    'tf2_msgs/msg/TFMessage': Converter(_tf_message, _cols(*TF_COLUMNS),
+                                        'reliable'),
     'geometry_msgs/msg/Vector3Stamped': Converter(
         _vector3_stamped, _cols('x', 'y', 'z'), 'best_effort'),
 }

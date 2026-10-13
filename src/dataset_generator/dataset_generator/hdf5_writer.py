@@ -18,7 +18,7 @@ import h5py
 import numpy as np
 
 FORMAT_NAME = 'cpsl_dataset_hdf5'
-FORMAT_VERSION = 3
+FORMAT_VERSION = 4
 _CHUNK_BYTES = 256 * 1024
 
 
@@ -76,7 +76,11 @@ class CaptureFile:
     # ---- setup -------------------------------------------------------
     def add_stream(self, name, attrs=None, compression=None,
                    keep_stamps=False):
-        if not name or '/' in name or '.' in name:
+        # 'tf/<parent>__<child>' is the one nested name (tracked /tf pairs);
+        # frame names may carry '.' there ('/' was replaced by the caller).
+        nested = name.startswith('tf/')
+        body = name[3:] if nested else name
+        if not body or '/' in body or (not nested and '.' in body):
             raise ValueError('bad stream name %r' % name)
         if name in self._streams:
             raise ValueError('duplicate stream %r' % name)
@@ -89,6 +93,35 @@ class CaptureFile:
                                  dtype=np.int64, chunks=(1024,))
         self._streams[name] = s
         return s
+
+    def write_tf_static(self, rows):
+        """
+        (Re)write group ``/tf_static`` from the latest transform per pair.
+
+        ``rows``: iterable of (parent, child, xyz, quat_xyzw, stamp_ns,
+        recv_ns). Replaces the previous group, so it can be called again when
+        a new pair arrives and once more at close. Call from the thread that
+        owns the file.
+        """
+        rows = list(rows)
+        n = len(rows)
+        if 'tf_static' in self._f:
+            del self._f['tf_static']
+        g = self._f.create_group('tf_static')
+        sd = h5py.string_dtype()
+        for key, col in (('parent', 0), ('child', 1)):
+            ds = g.create_dataset(key, shape=(n,), dtype=sd)
+            for i, r in enumerate(rows):
+                ds[i] = r[col]
+        g.create_dataset('xyz', data=np.asarray(
+            [r[2] for r in rows], np.float64).reshape(n, 3))
+        g.create_dataset('quat_xyzw', data=np.asarray(
+            [r[3] for r in rows], np.float64).reshape(n, 4))
+        g.create_dataset('stamp_ns', data=np.asarray(
+            [r[4] for r in rows], np.int64).reshape(n))
+        g.create_dataset('recv_ns', data=np.asarray(
+            [r[5] for r in rows], np.int64).reshape(n))
+        g.attrs['n_transforms'] = n
 
     def streams(self):
         return list(self._streams)

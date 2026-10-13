@@ -33,7 +33,8 @@ def _sample(grp, i, offsets):
 
 def export(h5_path, out_dir, reference=None):
     with h5py.File(h5_path, 'r') as f:
-        names = [n for n in f if 'stamp_recv_ns' in f[n]
+        names = [n for n in f if n not in ('tf', 'tf_static')
+                 and 'stamp_recv_ns' in f[n]
                  and f[n]['stamp_recv_ns'].shape[0] > 0
                  and 'data' in f[n]]
         if not names:

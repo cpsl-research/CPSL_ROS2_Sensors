@@ -11,7 +11,8 @@ import pytest
 h5py = pytest.importorskip('h5py')
 
 from dataset_generator import converters as cv  # noqa: E402
-from dataset_generator.stream_config import parse_streams  # noqa: E402
+from dataset_generator.stream_config import (  # noqa: E402
+    parse_streams, parse_tf_track, tf_stream_name)
 from dataset_generator.hdf5_to_legacy import export  # noqa: E402
 from dataset_generator.hdf5_writer import CaptureFile  # noqa: E402
 
@@ -75,7 +76,7 @@ def test_roundtrip_all_types(tmp_path):
     cap.close()
 
     with h5py.File(path, 'r') as f:
-        assert f.attrs['closed_cleanly'] and f.attrs['format_version'] == 3
+        assert f.attrs['closed_cleanly'] and f.attrs['format_version'] == 4
         d = f['radar_adc/data']
         assert d.shape == (5, 2, 1, 8, 4) and d.dtype == np.int16
         assert d.chunks[1:] == d.shape[1:]   # whole sample per chunk row
@@ -294,7 +295,7 @@ def test_radar_cfg_attrs_roundtrip(tmp_path):
     cap.close()
     with h5py.File(p) as f:
         a = f['radar_adc'].attrs
-        assert f.attrs['format_version'] == 3
+        assert f.attrs['format_version'] == 4
         assert a['radar_cfg_text'] == 'frameCfg 0 0 1\n'
         assert a['radar_cfg_status'] == 'ok' and not a['radar_cfg_changed']
         assert json.loads(a['radar_cfg_metrics'])['n_rx'] == 4
@@ -340,3 +341,160 @@ def test_recorder_store_cfg(tmp_path):
         assert a['radar_cfg_status'].startswith('unreadable')
         assert a['radar_cfg_path'] == '/nonexistent/x.cfg'
         assert 'radar_cfg_text' not in a
+
+
+# ---- transforms (format v4) -------------------------------------------------
+def tfs(parent, child, sec, x=0.0, frame_slash=False):
+    t = NS(x=x, y=2.0, z=3.0)
+    q = NS(x=0.0, y=0.0, z=0.0, w=1.0)
+    p = ('/' if frame_slash else '') + parent
+    return NS(header=hdr(sec, 5, p), child_frame_id=child,
+              transform=NS(translation=t, rotation=q))
+
+
+def test_parse_tf_track():
+    assert parse_tf_track(['odom->base_link']) == [('odom', 'base_link')]
+    assert parse_tf_track(['/odom -> /base_link', 'odom->base_link',
+                           'map->odom']) == [('odom', 'base_link'),
+                                             ('map', 'odom')]
+    for off in (None, '', [''], [], ['', ' ']):
+        assert parse_tf_track(off) == []
+    for bad in ('odom', 'a->b->c', '->b', 'a->', 'a=>b', 'a-b'):
+        with pytest.raises(ValueError):
+            parse_tf_track([bad])
+    assert tf_stream_name('a/b', 'c') == 'tf/a.b__c'
+
+
+def test_tf_converter_filters_to_tracked_pairs():
+    msg = NS(transforms=[tfs('odom', 'base_link', 3, x=1.5),
+                         tfs('odom', 'other', 3),
+                         tfs('base_link', 'radar', 3, frame_slash=True)])
+    rows = cv.tf_transforms(msg, [('odom', 'base_link')])
+    assert [(r.parent, r.child) for r in rows] == [('odom', 'base_link')]
+    assert rows[0].stamp_ns == 3 * 10**9 + 5
+    assert list(rows[0].data) == [1.5, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0]
+    # no pair list = everything, with the leading '/' stripped
+    allrows = cv.tf_transforms(msg)
+    assert len(allrows) == 3 and allrows[2].parent == 'base_link'
+    assert cv.tf_transforms(msg, []) == []
+    s = cv.get_converter('tf2_msgs/TFMessage').fn(
+        msg, {'pairs': [('odom', 'other')]})
+    assert s.fields['data'].shape == (1, 7) and s.ragged == ('data',)
+
+
+def test_tf_pair_streams_and_static_roundtrip(tmp_path):
+    p = tmp_path / 't.h5'
+    cap = CaptureFile(p, {'tf_track': ['odom->base_link', 'a/b->c']},
+                      flush_period_s=0.0)
+    n1 = tf_stream_name('odom', 'base_link')
+    n2 = tf_stream_name('a/b', 'c')
+    assert (n1, n2) == ('tf/odom__base_link', 'tf/a.b__c')
+    for n, par, ch in ((n1, 'odom', 'base_link'), (n2, 'a/b', 'c')):
+        cap.add_stream(n, {'parent_frame': par, 'child_frame': ch,
+                           'columns': cv.TF_COLUMNS})
+    for bad in ('tf/', 'tf/a/b', 'x.y', 'a/b'):
+        with pytest.raises(ValueError):
+            cap.add_stream(bad)
+    rows = cv.tf_transforms(NS(transforms=[tfs('odom', 'base_link', 4)]))
+    for i in range(3):
+        cap.append(n1, rows[0].stamp_ns + i, 100 + i, {'data': rows[0].data})
+    cap.write_tf_static([('base_link', 'radar', [1, 2, 3], [0, 0, 0, 1],
+                          7, 8)])
+    cap.write_tf_static([('base_link', 'radar', [1, 2, 3], [0, 0, 0, 1],
+                          7, 8),
+                         ('base_link', 'lidar', [0, 0, 1], [0, 0, 1, 0],
+                          9, 10)])      # a new pair rewrites the group
+    cap.close()
+    with h5py.File(p, 'r') as f:
+        assert f.attrs['format_version'] == 4
+        g = f['tf/odom__base_link']
+        assert g['data'].shape == (3, 7)
+        assert g.attrs['parent_frame'] == 'odom'
+        assert g.attrs['child_frame'] == 'base_link'
+        assert g.attrs['n_samples'] == 3
+        assert g['stamp_header_ns'][1] == 4 * 10**9 + 5 + 1
+        assert f['tf/a.b__c'].attrs['n_samples'] == 0     # silent pair
+        assert 'data' not in f['tf/a.b__c']
+        st = f['tf_static']
+        assert list(st['parent'].asstr()[:]) == ['base_link', 'base_link']
+        assert list(st['child'].asstr()[:]) == ['radar', 'lidar']
+        assert st['xyz'].shape == (2, 3) and st['quat_xyzw'].shape == (2, 4)
+        assert list(st['quat_xyzw'][1]) == [0, 0, 1, 0]
+        assert list(st['stamp_ns'][:]) == [7, 9]
+        assert list(st['recv_ns'][:]) == [8, 10]
+    # an empty tf_static is still a valid (N=0) group
+    cap = CaptureFile(tmp_path / 'e.h5')
+    cap.write_tf_static([])
+    cap.close()
+    with h5py.File(tmp_path / 'e.h5', 'r') as f:
+        assert f['tf_static/xyz'].shape == (0, 3)
+        assert f['tf_static/parent'].shape == (0,)
+
+
+def test_recorder_tf_static_dedup_and_v4_attrs(tmp_path):
+    """The recorder's /tf_static handling on a stub (no ROS graph)."""
+    pytest.importorskip('rclpy')
+    pytest.importorskip('std_msgs')
+    import json
+    from dataset_generator.dataset_recorder import DatasetRecorder
+    calls = []
+
+    def _write_tf_static():
+        pass
+
+    me = NS(_tfs={}, _gate_open=True, _write_tf_static=_write_tf_static,
+            _queue_call=lambda fn: calls.append(fn.__name__))
+    m1 = NS(transforms=[tfs('base_link', 'radar', 1, x=1.0)])
+    DatasetRecorder._on_tf_static(me, m1)
+    first = dict(me._tfs)
+    DatasetRecorder._on_tf_static(me, m1)                # identical repeat
+    assert calls == ['_write_tf_static'] and me._tfs == first
+    DatasetRecorder._on_tf_static(
+        me, NS(transforms=[tfs('base_link', 'radar', 1, x=2.0)]))   # changed
+    DatasetRecorder._on_tf_static(
+        me, NS(transforms=[tfs('base_link', 'lidar', 1)]))          # new pair
+    assert len(calls) == 3 and len(me._tfs) == 2
+    # gate not open yet: stored, nothing queued
+    me2 = NS(_tfs={}, _gate_open=False, _write_tf_static=_write_tf_static,
+             _queue_call=lambda fn: calls.append('late'))
+    DatasetRecorder._on_tf_static(me2, m1)
+    assert len(me2._tfs) == 1 and 'late' not in calls
+    # the v4 root attrs, as the recorder passes them at gate open
+    path = tmp_path / 'v4.h5'
+    cap = CaptureFile(path, {
+        'start_gate': {'timeout_s': 30.0, 'allow_missing': True,
+                       'wait_s': 1.5, 'opened_recv_ns': 123},
+        'streams_missing': ['odom'], 'tf_track': ['odom->base_link'],
+        'tf_topic': '/tf', 'tf_static_topic': '/tf_static'})
+    cap.add_stream('odom')
+    me3 = NS(cap=cap, _tfs=me._tfs)
+    DatasetRecorder._write_tf_static(me3)
+    cap.close()
+    with h5py.File(path, 'r') as f:
+        a = f.attrs
+        assert a['format_version'] == 4
+        gate = json.loads(a['start_gate'])
+        assert gate['allow_missing'] is True and gate['wait_s'] == 1.5
+        assert list(a['streams_missing']) == ['odom']
+        assert list(a['tf_track']) == ['odom->base_link']
+        assert a['tf_topic'] == '/tf' and a['tf_static_topic'] == '/tf_static'
+        assert f['tf_static/xyz'].shape == (2, 3)
+        assert f['tf_static/xyz'][0][0] == 2.0       # the changed value won
+
+
+def test_legacy_export_skips_tf_groups(tmp_path):
+    path = tmp_path / 'v4l.h5'
+    cap = CaptureFile(path)
+    cap.add_stream('radar_pc')
+    cap.add_stream('tf/odom__base_link')
+    pc = cv.get_converter('sensor_msgs/msg/PointCloud2')
+    row = cv.tf_transforms(NS(transforms=[tfs('odom', 'base_link', 1)]))[0]
+    for i in range(2):
+        put(cap, 'radar_pc', cloud([[i, 0, 0, 0]]), pc, 100 * (i + 1))
+        cap.append('tf/odom__base_link', row.stamp_ns, 100 * (i + 1) - 1,
+                   {'data': row.data})
+    cap.write_tf_static([('base_link', 'radar', [0, 0, 0], [0, 0, 0, 1], 1, 2)])
+    cap.close()
+    counts = export(str(path), str(tmp_path / 'out'))
+    assert counts == {'radar_pc': 2}
+    assert sorted(os.listdir(tmp_path / 'out')) == ['radar_pc']

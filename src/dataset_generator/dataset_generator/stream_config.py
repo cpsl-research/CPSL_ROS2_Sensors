@@ -25,3 +25,42 @@ def parse_streams(params):
             if req not in cfg:
                 raise ValueError('streams.%s is missing %r' % (name, req))
     return out
+
+
+TF_RESERVED = ('tf', 'tf_static')   # HDF5 groups the recorder writes itself
+
+
+def _frame(name):
+    return str(name).strip().lstrip('/')
+
+
+def parse_tf_track(values):
+    """
+    Parse ``tf_track`` ("parent->child" strings) into (parent, child) tuples.
+
+    ``None``, ``''`` and ``[""]`` mean off. Anything that is not exactly
+    ``a->b`` raises ValueError. A leading ``/`` on a frame is dropped and
+    duplicates are removed (order kept).
+    """
+    if values is None:
+        return []
+    if isinstance(values, str):
+        values = [values]
+    pairs = []
+    for raw in values:
+        text = str(raw).strip()
+        if not text:
+            continue
+        parts = text.split('->')
+        if len(parts) != 2 or not _frame(parts[0]) or not _frame(parts[1]):
+            raise ValueError(
+                "tf_track entry %r must look like 'parent->child'" % raw)
+        pair = (_frame(parts[0]), _frame(parts[1]))
+        if pair not in pairs:
+            pairs.append(pair)
+    return pairs
+
+
+def tf_stream_name(parent, child):
+    """Return the HDF5 group for a tracked pair: ``tf/<parent>__<child>``."""
+    return 'tf/%s__%s' % (parent.replace('/', '.'), child.replace('/', '.'))
