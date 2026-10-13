@@ -20,6 +20,12 @@ dataset_generator:
     flush_period_s: 5.0
     duration_s: 0.0        # >0: stop and close cleanly after this long
     queue_size: 256        # writer-thread queue (samples); overflow is counted, not blocking
+    start_timeout_s: 30.0  # start gate: wait for every enabled stream; 0 = forever (see Start gate)
+    allow_missing: false   # true: start at the timeout anyway instead of aborting
+    tf_topic: /tf          # transforms (v4): where tracked pairs are read from
+    tf_static_topic: /tf_static
+    tf_track: ["odom->base_link"]   # flat "parent->child" strings; [""] = none (see Transforms)
+    robot_description_topic: robot_description   # "" = off; URDF goes to a root attr
     streams:
       <name>:              # HDF5 group name (no '.' or '/')
         topic: radar_0/adc_data_cube
@@ -39,7 +45,8 @@ dataset_generator:
 
 Supported `type`s: `raw_radar_msgs/ADCDataCube`, `raw_radar_msgs/ADCChirpMeta`,
 `sensor_msgs/{PointCloud2,Image,Imu}`, `nav_msgs/Odometry`,
-`geometry_msgs/{Twist,TwistStamped,TransformStamped,Vector3Stamped}`
+`geometry_msgs/{Twist,TwistStamped,TransformStamped,Vector3Stamped}`,
+`tf2_msgs/TFMessage` (ragged: one row per transform; the recorder uses it for `tf_track`)
 (`converters.py`; add one function + a table row for a new type).
 
 QoS defaults: ADCDataCube and ADCChirpMeta `reliable`; all others `best_effort`
@@ -48,10 +55,15 @@ lost about half of the 3.4 MB SAR frames (running/radar-03_step2_rate_diag.log, 
 
 ## Layout
 
-Root attrs: `format="cpsl_dataset_hdf5"`, `format_version=3`, `closed_cleanly` (False
-until a clean close; False means the node died), `start_recv_ns`, `end_recv_ns`,
+Root attrs: `format="cpsl_dataset_hdf5"`, `format_version=4`, `closed_cleanly` (False
+until a clean close; False means the node died), `start_recv_ns` (the gate-open time, see
+Start gate), `end_recv_ns`,
 `last_flush_recv_ns`, `created_utc`, `host`, `ros_node`, `capture_mode`, `sample_rate_hz`,
-`config_streams` (the stream table as JSON), `timestamps` (field meaning).
+`config_streams` (the stream table as JSON), `timestamps` (field meaning). Format v4 adds
+`start_gate` (JSON), `streams_missing`, `tf_track`, `tf_topic`, `tf_static_topic` and, when a
+URDF was received, `robot_description` (see below). Besides the stream groups the file has the
+non-stream groups `/tf_static` and `/tf` (the latter holds the tracked pairs); a reader that loops
+over the root group must skip those two names (`hdf5_to_legacy` does).
 
 Per stream, group `/<name>`:
 
@@ -85,6 +97,117 @@ topic itself lost messages. In `sampled` mode these gaps are expected.
 
 The file is flushed every `flush_period_s` and closed on SIGINT/SIGTERM or `duration_s`.
 A killed process leaves an HDF5 file that may need recovery; check `closed_cleanly`.
+
+## Start gate (format v4)
+
+The file is created only when every **enabled** `streams:` entry has delivered a message, so the
+first sample of every stream is at or after `start_recv_ns` and no stream starts late with an
+empty group. Messages that arrive earlier are discarded; latched data (the radar cfg path,
+`/tf_static`, `robot_description`) is held in memory and written when the gate opens.
+Only `streams:` entries gate the start. Tracked tf pairs, `/tf_static` and `robot_description`
+never do (the Rover Pro runs with `publish_tf: false`, the Create 3 puts its tf on `/<ns>/tf`).
+
+| param | default | meaning |
+|---|---|---|
+| `start_timeout_s` | 30.0 | how long to wait for the silent streams; `0` waits forever |
+| `allow_missing` | false | at the timeout, start anyway; the silent streams keep empty groups and are listed in root attr `streams_missing` |
+
+At the timeout without `allow_missing` the node logs `GATE abort missing=<topics>`, creates **no
+file** and exits with code **2**. Stopping it (SIGINT/SIGTERM) before the gate opens also leaves
+no file.
+
+State is reported in two places: one stable log line per change,
+`GATE waiting missing=a,b` (the topics still silent), `GATE open wait_s=1.23` or
+`GATE abort missing=a,b`, and the same state as JSON on the latched `std_msgs/String` topic
+`~/gate` (`{"state","missing","missing_topics","wait_s","timeout_s","allow_missing"}`).
+Root attr `start_gate` is JSON `{"timeout_s","allow_missing","wait_s","opened_recv_ns"}`;
+`streams_missing` is a list of stream names (empty when everything arrived).
+
+## Transforms (format v4)
+
+Clouds, images and radar data stay in their **sensor frame** (`frame_id` attr). The file carries
+the transforms needed to move them into the body or odom frame.
+
+**`/tf_static`**: group `/tf_static`, the last transform seen per (parent, child) from
+`tf_static_topic` (RELIABLE + TRANSIENT_LOCAL, so a latched publisher is picked up even if it
+started first). It is written at gate open, rewritten when a new or changed pair arrives, and
+once more at close. Datasets: `parent`, `child` (variable-length strings, frame names without a
+leading `/`), `xyz` (N,3) f64, `quat_xyzw` (N,4) f64, `stamp_ns`, `recv_ns` (int64). This is
+the authoritative mount: the YAML `mount_*` keys are still accepted and kept in `config_streams`,
+but they are only annotations. When a `robot_description` message (latched String) is received the
+URDF text is stored in root attr `robot_description`.
+
+**Tracked `/tf` pairs**: each `tf_track` entry `"parent->child"` (a flat list of strings; rcl
+parameters cannot hold nested lists, and an empty list does not load, so "off" is `[""]`) is
+recorded from `tf_topic` as stream `/tf/<parent>__<child>` (a `/` inside a frame name becomes `.`).
+Only the direct edge is matched (leading `/` stripped); chains are not composed by the recorder.
+Anything that is not exactly `a->b` is rejected at startup. Datasets as in any stream:
+`stamp_header_ns` (the transform's own stamp), `stamp_recv_ns`, and `data` `float64 (N, 7)` =
+`x y z qx qy qz qw` (attr `columns`). Attrs `parent_frame` / `child_frame` hold the exact names.
+A pair that never appears gives a warning and a group with `n_samples=0` (no `data`), not an abort.
+
+**Recipe: a sensor point in the odom frame** at the time of a cloud, `T_odom_sensor = T_odom_base(t) · T_base_sensor`:
+interpolate the tracked series at the cloud's `stamp_header_ns`, and chain `/tf_static` edges
+from the cloud's `frame_id` up to the tracked child.
+
+```python
+import h5py, numpy as np
+
+def T(xyz, q):                                  # 4x4 from x y z, qx qy qz qw
+    x, y, z, w = np.asarray(q) / np.linalg.norm(q)
+    M = np.eye(4)
+    M[:3, :3] = [[1-2*(y*y+z*z), 2*(x*y-z*w),   2*(x*z+y*w)],
+                 [2*(x*y+z*w),   1-2*(x*x+z*z), 2*(y*z-x*w)],
+                 [2*(x*z-y*w),   2*(y*z+x*w),   1-2*(x*x+y*y)]]
+    M[:3, 3] = xyz
+    return M
+
+def pose_at(g, t_ns):                            # tracked group -> T_parent_child at t
+    ts, d = g['stamp_header_ns'][:], g['data'][:]
+    j = int(np.clip(np.searchsorted(ts, t_ns), 1, max(len(ts) - 1, 1)))
+    a, b = max(j - 1, 0), min(j, len(ts) - 1)
+    u = 0.0 if ts[b] == ts[a] else float(np.clip((t_ns - ts[a]) / (ts[b] - ts[a]), 0, 1))
+    qa, qb = d[a, 3:], d[b, 3:]
+    qb = -qb if qa @ qb < 0 else qb              # same hemisphere, then nlerp
+    return T((1-u) * d[a, :3] + u * d[b, :3], (1-u) * qa + u * qb)
+
+def static_chain(f, frame, up_to):               # T_up_to_frame from /tf_static
+    g = f['tf_static']
+    parent, child = g['parent'].asstr()[:], g['child'].asstr()[:]
+    row = {c: i for i, c in enumerate(child)}
+    M = np.eye(4)
+    while frame != up_to:
+        i = row[frame]                           # KeyError = no static path to up_to
+        M = T(g['xyz'][i], g['quat_xyzw'][i]) @ M
+        frame = parent[i]
+    return M
+
+with h5py.File('capture.h5') as f:
+    i = 10
+    cloud = f['radar_pc']
+    off = np.concatenate([[0], np.cumsum(cloud['row_count'][:])])
+    pts = cloud['data'][off[i]:off[i + 1], :3]
+    t = cloud['stamp_header_ns'][i]
+    trk = f['tf/odom__base_link']
+    T_odom_base = pose_at(trk, t)
+    T_base_sensor = static_chain(f, cloud.attrs['frame_id'], trk.attrs['child_frame'])
+    T_odom_sensor = T_odom_base @ T_base_sensor
+    pts_odom = pts @ T_odom_sensor[:3, :3].T + T_odom_sensor[:3, 3]
+```
+
+The pose is clamped to the first/last sample outside the tracked time range, and the
+quaternion is nlerp-ed (fine for the small steps between consecutive odometry samples). If the
+tracked series is empty (`n_samples=0`) there is no odom pose: use the body frame only
+(`static_chain`) or the `odom` stream. Header stamps from different drivers are only comparable
+if their clocks are; fall back to `stamp_recv_ns` (the recording host's clock) if they are not.
+
+### v3 vs v4
+
+v4 only adds: the start gate (file created at gate open, so `start_recv_ns` moves later and a
+file can be absent), root attrs `start_gate`, `streams_missing`, `tf_track`, `tf_topic`,
+`tf_static_topic`, `robot_description`, and the groups `/tf_static` and `/tf/*`. Stream groups
+are unchanged. A v3 reader keeps working if it skips the two new non-stream groups; `radar_cfg_*`
+attrs (v3) are unchanged. `hdf5_to_legacy` handles both.
 
 ## Radar cfg (format v3)
 

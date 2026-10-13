@@ -498,3 +498,13 @@ def test_legacy_export_skips_tf_groups(tmp_path):
     counts = export(str(path), str(tmp_path / 'out'))
     assert counts == {'radar_pc': 2}
     assert sorted(os.listdir(tmp_path / 'out')) == ['radar_pc']
+
+
+@pytest.mark.parametrize('name', ['ugv_dataset.yaml', 'radar_sar.yaml',
+                                  'rover_pro_radar.yaml'])
+def test_v2_presets_have_gate_and_tf_params(name):
+    p = _launch_path_params(name)['dataset_generator']['ros__parameters']
+    assert p['start_timeout_s'] >= 0 and p['allow_missing'] is False
+    pairs = parse_tf_track(p['tf_track'])
+    assert pairs == ([] if name == 'radar_sar.yaml'
+                     else [('odom', 'base_link')])

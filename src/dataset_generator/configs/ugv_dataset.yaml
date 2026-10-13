@@ -8,6 +8,14 @@ dataset_generator:
     capture_mode: "all"        # all = every message; sampled = latest per tick
     sample_rate_hz: 10.0       # only used by streams in sampled mode
     flush_period_s: 5.0
+    start_timeout_s: 30.0      # wait this long for every enabled stream (0 = forever); else abort, exit 2
+    allow_missing: false       # true: start at the timeout anyway, silent streams listed in streams_missing
+    # Transforms (format v4): /tf_static is always recorded; each "parent->child" below is a
+    # direct /tf edge recorded as a time series. [""] turns the series off.
+    tf_track: ["odom->base_link"]
+    # unverified - check on the robot: the Create 3 publishes its tf on /<ns>/tf, so this is
+    # likely "/cpsl_ugv_1/tf" (src/console/tasks.py); the default "/tf" would record nothing.
+    tf_topic: "/cpsl_ugv_1/tf"
     streams:
       radar_adc:               # name = HDF5 group; legacy_folder = old folder name
         topic: "radar_0/adc_data_cube"
