@@ -21,12 +21,12 @@ from rclpy.node import Node
 from rclpy.qos import (QoSDurabilityPolicy, QoSHistoryPolicy, QoSProfile,
                        QoSReliabilityPolicy)
 from rosidl_runtime_py.utilities import get_message
-from std_msgs.msg import String
 
 from dataset_generator import radar_cfg
 from dataset_generator.converters import get_converter, normalize_type
 from dataset_generator.hdf5_writer import CaptureFile
 from dataset_generator.stream_config import parse_streams
+from std_msgs.msg import String
 
 _CFG = object()   # queue tag: (_CFG, stream, radar cfg path)
 

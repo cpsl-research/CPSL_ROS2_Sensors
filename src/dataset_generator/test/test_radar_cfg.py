@@ -1,4 +1,5 @@
-"""radar_cfg calculator checks (no ROS, no hardware).
+"""
+radar_cfg calculator checks (no ROS, no hardware).
 
 The parity tests compare against radar_gui.cfg.metrics from CPSL_TI_Radar and
 are skipped when that tree is not found (set CPSL_TI_RADAR_SRC to its path).
@@ -8,9 +9,8 @@ import json
 import os
 import sys
 
-import pytest
-
 from dataset_generator import radar_cfg
+import pytest
 
 _TIR_CANDIDATES = [
     os.environ.get('CPSL_TI_RADAR_SRC', ''),

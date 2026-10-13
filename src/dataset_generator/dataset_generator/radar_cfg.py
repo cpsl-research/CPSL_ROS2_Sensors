@@ -1,4 +1,5 @@
-"""Derived radar specs from a TI mmWave ``.cfg`` text (stdlib only, no ROS).
+"""
+Derived radar specs from a TI mmWave ``.cfg`` text (stdlib only, no ROS).
 
 Stored next to the raw cfg text in every recorded ADC stream so a capture
 describes itself. This is a deliberately small copy of the TDM, single-chip
@@ -77,7 +78,7 @@ def _tdm_slots(masks, bpm):
 
 
 def compute(text):
-    """cfg text -> dict of specs. Raises CfgError on missing/malformed input."""
+    """Compute the dict of specs from cfg text; raise CfgError on bad input."""
     cmds = _parse(text)
     if 'advFrameCfg' in cmds:
         raise CfgError('advFrameCfg is not supported by this calculator')
