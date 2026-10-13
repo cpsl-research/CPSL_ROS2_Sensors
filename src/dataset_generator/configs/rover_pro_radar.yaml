@@ -12,6 +12,7 @@ dataset_generator:
       radar_adc:
         topic: "sar_radar/adc_data_cube"
         type: "raw_radar_msgs/msg/ADCDataCube"
+        config_topic: "sar_radar/radar_config_path"   # latched cfg path from ti_radar_connect
         qos: reliable
         qos_depth: 10
         # Radar mount relative to base_link (FLU). Annotation only, stored in config_streams.

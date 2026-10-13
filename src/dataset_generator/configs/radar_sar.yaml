@@ -11,6 +11,7 @@ dataset_generator:
       radar_adc:
         topic: "radar_0/adc_data_cube"
         type: "raw_radar_msgs/msg/ADCDataCube"
+        config_topic: "radar_0/radar_config_path"   # latched cfg path from ti_radar_connect
         qos: reliable
         qos_depth: 10
       adc_meta:                # only present when the driver runs with publish_chirp_meta

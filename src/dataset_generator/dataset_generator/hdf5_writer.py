@@ -18,7 +18,7 @@ import h5py
 import numpy as np
 
 FORMAT_NAME = 'cpsl_dataset_hdf5'
-FORMAT_VERSION = 2
+FORMAT_VERSION = 3
 _CHUNK_BYTES = 256 * 1024
 
 

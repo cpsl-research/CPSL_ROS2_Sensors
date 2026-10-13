@@ -2,7 +2,7 @@
 
 _STREAM_KEYS = ('topic', 'type', 'enabled', 'qos', 'qos_depth', 'mode',
                 'fields', 'skip_nans', 'compression', 'legacy_folder',
-                'meta_for')
+                'meta_for', 'config_topic')
 # Free-form `mount_*` keys (mount_frame, mount_xyz, ...) are annotations only:
 # accepted here and stored verbatim in the file's config_streams attr.
 

@@ -6,6 +6,8 @@ and docs/hdf5_format.md). Every sample is stored with its header stamp and the
 host receive time.
 """
 import datetime
+import hashlib
+import json
 import os
 import queue
 import signal
@@ -19,10 +21,14 @@ from rclpy.node import Node
 from rclpy.qos import (QoSDurabilityPolicy, QoSHistoryPolicy, QoSProfile,
                        QoSReliabilityPolicy)
 from rosidl_runtime_py.utilities import get_message
+from std_msgs.msg import String
 
+from dataset_generator import radar_cfg
 from dataset_generator.converters import get_converter, normalize_type
 from dataset_generator.hdf5_writer import CaptureFile
 from dataset_generator.stream_config import parse_streams
+
+_CFG = object()   # queue tag: (_CFG, stream, radar cfg path)
 
 
 class DatasetRecorder(Node):
@@ -58,6 +64,9 @@ class DatasetRecorder(Node):
         self.written_seq = {}
         self.seq = {}
         self.meta_pairs = []
+        self.cfg_streams = {}   # stream -> config topic
+        self._cfg_first = {}    # stream -> first radar cfg path seen
+        self._cfg_writer_path = {}   # writer thread only
         self.subs = []
         for name, cfg in self.cfgs.items():
             if not cfg.get('enabled', True):
@@ -138,8 +147,76 @@ class DatasetRecorder(Node):
             lambda m, n=name, c=conv, o=opts, md=mode: self._on_msg(
                 n, c, o, md, m), qos)
         self.subs.append(sub)
+        if msg_type.endswith('ADCDataCube'):
+            self._add_cfg_sub(name, cfg)
         self.get_logger().info('stream %s: %s [%s] qos=%s depth=%d mode=%s' %
                                (name, cfg['topic'], msg_type, rel, depth, mode))
+
+    # ---- radar cfg (latched path published by ti_radar_connect) ---------
+    def _add_cfg_sub(self, name, cfg):
+        topic = cfg.get('config_topic') or \
+            cfg['topic'].replace('adc_data_cube', 'radar_config_path')
+        self.cap.update_stream_attrs(
+            name, {'radar_cfg_status': 'not_received'})
+        if topic == cfg['topic']:
+            self.get_logger().warning(
+                'stream %s: cannot derive the radar cfg topic from %r; set '
+                'streams.%s.config_topic (radar_cfg_status stays '
+                'not_received)' % (name, cfg['topic'], name))
+            return
+        # matches TIRadarConnectNode: RELIABLE + TRANSIENT_LOCAL, depth 5
+        qos = QoSProfile(
+            reliability=QoSReliabilityPolicy.RELIABLE,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+            history=QoSHistoryPolicy.KEEP_LAST, depth=5)
+        self.cfg_streams[name] = topic
+        self.cap.update_stream_attrs(name, {'radar_cfg_topic': topic})
+        self.subs.append(self.create_subscription(
+            String, topic, lambda m, n=name: self._on_cfg_path(n, m), qos))
+        self.get_logger().info('stream %s: radar cfg path from %s' %
+                               (name, topic))
+
+    def _on_cfg_path(self, name, msg):
+        path = str(msg.data)
+        first = self._cfg_first.get(name)
+        if first is not None and first == path:
+            return
+        if first is None:
+            self._cfg_first[name] = path
+        try:   # a one-off message; the queue is empty at startup
+            self.q.put((_CFG, name, path), timeout=2.0)
+        except queue.Full:
+            self.get_logger().error(
+                '%s: write queue full, radar cfg path %r not stored' %
+                (name, path))
+
+    def _store_cfg(self, name, path):
+        """Writer thread: read the cfg file, store text/hash/metrics."""
+        first = self._cfg_writer_path.get(name)
+        if first is not None:
+            if path != first:
+                self.cap.update_stream_attrs(name, {'radar_cfg_changed': True})
+                self.get_logger().warning(
+                    '%s: radar cfg path changed during the capture (%s -> %s);'
+                    ' keeping the first' % (name, first, path))
+            return
+        self._cfg_writer_path[name] = path
+        attrs = {'radar_cfg_path': path, 'radar_cfg_changed': False}
+        try:
+            with open(path, 'rb') as f:
+                raw = f.read()
+            text = raw.decode('utf-8', errors='replace')
+            attrs.update(
+                radar_cfg_text=text,
+                radar_cfg_sha256=hashlib.sha256(raw).hexdigest(),
+                radar_cfg_metrics=json.dumps(
+                    radar_cfg.parse_and_compute(text), sort_keys=True),
+                radar_cfg_status='ok')
+        except Exception as e:  # noqa: BLE001
+            attrs['radar_cfg_status'] = 'unreadable: %s' % e
+            self.get_logger().warning('%s: radar cfg %r unreadable: %s' %
+                                      (name, path, e))
+        self.cap.update_stream_attrs(name, attrs)
 
     # ---- receive --------------------------------------------------------
     def _on_msg(self, name, conv, opts, mode, msg):
@@ -183,6 +260,13 @@ class DatasetRecorder(Node):
             item = self.q.get()
             if item is None:
                 return
+            if item[0] is _CFG:
+                try:
+                    self._store_cfg(item[1], item[2])
+                except Exception as e:  # noqa: BLE001
+                    self.get_logger().error('%s: radar cfg store failed: %s' %
+                                            (item[1], e))
+                continue
             name, s, recv_ns, extra = item
             try:
                 if extra:
@@ -204,6 +288,13 @@ class DatasetRecorder(Node):
             res = self.cap.cross_check(meta, cube)
             if res:
                 self.get_logger().info('%s vs %s: %s' % (cube, meta, res))
+        for name in self.cfg_streams:
+            if name not in self._cfg_writer_path:
+                self.cap.update_stream_attrs(
+                    name, {'radar_cfg_status': 'not_received'})
+                self.get_logger().warning(
+                    '%s: no radar cfg path received on %s' %
+                    (name, self.cfg_streams[name]))
         for name, n in self.dropped.items():
             self.cap.update_stream_attrs(name, {'n_dropped_node': n})
         self.cap.close()

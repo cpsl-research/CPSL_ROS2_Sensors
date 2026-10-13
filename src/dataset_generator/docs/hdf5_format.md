@@ -33,6 +33,8 @@ dataset_generator:
         compression: gzip    # optional (gzip | lzf), any stream
         legacy_folder: radar_0_adc  # folder name used by hdf5_to_legacy
         meta_for: radar_adc  # on an ADCChirpMeta stream: the cube stream to cross-check
+        config_topic: radar_0/radar_config_path  # ADCDataCube only; default: topic with
+                             # adc_data_cube -> radar_config_path (see Radar cfg)
 ```
 
 Supported `type`s: `raw_radar_msgs/ADCDataCube`, `raw_radar_msgs/ADCChirpMeta`,
@@ -46,7 +48,7 @@ lost about half of the 3.4 MB SAR frames (running/radar-03_step2_rate_diag.log, 
 
 ## Layout
 
-Root attrs: `format="cpsl_dataset_hdf5"`, `format_version=2`, `closed_cleanly` (False
+Root attrs: `format="cpsl_dataset_hdf5"`, `format_version=3`, `closed_cleanly` (False
 until a clean close; False means the node died), `start_recv_ns`, `end_recv_ns`,
 `last_flush_recv_ns`, `created_utc`, `host`, `ros_node`, `capture_mode`, `sample_rate_hz`,
 `config_streams` (the stream table as JSON), `timestamps` (field meaning).
@@ -84,6 +86,38 @@ topic itself lost messages. In `sampled` mode these gaps are expected.
 The file is flushed every `flush_period_s` and closed on SIGINT/SIGTERM or `duration_s`.
 A killed process leaves an HDF5 file that may need recovery; check `closed_cleanly`.
 
+## Radar cfg (format v3)
+
+Each `ADCDataCube` stream carries the radar `.cfg` it was captured with, so a file
+describes itself. `ti_radar_connect` publishes the absolute cfg path on
+`<radar_name>/radar_config_path` (`std_msgs/String`, RELIABLE + TRANSIENT_LOCAL, depth 5);
+the recorder subscribes with the same QoS (so it gets the latched value even if started
+after the radar), reads the file on the recording host, and writes these stream attrs:
+
+| attr | meaning |
+|---|---|
+| `radar_cfg_topic` | the topic subscribed (`config_topic`, or the cube topic with `adc_data_cube` replaced by `radar_config_path`) |
+| `radar_cfg_path` | path the driver reported (the driver's view of the filesystem) |
+| `radar_cfg_text` | the file's text (UTF-8; undecodable bytes replaced) |
+| `radar_cfg_sha256` | SHA-256 of the file's raw bytes |
+| `radar_cfg_metrics` | JSON of derived specs (below) |
+| `radar_cfg_status` | `ok`, `unreadable: <error>` (path stored, no text/hash/metrics), or `not_received` (nothing arrived on the topic; written at close) |
+| `radar_cfg_changed` | `True` if a later message named a different path (warning logged; the first cfg is kept) |
+
+`radar_cfg_metrics` keys come from `dataset_generator/radar_cfg.py`, a stdlib calculator for
+single-chip TDM cfgs pinned to `radar_gui.cfg.metrics` (CPSL_TI_Radar) by `test/test_radar_cfg.py`:
+`scheme` (`"tdm"`), `calculator`, `calculator_version`, `start_ghz`, `slope_mhz_us`, `idle_us`,
+`ramp_us`, `num_samples` (ADC samples), `sample_rate_ksps`, `bandwidth_mhz`, `center_ghz`,
+`lambda_mm`, `chirp_us`, `n_rx`, `n_tx`, `n_virtual`, `chirps_per_loop`, `n_loops`, `n_chirps`,
+`range_res_m`, `max_range_m` (0.9 x ideal), `max_range_ideal_m`, `velocity_res_ms`,
+`max_velocity_ms`, `azimuth_res_deg`, `loop_period_us`, `doppler_bins`, `frame_period_ms`,
+`frame_rate_hz`, `bytes_per_chirp`, `bytes_per_frame`, `lvds_data_fmt`. A cfg it cannot handle
+(advFrameCfg, cascade, missing commands) gives `{"error": ...}` instead; the stored text lets you
+recompute with radar_gui. DDMA/cascade metrics are not computed.
+
+A **v2** file has none of the `radar_cfg_*` attrs (nor `config_topic` in `config_streams`);
+check `format_version` before reading them.
+
 ## Reading
 
 ```python
@@ -91,6 +125,10 @@ import h5py, numpy as np
 with h5py.File("capture.h5") as f:
     cube = f["radar_adc/data"][3]; iq = cube[0] + 1j * cube[1]
     latency_ns = f["radar_adc/stamp_recv_ns"][:] - f["radar_adc/stamp_header_ns"][:]
+    # v3: the radar's cfg and derived specs travel with the file
+    import json
+    specs = json.loads(f["radar_adc"].attrs["radar_cfg_metrics"])  # range_res_m, ...
+    cfg_text = f["radar_adc"].attrs["radar_cfg_text"]              # the .cfg verbatim
 ```
 
 ## Old-format compatibility

@@ -75,7 +75,7 @@ def test_roundtrip_all_types(tmp_path):
     cap.close()
 
     with h5py.File(path, 'r') as f:
-        assert f.attrs['closed_cleanly'] and f.attrs['format_version'] == 2
+        assert f.attrs['closed_cleanly'] and f.attrs['format_version'] == 3
         d = f['radar_adc/data']
         assert d.shape == (5, 2, 1, 8, 4) and d.dtype == np.int16
         assert d.chunks[1:] == d.shape[1:]   # whole sample per chunk row
@@ -279,3 +279,64 @@ def test_rover_pro_radar_streams_and_mount_in_config_streams(tmp_path):
     assert list(m['mount_xyz']) == [-0.05, -0.02, 0.0]
     assert list(m['mount_rpy']) == [0.0, 0.0, -1.5708]
     assert 'right-looking' in m['mount_note']
+
+
+def test_radar_cfg_attrs_roundtrip(tmp_path):
+    import json
+    p = str(tmp_path / 'c.h5')
+    cap = CaptureFile(p, {'host': 'h'})
+    cap.add_stream('radar_adc', {'topic': 't'})
+    cap.update_stream_attrs('radar_adc', {
+        'radar_cfg_path': '/x/a.cfg', 'radar_cfg_text': 'frameCfg 0 0 1\n',
+        'radar_cfg_sha256': 'ab', 'radar_cfg_status': 'ok',
+        'radar_cfg_changed': False,
+        'radar_cfg_metrics': json.dumps({'n_rx': 4}, sort_keys=True)})
+    cap.close()
+    with h5py.File(p) as f:
+        a = f['radar_adc'].attrs
+        assert f.attrs['format_version'] == 3
+        assert a['radar_cfg_text'] == 'frameCfg 0 0 1\n'
+        assert a['radar_cfg_status'] == 'ok' and not a['radar_cfg_changed']
+        assert json.loads(a['radar_cfg_metrics'])['n_rx'] == 4
+
+
+def test_recorder_store_cfg(tmp_path):
+    """The recorder's writer-thread cfg handling, on a stub (no ROS graph)."""
+    pytest.importorskip('rclpy')
+    pytest.importorskip('std_msgs')
+    import json
+    from dataset_generator.dataset_recorder import DatasetRecorder
+    cfg = tmp_path / 'r.cfg'
+    cfg.write_text('% c\nchannelCfg 15 1 0\nadcCfg 2 1\n'
+                   'profileCfg 0 77 7 6 57 0 0 70 1 256 5209 0 0 30\n'
+                   'chirpCfg 0 0 0 0 0 0 0 1\n'
+                   'frameCfg 0 0 128 0 100 1 0\nlvdsStreamCfg -1 0 1 0\n')
+    p = str(tmp_path / 'c.h5')
+    cap = CaptureFile(p)
+    cap.add_stream('radar_adc', {})
+    log = NS(warning=lambda *a, **k: None, error=lambda *a, **k: None,
+             info=lambda *a, **k: None)
+    me = NS(cap=cap, _cfg_writer_path={}, get_logger=lambda: log)
+    DatasetRecorder._store_cfg(me, 'radar_adc', str(cfg))
+    DatasetRecorder._store_cfg(me, 'radar_adc', str(cfg))          # repeat
+    DatasetRecorder._store_cfg(me, 'radar_adc', '/other/path.cfg')  # change
+    cap.close()
+    with h5py.File(p) as f:
+        a = f['radar_adc'].attrs
+        assert a['radar_cfg_status'] == 'ok'
+        assert a['radar_cfg_path'] == str(cfg)
+        assert a['radar_cfg_text'] == cfg.read_text()
+        assert a['radar_cfg_changed']
+        assert len(a['radar_cfg_sha256']) == 64
+        assert json.loads(a['radar_cfg_metrics'])['n_rx'] == 4
+    # unreadable path: stored with a status, no text
+    cap = CaptureFile(str(tmp_path / 'd.h5'))
+    cap.add_stream('radar_adc', {})
+    me = NS(cap=cap, _cfg_writer_path={}, get_logger=lambda: log)
+    DatasetRecorder._store_cfg(me, 'radar_adc', '/nonexistent/x.cfg')
+    cap.close()
+    with h5py.File(str(tmp_path / 'd.h5')) as f:
+        a = f['radar_adc'].attrs
+        assert a['radar_cfg_status'].startswith('unreadable')
+        assert a['radar_cfg_path'] == '/nonexistent/x.cfg'
+        assert 'radar_cfg_text' not in a
