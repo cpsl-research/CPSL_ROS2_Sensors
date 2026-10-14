@@ -150,6 +150,36 @@ def test_small_messages():
         cv.get_converter('foo/Bar')
 
 
+def test_stamped_streams_carry_frame_ids(tmp_path):
+    q = NS(x=0., y=0., z=0., w=1.)
+    v = NS(x=1., y=2., z=3.)
+    imu = NS(header=hdr(1, 2, '/imu_link'), orientation=q,
+             angular_velocity=v, linear_acceleration=v)
+    od = NS(header=hdr(1, 2, '/odom'), child_frame_id='/base_link',
+            pose=NS(pose=NS(position=v, orientation=q)),
+            twist=NS(twist=NS(linear=v, angular=v)))
+    path = tmp_path / 'f.h5'
+    cap = CaptureFile(path, {'capture_mode': 'all'}, flush_period_s=0.0)
+    for name, msg, typ in (('imu', imu, 'sensor_msgs/Imu'),
+                           ('odom', od, 'nav_msgs/Odometry')):
+        conv = cv.get_converter(typ)
+        cap.add_stream(name, conv.describe(msg, {}))
+        put(cap, name, msg, conv, 1)
+    cap.close()
+    with h5py.File(path, 'r') as f:
+        assert f['imu'].attrs['frame_id'] == 'imu_link'
+        assert list(f['imu'].attrs['columns'])[0] == 'qx'
+        assert f['odom'].attrs['frame_id'] == 'odom'
+        assert f['odom'].attrs['child_frame_id'] == 'base_link'
+    ts = NS(header=hdr(1, 2, 'a'), child_frame_id='b',
+            transform=NS(translation=v, rotation=q))
+    a = cv.get_converter('geometry_msgs/TransformStamped').describe(ts, {})
+    assert (a['frame_id'], a['child_frame_id']) == ('a', 'b')
+    for typ, m in (('geometry_msgs/TwistStamped', NS(header=hdr(1, 2, 'c'))),
+                   ('geometry_msgs/Vector3Stamped', NS(header=hdr(1, 2, 'c')))):
+        assert cv.get_converter(typ).describe(m, {})['frame_id'] == 'c'
+
+
 def test_parse_streams():
     got = parse_streams({'a.topic': 't', 'a.type': 'x/Y', 'a.qos': 'reliable',
                          'b.topic': 'u', 'b.type': 'x/Z'})

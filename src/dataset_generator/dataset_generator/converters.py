@@ -21,6 +21,11 @@ def stamp_ns(msg):
     return int(h.stamp.sec) * 1_000_000_000 + int(h.stamp.nanosec)
 
 
+def _fid(name):
+    """Frame name as stored in attrs: no leading '/', like /tf_static."""
+    return str(name).lstrip('/')
+
+
 def _f64(*vals):
     return np.array(vals, dtype=np.float64)
 
@@ -44,7 +49,7 @@ def _adc_cube_attrs(msg, opts):
     return {
         'columns': ['real', 'imag'],
         'axes': ['re_im'] + [d.label for d in msg.layout.dim],
-        'frame_id': msg.header.frame_id,
+        'frame_id': _fid(msg.header.frame_id),
     }
 
 
@@ -109,7 +114,7 @@ def _cloud(msg, opts):
 
 def _cloud_attrs(msg, opts):
     return {'columns': list(opts.get('fields') or [f.name for f in msg.fields]),
-            'frame_id': msg.header.frame_id,
+            'frame_id': _fid(msg.header.frame_id),
             'skip_nans': bool(opts.get('skip_nans', True))}
 
 
@@ -136,7 +141,7 @@ def _image(msg, opts):
 
 
 def _image_attrs(msg, opts):
-    return {'encoding': msg.encoding, 'frame_id': msg.header.frame_id}
+    return {'encoding': msg.encoding, 'frame_id': _fid(msg.header.frame_id)}
 
 
 # ---- small fixed-size messages ----------------------------------------------
@@ -219,6 +224,16 @@ def _cols(*names):
     return lambda msg, opts: {'columns': list(names)}
 
 
+def _stamped_cols(*names, child=False):
+    """Attrs for a stamped message: columns + frame_id (+ child_frame_id)."""
+    def describe(msg, opts):
+        a = {'columns': list(names), 'frame_id': _fid(msg.header.frame_id)}
+        if child:
+            a['child_frame_id'] = _fid(msg.child_frame_id)
+        return a
+    return describe
+
+
 _NO_ATTRS = lambda msg, opts: {}   # noqa: E731
 
 CONVERTERS = {
@@ -228,22 +243,22 @@ CONVERTERS = {
         _adc_meta, _NO_ATTRS, 'reliable'),
     'sensor_msgs/msg/PointCloud2': Converter(_cloud, _cloud_attrs, 'best_effort'),
     'sensor_msgs/msg/Image': Converter(_image, _image_attrs, 'best_effort'),
-    'sensor_msgs/msg/Imu': Converter(_imu, _cols(
+    'sensor_msgs/msg/Imu': Converter(_imu, _stamped_cols(
         'qx', 'qy', 'qz', 'qw', 'wx', 'wy', 'wz', 'ax', 'ay', 'az'),
         'best_effort'),
-    'nav_msgs/msg/Odometry': Converter(_odom, _cols(
+    'nav_msgs/msg/Odometry': Converter(_odom, _stamped_cols(
         'x', 'y', 'z', 'qx', 'qy', 'qz', 'qw',
-        'vx', 'vy', 'vz', 'wx', 'wy', 'wz'), 'best_effort'),
+        'vx', 'vy', 'vz', 'wx', 'wy', 'wz', child=True), 'best_effort'),
     'geometry_msgs/msg/Twist': Converter(_twist, _cols(
         'vx', 'vy', 'vz', 'wx', 'wy', 'wz'), 'best_effort'),
-    'geometry_msgs/msg/TwistStamped': Converter(_twist_stamped, _cols(
+    'geometry_msgs/msg/TwistStamped': Converter(_twist_stamped, _stamped_cols(
         'vx', 'vy', 'vz', 'wx', 'wy', 'wz'), 'best_effort'),
-    'geometry_msgs/msg/TransformStamped': Converter(_transform_stamped, _cols(
-        'x', 'y', 'z', 'qx', 'qy', 'qz', 'qw'), 'best_effort'),
+    'geometry_msgs/msg/TransformStamped': Converter(_transform_stamped, _stamped_cols(
+        'x', 'y', 'z', 'qx', 'qy', 'qz', 'qw', child=True), 'best_effort'),
     'tf2_msgs/msg/TFMessage': Converter(_tf_message, _cols(*TF_COLUMNS),
                                         'reliable'),
     'geometry_msgs/msg/Vector3Stamped': Converter(
-        _vector3_stamped, _cols('x', 'y', 'z'), 'best_effort'),
+        _vector3_stamped, _stamped_cols('x', 'y', 'z'), 'best_effort'),
 }
 
 

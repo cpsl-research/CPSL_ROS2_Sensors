@@ -86,7 +86,10 @@ Stream attrs: `topic`, `msg_type`, `qos`, `qos_depth`, `mode`, `n_samples`, `n_e
 (samples rejected by the writer, e.g. a shape change), `n_dropped_node` (converter errors +
 queue overflow), and for any stream with a `frame_index` field `frame_index_first/last`,
 `frame_index_recorded_gaps` (missing indices between consecutive recorded messages, uint32
-wrap-safe) and `frame_index_nonmonotonic`.
+wrap-safe) and `frame_index_nonmonotonic`. Every stamped stream also has `frame_id` (the
+message `header.frame_id`, no leading `/`), and Odometry and TransformStamped streams add
+`child_frame_id`; these are taken from the first message received and not updated. Unstamped
+Twist has none.
 
 Capture metadata for lost ADC frames (written at close when `meta_for` is set; `adc_meta`
 must be published, i.e. the driver ran with `publish_chirp_meta`): on the cube stream
@@ -125,8 +128,9 @@ Root attr `start_gate` is JSON `{"timeout_s","allow_missing","wait_s","opened_re
 
 ## Transforms (format v4)
 
-Clouds, images and radar data stay in their **sensor frame** (`frame_id` attr). The file carries
-the transforms needed to move them into the body or odom frame.
+Clouds, images, radar and IMU data stay in their **sensor frame**: every stamped stream records
+its `frame_id` attr (Odometry and TransformStamped also `child_frame_id`; no leading `/`, from the
+first message). The file carries the transforms needed to move them into the body or odom frame.
 
 **`/tf_static`**: group `/tf_static`, the last transform seen per (parent, child) from
 `tf_static_topic` (RELIABLE + TRANSIENT_LOCAL, so a latched publisher is picked up even if it
