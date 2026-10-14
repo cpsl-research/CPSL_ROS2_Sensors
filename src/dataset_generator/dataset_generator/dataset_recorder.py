@@ -59,8 +59,8 @@ class DatasetRecorder(Node):
                 ('capture_mode', 'all'), ('sample_rate_hz', 10.0),
                 ('flush_period_s', 5.0), ('duration_s', 0.0),
                 ('queue_size', 256), ('start_timeout_s', 30.0),
-                ('allow_missing', False), ('tf_topic', '/tf'),
-                ('tf_static_topic', '/tf_static'),
+                ('allow_missing', False), ('tf_topic', 'tf'),
+                ('tf_static_topic', 'tf_static'),
                 ('tf_track', ['odom->base_link']),
                 ('robot_description_topic', 'robot_description')):
             if not self.has_parameter(name):
@@ -122,6 +122,10 @@ class DatasetRecorder(Node):
         self._gate_tick()
 
     # ---- transforms (format v4) -------------------------------------------
+    def _resolved(self, topic):
+        """Absolute topic name as the middleware sees it ('' stays '')."""
+        return self.resolve_topic_name(topic) if topic else topic
+
     def _add_tf(self):
         rel = QoSProfile(
             reliability=QoSReliabilityPolicy.RELIABLE,
@@ -245,8 +249,9 @@ class DatasetRecorder(Node):
             'wait_s': round(wait_s, 3), 'opened_recv_ns': opened_ns}
         attrs['streams_missing'] = list(missing)
         attrs['tf_track'] = ['%s->%s' % p for p in self.tf_pairs]
-        attrs['tf_topic'] = self._p['tf_topic']
-        attrs['tf_static_topic'] = self._p['tf_static_topic']
+        # resolved (absolute) names: a relative default lands in the node's namespace
+        attrs['tf_topic'] = self._resolved(self._p['tf_topic'])
+        attrs['tf_static_topic'] = self._resolved(self._p['tf_static_topic'])
         os.makedirs(os.path.dirname(self.out_path) or '.', exist_ok=True)
         self.cap = CaptureFile(
             self.out_path, attrs,
@@ -514,7 +519,7 @@ class DatasetRecorder(Node):
             if self.cap.count(name) == 0:
                 self.get_logger().warning(
                     'tf %s->%s: no transforms on %s (n_samples=0)' %
-                    (pair[0], pair[1], self._p['tf_topic']))
+                    (pair[0], pair[1], self._resolved(self._p['tf_topic'])))
         for meta, cube in self.meta_pairs:
             res = self.cap.cross_check(meta, cube)
             if res:

@@ -33,12 +33,12 @@ dataset_generator:
         qos_depth: 10
         meta_for: radar_adc
       odom:
-        topic: "/odometry/wheels"
+        topic: "odometry/wheels"
         type: "nav_msgs/msg/Odometry"
         qos: reliable          # converter default is best_effort
         qos_depth: 10
       cmd_vel:                 # Twist has no header: stamp_recv_ns only
-        topic: "/cmd_vel"
+        topic: "cmd_vel"
         type: "geometry_msgs/msg/Twist"
         qos: reliable
         qos_depth: 10
