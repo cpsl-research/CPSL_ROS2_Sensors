@@ -141,7 +141,8 @@ class DatasetRecorder(Node):
                 self.seq[name] = 0
                 self.dropped[name] = 0
                 self._pending.append((name, {
-                    'topic': topic, 'msg_type': 'tf2_msgs/msg/TFMessage',
+                    'topic': topic, 'resolved_topic': self._resolved(topic),
+                    'msg_type': 'tf2_msgs/msg/TFMessage',
                     'qos': 'reliable', 'qos_depth': 100, 'mode': 'all',
                     'columns': list(TF_COLUMNS),
                     'parent_frame': pair[0], 'child_frame': pair[1]},
@@ -305,6 +306,7 @@ class DatasetRecorder(Node):
         return {
             'host': socket.gethostname(),
             'ros_node': self.get_fully_qualified_name(),
+            'namespace': self.get_namespace(),
             'capture_mode': self._p['capture_mode'],
             'sample_rate_hz': float(self._p['sample_rate_hz']),
             'created_utc': datetime.datetime.now(
@@ -334,7 +336,9 @@ class DatasetRecorder(Node):
         conv = get_converter(msg_type)
         rel, depth, qos = self._qos(cfg, conv)
         mode = self._mode(cfg)
-        attrs = {'topic': cfg['topic'], 'msg_type': msg_type, 'qos': rel,
+        attrs = {'topic': cfg['topic'],
+                 'resolved_topic': self._resolved(cfg['topic']),
+                 'msg_type': msg_type, 'qos': rel,
                  'qos_depth': depth, 'mode': mode}
         if cfg.get('legacy_folder'):
             attrs['legacy_folder'] = cfg['legacy_folder']
@@ -374,7 +378,9 @@ class DatasetRecorder(Node):
             durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
             history=QoSHistoryPolicy.KEEP_LAST, depth=5)
         self.cfg_streams[name] = topic
-        self._set_attrs(name, {'radar_cfg_topic': topic})
+        self._set_attrs(name, {'radar_cfg_topic': topic,
+                               'radar_cfg_resolved_topic':
+                                   self._resolved(topic)})
         self.subs.append(self.create_subscription(
             String, topic, lambda m, n=name: self._on_cfg_path(n, m), qos))
         self.get_logger().info('stream %s: radar cfg path from %s' %

@@ -70,6 +70,12 @@ resolve under the recorder's namespace (`namespace:=<ns>` on the launch file giv
 The `tf_topic` / `tf_static_topic` attrs hold the RESOLVED absolute names, not the configured ones;
 the `topic` in `config_streams` is as configured. Files recorded before this change hold `/tf`.
 
+Additive, no format-version bump: the root attr `namespace` is the recorder node's namespace
+(`/` when none), and each stream group carries `resolved_topic` next to `topic` (as configured,
+unchanged): the absolute topic it subscribed to. A radar stream with a cfg subscription also gets
+`radar_cfg_resolved_topic` next to `radar_cfg_topic`. Files recorded before this change have none
+of these; a reader falls back to `topic`.
+
 Per stream, group `/<name>`:
 
 | dataset | dtype / shape | meaning |
