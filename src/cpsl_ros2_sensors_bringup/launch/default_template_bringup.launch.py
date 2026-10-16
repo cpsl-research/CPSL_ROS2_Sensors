@@ -1,3 +1,4 @@
+# Bench-only: radar setups come from the TI radar lib (CPSL_TI_Radar_cpp/config/system), ports are /dev/ttyACM*; robots use console's generated launch.
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
@@ -30,21 +31,21 @@ ARGUMENTS = [
                           choices=['true', 'false'],
                           description='Launch the front radar'),
     DeclareLaunchArgument('front_radar_config_file',
-                          default_value='front_radar_IWR1843_stress_test.json',
+                          default_value='IWR1843_demo_stress_test_front.json',
                           description='Configuration file for front radar'),
     DeclareLaunchArgument('back_radar_enable',
                           default_value='false',
                           choices=['true', 'false'],
                           description='Launch the back radar'),
     DeclareLaunchArgument('back_radar_config_file',
-                          default_value='front_radar_IWR1843_stress_test.json', # fallback default config
+                          default_value='IWR1843_demo_stress_test_front.json', # fallback default config
                           description='Configuration file for back radar'),
     DeclareLaunchArgument('down_radar_enable',
                           default_value='false',
                           choices=['true', 'false'],
                           description='Launch the down radar'),
     DeclareLaunchArgument('down_radar_config_file',
-                          default_value='front_radar_IWR1843_stress_test.json', # fallback default config
+                          default_value='IWR1843_demo_stress_test_front.json', # fallback default config
                           description='Configuration file for down radar'),
     DeclareLaunchArgument('realsense_enable',
                           default_value='false',

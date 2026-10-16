@@ -25,6 +25,8 @@ setup(
     entry_points={
         'console_scripts': [
             'dataset_generator = dataset_generator.dataset_generator:main',
+            'dataset_recorder = dataset_generator.dataset_recorder:main',
+            'hdf5_to_legacy = dataset_generator.hdf5_to_legacy:main',
             'camera_intrinsics = dataset_generator.camera_intrinsics:main'
         ],
     },

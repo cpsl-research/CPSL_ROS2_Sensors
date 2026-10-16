@@ -10,6 +10,24 @@ INSTALLED=/usr/local/lib/liblivox_lidar_sdk_shared.so
 
 apt_ensure git ca-certificates gcc-9 g++-9 cmake make
 
+# Tools the Livox host helper (tools/setup/livox_host_setup.py) shells out to:
+# `ip` (which interfaces to search) and `ping` (reachability check / sweep).
+# Without them, running the helper from a container finds nothing.
+apt_ensure iproute2 iputils-ping
+
+# ping needs raw sockets. Where unprivileged ICMP is off
+# (net.ipv4.ping_group_range), a non-root user can use it only if the binary
+# carries cap_net_raw or is setuid. The iputils-ping postinst sets the
+# capability only when setcap is present, so set it here if it is missing.
+PING_BIN="$(command -v ping || true)"
+if [ -n "$PING_BIN" ] && [ ! -u "$PING_BIN" ]; then
+    apt_ensure libcap2-bin
+    if ! getcap "$PING_BIN" 2>/dev/null | grep -q cap_net_raw; then
+        setcap cap_net_raw+ep "$PING_BIN" \
+            || echo "livox: WARNING could not set cap_net_raw on $PING_BIN" >&2
+    fi
+fi
+
 if [ -f "$INSTALLED" ]; then
     echo "livox: Livox-SDK2 already installed ($INSTALLED)."
     exit 0

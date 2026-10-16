@@ -197,7 +197,7 @@ if [[ "$SKIP_BUILD" == false ]]; then
     
     if contains "$IF_SENSORS" "radar"; then
         echo "Updating radar submodule..."
-        git submodule update --init --recursive src/CPSL_TI_Radar_ROS2 || echo "Warning: git submodule update failed (not a git repository?)"
+        git submodule update --init src/CPSL_TI_Radar && git -C src/CPSL_TI_Radar submodule update --init CPSL_TI_Radar_cpp/include/json || echo "Warning: git submodule update failed (not a git repository?)"
     fi
     if contains "$IF_SENSORS" "livox"; then
         echo "Updating livox submodule..."

@@ -13,7 +13,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import PushRosNamespace, SetRemap, Node
 from launch_ros.descriptions import ComposableNode, ParameterFile
-from nav2_common.launch import RewrittenYaml
+from dataset_generator.launch_params import write_params
 import yaml
 
 
@@ -25,8 +25,11 @@ ARGUMENTS = [
     DeclareLaunchArgument('param_file', default_value='ugv_dataset.yaml',
                           description='.yaml config file in the configs folder'),
     DeclareLaunchArgument('dataset_subpath', default_value='',
-                          description='subpath to append to dataset_path')
-]  
+                          description='subpath to append to dataset_path'),
+    DeclareLaunchArgument('output_file', default_value='',
+                          description='full path of the .h5 file to write '
+                                      '(empty: <dataset_path>/capture_<time>.h5)')
+]
 
 def launch_setup(context, *args, **kwargs):
 
@@ -42,10 +45,10 @@ def launch_setup(context, *args, **kwargs):
     
     param_file_str = param_file.perform(context)
     dataset_subpath_str = dataset_subpath.perform(context)
+    output_file_str = LaunchConfiguration('output_file').perform(context)
 
     # Resolve the actual path to the parameter file
     actual_param_file_path = os.path.join(pkg_dataset_generator, 'configs', param_file_str)
-    param_file_path = PathJoinSubstitution([pkg_dataset_generator, 'configs', param_file_str])
 
     param_substitutions = {}
 
@@ -64,16 +67,26 @@ def launch_setup(context, *args, **kwargs):
         except Exception as e:
             print(f"Error updating dataset_path with subpath: {e}")
 
-    #update the parameter file with 
+    # Not nav2's RewrittenYaml: it re-dumps unquoted strings, and rcl reads a
+    # bare "y" (radar_pc fields) as a bool. See dataset_generator.launch_params.
     configured_params = ParameterFile(
-        RewrittenYaml(
-            source_file=param_file_path,
-            root_key=namespace,
-            param_rewrites=param_substitutions,
-            convert_types=True,
-        ),
+        write_params(actual_param_file_path, namespace.perform(context),
+                     param_substitutions),
         allow_substs=True,
     )
+
+    # v2 YAMLs (a `streams:` table) use the HDF5 recorder; anything else is a
+    # v1 per-sensor YAML and keeps the old .npy dataset_generator node.
+    try:
+        with open(actual_param_file_path, 'r') as f:
+            ros_params = yaml.safe_load(f)['dataset_generator']['ros__parameters']
+        use_recorder = 'streams' in ros_params
+    except Exception:
+        use_recorder = False
+
+    node_params = [configured_params]
+    if use_recorder and output_file_str:
+        node_params.append({'output_file': output_file_str})
 
     # Apply the following re-mappings only within this group
     bringup_group = GroupAction([
@@ -82,10 +95,10 @@ def launch_setup(context, *args, **kwargs):
         #launch the point cloud combiner node
         Node(
             package='dataset_generator',
-            executable='dataset_generator',
+            executable='dataset_recorder' if use_recorder else 'dataset_generator',
             name='dataset_generator',
             output='screen',
-            parameters=[configured_params],
+            parameters=node_params,
         ),
     ])
 

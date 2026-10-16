@@ -79,6 +79,7 @@ RUN echo "${SENSORS}" > /etc/cpsl_sensors_list
 # the image still builds without it and says so.
 COPY scripts/deps/ /workspace/CPSL_ROS2_Sensors/scripts/deps/
 RUN S_LIST="${SENSORS}" && \
+    echo "=== deps: dataset ===" && bash scripts/deps/dataset.sh && \
     if [ "$S_LIST" = "all" ]; then S_LIST="radar,livox,ouster,realsense,leapmotion,vicon"; fi && \
     for s in $(echo "$S_LIST" | tr ',' ' '); do \
         echo "=== deps: $s ==="; \
@@ -102,7 +103,7 @@ COPY . /workspace/CPSL_ROS2_Sensors
 # Disable unused sensor packages by adding COLCON_IGNORE
 RUN S_LIST="${SENSORS}" && \
     if [ "$S_LIST" = "all" ]; then S_LIST="radar,livox,ouster,realsense,leapmotion,vicon"; fi && \
-    if ! echo ",$S_LIST," | grep -q ",radar,"; then touch src/CPSL_TI_Radar_ROS2/COLCON_IGNORE; fi && \
+    if ! echo ",$S_LIST," | grep -q ",radar,"; then touch src/CPSL_TI_Radar/COLCON_IGNORE; fi && \
     if ! echo ",$S_LIST," | grep -q ",livox,"; then touch src/CPSL_ROS_livox_ros_driver2/COLCON_IGNORE; fi && \
     if ! echo ",$S_LIST," | grep -q ",ouster,"; then touch src/ouster-ros/COLCON_IGNORE; fi && \
     if ! echo ",$S_LIST," | grep -q ",leapmotion,"; then touch src/CPSL_ROS2_LeapMotion/COLCON_IGNORE; fi && \

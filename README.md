@@ -41,8 +41,8 @@ If ROS2 Jazzy is not yet installed, run `bash scripts/install_ros2.sh` instead �
 
 | Sensor | Package / Submodule | Topics Published | Notes |
 |--------|---------------------|------------------|-------|
-| TI Radar (serial) | `CPSL_TI_Radar_ROS2` → `ti_radar_connect` | `<ns>/radar_N/ti_radar` (point cloud), `<ns>/radar_N/ti_radar_scan` | IWR1843 / IWR6843 via `/dev/ttyACM*` or `/dev/ttyUSB*` |
-| TI Radar (DCA1000) | `CPSL_TI_Radar_ROS2` → `ti_radar_connect` | same as serial | Ethernet capture; requires IP config (see Hardware Setup) |
+| TI Radar (serial) | `CPSL_TI_Radar` (`ros2/`) → `ti_radar_connect` | `<ns>/radar_N/ti_radar` (point cloud), `<ns>/radar_N/ti_radar_scan` | IWR1843 / IWR6843 via `/dev/ttyACM*` or `/dev/ttyUSB*` |
+| TI Radar (DCA1000) | `CPSL_TI_Radar` (`ros2/`) → `ti_radar_connect` | same as serial | Ethernet capture; requires IP config (see Hardware Setup) |
 | Livox Mid360 | `CPSL_ROS_livox_ros_driver2` | `<ns>/livox/lidar` (point cloud), `<ns>/livox/imu` | Static-IP ethernet; requires `MID360_config.json` update |
 | Ouster | `ouster-ros` | `<ns>/ouster/points`, `<ns>/ouster/imu`, `<ns>/ouster/scan` | Link-local ethernet; requires Eclipse Cyclone DDS |
 | Intel RealSense | `realsense2_camera` (apt) | `<ns>/cpsl_realsense/color/image_raw`, `.../depth/image_rect_raw` | USB3; plug and play after apt install |
@@ -63,7 +63,7 @@ If ROS2 Jazzy is not yet installed, run `bash scripts/install_ros2.sh` instead �
 2. Port order when multiple radars are connected:
    - IWR1843: `/dev/ttyACM0` = front radar (config), `/dev/ttyACM1` = front radar (data); `/dev/ttyACM2` = back, `/dev/ttyACM3` = back data
    - IWR6843: `/dev/ttyUSB0` (config), `/dev/ttyUSB1` (data)
-3. Edit the JSON config in `src/CPSL_TI_Radar_ROS2/.../configs/` to match the assigned ports.
+3. Edit the JSON config in `src/CPSL_TI_Radar/ros2/ti_radar_connect/config/system/` to match the assigned ports.
 
 ### TI Radar — DCA1000 Ethernet Capture
 
@@ -72,7 +72,7 @@ If ROS2 Jazzy is not yet installed, run `bash scripts/install_ros2.sh` instead �
 - DCA1000 factory FPGA IP: `192.168.33.180`
 
 **Multi-radar or co-located with Livox Mid360:**
-- Both share one adapter; reprogram DCA1000 EEPROM to the `192.168.1.x` subnet using the CLI tool in `src/CPSL_TI_Radar_ROS2/DCA_Programming/`
+- Both share one adapter; reprogram DCA1000 EEPROM to the `192.168.1.x` subnet using the CLI tool in `src/CPSL_TI_Radar/DCA_Programming/`
 - PC adapter: `192.168.1.XX` (subnet 255.255.255.0)
 - Front DCA1000: `192.168.1.180` (port pair `4096/4098`)
 - Back DCA1000: `192.168.1.182` (port pair `4088/4090`)
@@ -176,7 +176,10 @@ ros2 launch dataset_generator record_dataset.launch.py \
 
 - `param_file` — bare filename (no path); resolved inside the installed `configs/` directory
 - `dataset_subpath` — appended to `dataset_path` from the YAML; useful for numbered runs
-- Output path: `<dataset_path>/<dataset_subpath>/frame_XXXXXX.npy` with per-sensor subdirectories
+- `output_file` — full path of the `.h5` file (default `<dataset_path>/<dataset_subpath>/capture_<time>.h5`)
+- Output (v2 YAMLs, those with a `streams:` table, e.g. `ugv_dataset.yaml`, `radar_sar.yaml`): one HDF5 file per capture with per-message header and receive stamps. Pre-v2 per-sensor YAMLs (`*_v1.yaml`, `uav_*`, `human_movement`) still write folders of `.npy` files. Format and YAML schema: [`src/dataset_generator/docs/hdf5_format.md`](src/dataset_generator/docs/hdf5_format.md)
+
+**Install:** the HDF5 recorder needs `python3-h5py` (`sudo apt install python3-h5py`, or `sudo bash scripts/deps/dataset.sh`). `scripts/install.sh`, the Docker image and `rosdep install --from-paths src` (package.xml `exec_depend`) all install it. console's Sensors tab runs the same rosdep step in its container, so nothing extra is needed there; on a plain host install it yourself.
 
 See [`tutorials/01_capturing_a_dataset.md`](tutorials/01_capturing_a_dataset.md) for a full walkthrough.
 
@@ -189,7 +192,7 @@ See [`tutorials/01_capturing_a_dataset.md`](tutorials/01_capturing_a_dataset.md)
 - [`tutorials/03_writing_a_bringup_launch_file.md`](tutorials/03_writing_a_bringup_launch_file.md) — write a new bringup launch file from scratch
 - [`tutorials/04_docker_setup_and_usage.md`](tutorials/04_docker_setup_and_usage.md) — guide to build and run ROS2 containers
 - [`tutorials/06_udev_setup.md`](tutorials/06_udev_setup.md) — host udev rules and device mapping setup
-- [`src/CPSL_TI_Radar_ROS2/README.md`](src/CPSL_TI_Radar_ROS2/README.md) — TI radar driver details and config reference
+- [`src/CPSL_TI_Radar/ros2/README.md`](src/CPSL_TI_Radar/ros2/README.md) — TI radar driver details and config reference
 - [`src/CPSL_ROS_livox_ros_driver2/README.md`](src/CPSL_ROS_livox_ros_driver2/README.md) — Livox driver details
 - [`src/ouster-ros/README.md`](src/ouster-ros/README.md) — Ouster driver details
 
@@ -285,8 +288,8 @@ The containers use a custom bridge network `cpsl_net` and run on `ROS_DOMAIN_ID=
 When deploying containers in production, physical hardware interfaces must be connected and correctly mapped. If a peripheral device is not plugged in, you must modify the Compose configuration to prevent start errors.
 
 ##### TI Radar Serial Passthrough
-By default, the compose configuration expects the role-mapped serial interfaces `/dev/ti_front_radar_cli` and `/dev/ti_front_radar_data` to be available (which fallback to `/dev/null` if not mapped in the `.env` file).
-- **If connected:** Ensure host-level udev rules have been configured (see [Tutorial 06](tutorials/06_udev_setup.md)) so they are correctly mapped to `/dev/ti_*` symlinks.
+By default, the compose configuration expects the radar's stable serial links `/dev/radar/<id>-cli` and `/dev/radar/<id>-data` (written by `CPSL_TI_Radar`'s `tools/setup/host_setup.py --udev --apply`) to be available (which fallback to `/dev/null` if not mapped in the `.env` file).
+- **If connected:** Run `src/CPSL_TI_Radar/tools/setup/host_setup.py --udev --apply` once on the host so the `/dev/radar/<id>-*` symlinks exist.
 - **If disconnected (Testing/Development):** No actions are needed; the ports will automatically default to `/dev/null` inside the container without causing startup errors.
 
 ##### Ethernet Sensors (DCA1000, Livox Mid360, Ouster)

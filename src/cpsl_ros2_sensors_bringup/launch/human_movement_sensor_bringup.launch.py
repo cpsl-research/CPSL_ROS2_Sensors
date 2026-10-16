@@ -1,3 +1,4 @@
+# Bench-only: radar setups come from the TI radar lib (CPSL_TI_Radar_cpp/config/system), ports are /dev/ttyACM*; robots use console's generated launch.
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
@@ -155,7 +156,7 @@ def launch_setup(context, *args, **kwargs):
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(launch_radar),
             launch_arguments=[
-                ('config_file','radar_0_IWR6843_ods_human_movement.json'),
+                ('config_file','IWR6843ODS_demo_human_movement.json'),
                 ('radar_name','radar_0'),
                 ('tf_prefix',tf_prefix),
                 ('stamp_delay_sec','0.1'),

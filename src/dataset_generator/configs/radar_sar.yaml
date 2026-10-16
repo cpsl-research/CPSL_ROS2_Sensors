@@ -1,0 +1,30 @@
+# Record one SAR radar (ADC cube + per-chirp metadata + detections) to HDF5.
+# Usage: ros2 launch dataset_generator record_dataset.launch.py param_file:=radar_sar.yaml
+# Edit the topics if the radar is not named radar_0 (the topic prefix is its radar_name).
+dataset_generator:
+  ros__parameters:
+    dataset_path: "/home/cpsl/Downloads/datasets/radar_sar"
+    capture_mode: "all"
+    sample_rate_hz: 10.0
+    flush_period_s: 5.0
+    start_timeout_s: 30.0      # wait this long for every enabled stream (0 = forever); else abort, exit 2
+    allow_missing: false       # true: start at the timeout anyway, silent streams listed in streams_missing
+    tf_track: [""]             # radar bench: no /tf pair to track. /tf_static is still recorded.
+    streams:
+      radar_adc:
+        topic: "radar_0/adc_data_cube"
+        type: "raw_radar_msgs/msg/ADCDataCube"
+        config_topic: "radar_0/radar_config_path"   # latched cfg path from ti_radar_connect
+        qos: reliable
+        qos_depth: 10
+      adc_meta:                # only present when the driver runs with publish_chirp_meta
+        topic: "radar_0/adc_meta"
+        type: "raw_radar_msgs/msg/ADCChirpMeta"
+        qos: reliable
+        qos_depth: 10
+        meta_for: radar_adc    # cross-check frame_index / stamps against the cube
+      radar_pc:
+        enabled: false
+        topic: "radar_0/detected_points"
+        type: "sensor_msgs/msg/PointCloud2"
+        fields: ["x", "y", "z", "vel"]

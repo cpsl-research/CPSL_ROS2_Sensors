@@ -42,7 +42,7 @@ xhost +local:root
 ```
 
 ### D. Host udev Rules & Device Mappings (For Physical Sensors)
-Before deploying the compose stack with physical hardware, you must install custom udev rules on the host. This opens read/write permissions for the TI Radar and RealSense cameras and maps the serial ports to stable symlinks (e.g. `/dev/ti_front_radar_cli`), enabling **non-privileged** container access:
+Before deploying the compose stack with physical hardware, you must install custom udev rules on the host. This opens read/write permissions for the TI Radar and RealSense cameras and maps the serial ports to stable symlinks (e.g. `/dev/radar/<id>-cli`, from `CPSL_TI_Radar`'s `host_setup.py --udev --apply`), enabling **non-privileged** container access:
 *   Follow [Tutorial 06 - Host udev Rules Setup and Device Mapping](06_udev_setup.md) to discover sensor serials/paths, write `device_config.json`, install host rules, and run the discovery scan before bringing up the container.
 
 ---

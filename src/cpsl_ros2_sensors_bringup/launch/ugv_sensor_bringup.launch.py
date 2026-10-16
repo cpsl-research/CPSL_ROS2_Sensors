@@ -1,3 +1,4 @@
+# Bench-only: radar setups come from the TI radar lib (CPSL_TI_Radar_cpp/config/system), ports are /dev/ttyACM*; robots use console's generated launch.
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
@@ -112,7 +113,7 @@ def launch_setup(context, *args, **kwargs):
             actions=[IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(launch_radar),
                 launch_arguments=[
-                    ('config_file','radar_0_IWR1843_vel_sr.json'),
+                    ('config_file','IWR1843_demo_vel_sr.json'),
                     ('radar_name','radar_0'),
                     ('tf_prefix',tf_prefix),
                     ('stamp_delay_sec','0.1'),
@@ -127,7 +128,7 @@ def launch_setup(context, *args, **kwargs):
             actions=[IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(launch_radar),
                 launch_arguments=[
-                    ('config_file','radar_1_IWR1843_vel_sr.json'),
+                    ('config_file','IWR1843_demo_vel_sr_r1.json'),
                     ('radar_name','radar_1'),
                     ('tf_prefix',tf_prefix),
                     ('stamp_delay_sec','0.1'),
