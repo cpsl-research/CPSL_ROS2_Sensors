@@ -59,8 +59,8 @@ class DatasetRecorder(Node):
                 ('capture_mode', 'all'), ('sample_rate_hz', 10.0),
                 ('flush_period_s', 5.0), ('duration_s', 0.0),
                 ('queue_size', 256), ('start_timeout_s', 30.0),
-                ('allow_missing', False), ('tf_topic', '/tf'),
-                ('tf_static_topic', '/tf_static'),
+                ('allow_missing', False), ('tf_topic', 'tf'),
+                ('tf_static_topic', 'tf_static'),
                 ('tf_track', ['odom->base_link']),
                 ('robot_description_topic', 'robot_description')):
             if not self.has_parameter(name):
@@ -122,6 +122,10 @@ class DatasetRecorder(Node):
         self._gate_tick()
 
     # ---- transforms (format v4) -------------------------------------------
+    def _resolved(self, topic):
+        """Absolute topic name as the middleware sees it ('' stays '')."""
+        return self.resolve_topic_name(topic) if topic else topic
+
     def _add_tf(self):
         rel = QoSProfile(
             reliability=QoSReliabilityPolicy.RELIABLE,
@@ -137,7 +141,8 @@ class DatasetRecorder(Node):
                 self.seq[name] = 0
                 self.dropped[name] = 0
                 self._pending.append((name, {
-                    'topic': topic, 'msg_type': 'tf2_msgs/msg/TFMessage',
+                    'topic': topic, 'resolved_topic': self._resolved(topic),
+                    'msg_type': 'tf2_msgs/msg/TFMessage',
                     'qos': 'reliable', 'qos_depth': 100, 'mode': 'all',
                     'columns': list(TF_COLUMNS),
                     'parent_frame': pair[0], 'child_frame': pair[1]},
@@ -245,8 +250,9 @@ class DatasetRecorder(Node):
             'wait_s': round(wait_s, 3), 'opened_recv_ns': opened_ns}
         attrs['streams_missing'] = list(missing)
         attrs['tf_track'] = ['%s->%s' % p for p in self.tf_pairs]
-        attrs['tf_topic'] = self._p['tf_topic']
-        attrs['tf_static_topic'] = self._p['tf_static_topic']
+        # resolved (absolute) names: a relative default lands in the node's namespace
+        attrs['tf_topic'] = self._resolved(self._p['tf_topic'])
+        attrs['tf_static_topic'] = self._resolved(self._p['tf_static_topic'])
         os.makedirs(os.path.dirname(self.out_path) or '.', exist_ok=True)
         self.cap = CaptureFile(
             self.out_path, attrs,
@@ -300,6 +306,7 @@ class DatasetRecorder(Node):
         return {
             'host': socket.gethostname(),
             'ros_node': self.get_fully_qualified_name(),
+            'namespace': self.get_namespace(),
             'capture_mode': self._p['capture_mode'],
             'sample_rate_hz': float(self._p['sample_rate_hz']),
             'created_utc': datetime.datetime.now(
@@ -329,7 +336,9 @@ class DatasetRecorder(Node):
         conv = get_converter(msg_type)
         rel, depth, qos = self._qos(cfg, conv)
         mode = self._mode(cfg)
-        attrs = {'topic': cfg['topic'], 'msg_type': msg_type, 'qos': rel,
+        attrs = {'topic': cfg['topic'],
+                 'resolved_topic': self._resolved(cfg['topic']),
+                 'msg_type': msg_type, 'qos': rel,
                  'qos_depth': depth, 'mode': mode}
         if cfg.get('legacy_folder'):
             attrs['legacy_folder'] = cfg['legacy_folder']
@@ -369,7 +378,9 @@ class DatasetRecorder(Node):
             durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
             history=QoSHistoryPolicy.KEEP_LAST, depth=5)
         self.cfg_streams[name] = topic
-        self._set_attrs(name, {'radar_cfg_topic': topic})
+        self._set_attrs(name, {'radar_cfg_topic': topic,
+                               'radar_cfg_resolved_topic':
+                                   self._resolved(topic)})
         self.subs.append(self.create_subscription(
             String, topic, lambda m, n=name: self._on_cfg_path(n, m), qos))
         self.get_logger().info('stream %s: radar cfg path from %s' %
@@ -514,7 +525,7 @@ class DatasetRecorder(Node):
             if self.cap.count(name) == 0:
                 self.get_logger().warning(
                     'tf %s->%s: no transforms on %s (n_samples=0)' %
-                    (pair[0], pair[1], self._p['tf_topic']))
+                    (pair[0], pair[1], self._resolved(self._p['tf_topic'])))
         for meta, cube in self.meta_pairs:
             res = self.cap.cross_check(meta, cube)
             if res:

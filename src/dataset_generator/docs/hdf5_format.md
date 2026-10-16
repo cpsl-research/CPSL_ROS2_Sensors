@@ -22,8 +22,8 @@ dataset_generator:
     queue_size: 256        # writer-thread queue (samples); overflow is counted, not blocking
     start_timeout_s: 30.0  # start gate: wait for every enabled stream; 0 = forever (see Start gate)
     allow_missing: false   # true: start at the timeout anyway instead of aborting
-    tf_topic: /tf          # transforms (v4): where tracked pairs are read from
-    tf_static_topic: /tf_static
+    tf_topic: tf           # transforms (v4): where tracked pairs are read from (relative: resolves in the node namespace)
+    tf_static_topic: tf_static
     tf_track: ["odom->base_link"]   # flat "parent->child" strings; [""] = none (see Transforms)
     robot_description_topic: robot_description   # "" = off; URDF goes to a root attr
     streams:
@@ -64,6 +64,17 @@ Start gate), `end_recv_ns`,
 URDF was received, `robot_description` (see below). Besides the stream groups the file has the
 non-stream groups `/tf_static` and `/tf` (the latter holds the tracked pairs); a reader that loops
 over the root group must skip those two names (`hdf5_to_legacy` does).
+
+Topic names: the defaults `tf` / `tf_static` and the presets' stream topics are relative, so they
+resolve under the recorder's namespace (`namespace:=<ns>` on the launch file gives `/<ns>/tf`).
+The `tf_topic` / `tf_static_topic` attrs hold the RESOLVED absolute names, not the configured ones;
+the `topic` in `config_streams` is as configured. Files recorded before this change hold `/tf`.
+
+Additive, no format-version bump: the root attr `namespace` is the recorder node's namespace
+(`/` when none), and each stream group carries `resolved_topic` next to `topic` (as configured,
+unchanged): the absolute topic it subscribed to. A radar stream with a cfg subscription also gets
+`radar_cfg_resolved_topic` next to `radar_cfg_topic`. Files recorded before this change have none
+of these; a reader falls back to `topic`.
 
 Per stream, group `/<name>`:
 
