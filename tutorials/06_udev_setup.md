@@ -102,10 +102,13 @@ src/CPSL_TI_Radar/tools/setup/host_setup.py --udev --apply
 ```
 
 ### B. Intel RealSense Rules Setup
-The RealSense setup script inlines the official Intel rules to configure permissions for depth, RGB video, and internal HID/IIO (IMU) sensors:
+The RealSense helper installs Intel's official udev rules (librealsense v2.58.4, vendored in `tools/setup/rules/` and pinned by sha256, so nothing is downloaded). They open the camera's USB, video and HID/IIO (IMU) nodes to non-root users. Run it as yourself, not with `sudo`; it calls `sudo` per command and asks once:
 ```bash
-sudo ./scripts/setup_realsense_udev.sh
+python3 tools/setup/realsense_host_setup.py                    # read-only report (rules / camera / iio)
+python3 tools/setup/realsense_host_setup.py --apply --dry-run  # print the commands
+python3 tools/setup/realsense_host_setup.py --apply            # install, reload, re-trigger the camera, re-check
 ```
+A differing `/etc/udev/rules.d/99-realsense-libusb.rules` is first copied to `99-realsense-libusb.rules.bak-<UTC stamp>`. Nothing is deleted. `scripts/setup_realsense_udev.sh` is a shim for this command. The `iio` check is what the IMU needs: librealsense writes `scan_elements/*_en`, and with the IMU on it publishes no stream when it cannot.
 
 ---
 
