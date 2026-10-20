@@ -6,7 +6,6 @@ install_docker/
 log_docker/
 .git/
 .venv/
-.poetry/
 *.tmp
 *.pyc
 __pycache__/

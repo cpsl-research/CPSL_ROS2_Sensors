@@ -104,7 +104,7 @@ def launch_setup(context, *args, **kwargs):
         [pkg_platform_descriptions,'launch','publish_platform_description.launch.py']
     )
 
-    rviz_config_file = PathJoinSubstitution([pkg_cpsl_ros2_sensors_bringup, 'rviz_cfgs', 'uav_view.rviz'])
+    rviz_config_file = PathJoinSubstitution([pkg_cpsl_ros2_sensors_bringup, 'rviz_cfgs', 'human_view.rviz'])
 
     # Apply the following re-mappings only within this group
     bringup_group = GroupAction([

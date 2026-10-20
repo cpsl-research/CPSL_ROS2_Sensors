@@ -20,12 +20,10 @@ setup(
     zip_safe=True,
     maintainer='cpsl',
     maintainer_email='david.hunt@duke.edu',
-    description='TODO: Package description',
+    description='Launch files, RViz configs and sensor driver parameters for the CPSL sensor platforms',
     license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={
-        'console_scripts': [
-            'env_check_node = cpsl_ros2_sensors_bringup.env_check_node:main',
-        ],
+        'console_scripts': [],
     },
 )
