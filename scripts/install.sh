@@ -128,7 +128,9 @@ fi
 
 header "Step 6: rosdep"
 sudo apt-get update
+set +u
 source /opt/ros/jazzy/setup.bash
+set -u
 rosdep install --from-paths src -y --rosdistro=jazzy --skip-keys "raw_radar_msgs"
 
 # ── per-sensor setup ───────────────────────────────────────────────────────────
@@ -219,7 +221,9 @@ fi
 if [[ "$SKIP_BUILD" == false ]]; then
     header "Step 8: Colcon build"
     source "${UV_PROJECT_ENVIRONMENT:-$WORKSPACE_ROOT/.venv}/bin/activate"
+    set +u
     source /opt/ros/jazzy/setup.bash
+    set -u
 
     if contains "$SENSORS" radar; then
         python -m colcon build \
@@ -246,7 +250,9 @@ header "Step 9: Sourcing workspace"
 SETUP_FILE="${WORKSPACE_ROOT}/install/setup.${SHELL_EXT}"
 if [ -f "$SETUP_FILE" ]; then
     # shellcheck disable=SC1090
+    set +u
     source "$SETUP_FILE"
+    set -u
     echo "Sourced $SETUP_FILE"
 else
     echo "Note: $SETUP_FILE not found — source it manually after the build completes."

@@ -95,6 +95,5 @@ The lab forks (`CPSL_ROS_livox_ros_driver2`, `CPSL_ROS2_LeapMotion`, and `CPSL_T
 
 Open items are kept in [`TODO.md`](../TODO.md): camera packages pulled in by `rosdep` on every machine, the Vicon placeholder, and the problems below.
 
-- `scripts/install.sh` runs under `set -u` and sources ROS's `setup.bash`, which uses unset variables; on a host where that fails, build with the steps in the README instead of the one-shot script (`rebuild.sh` handles this with `set +u`).
 - `install.sh --livox-ip` patches keys (`lidar_summary_info`, `host_net_info.host_ip`) that the current `MID360_config.json` does not have, so it is not documented; edit the file by hand ([Tutorial 03](../tutorials/03_livox_mid360_setup.md)).
 - `src/dataset_generator/dataset_generator/depth_node.py` is an unreferenced copy of an old recorder, awaiting deletion.

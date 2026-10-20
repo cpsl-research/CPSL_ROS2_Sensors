@@ -20,15 +20,6 @@ ros2 launch cpsl_ros2_sensors_bringup default_template_bringup.launch.py realsen
 
 `install.sh` (run from the repo root, asks for `sudo`) initialises only the submodules for the chosen sensors, installs each driver's system dependencies (`scripts/deps/<driver>.sh`), creates a Python venv with `uv`, runs `rosdep` and builds with `colcon`. `bash scripts/install_ros2.sh --sensors ...` installs ROS 2 first and then does the same. Flags: `--sensors` (default `radar,livox`), `--ouster-hostname`, `--skip-build`.
 
-If `install.sh` stops with `AMENT_TRACE_SETUP_FILES: unbound variable`, everything before the rosdep step is done; finish by hand (source the venv first; add the `raw_radar_msgs` build first for radar and `ouster_ros ouster_sensor_msgs` first for Ouster, as in `install.sh:224-235`):
-
-```bash
-source /opt/ros/jazzy/setup.bash
-rosdep install --from-paths src -y --rosdistro=jazzy --skip-keys "raw_radar_msgs"
-source .venv/bin/activate
-python -m colcon build --base-paths src --symlink-install
-```
-
 ## Quick start (Docker)
 
 The repo has its own image, no host ROS needed ([tutorial 07](tutorials/07_docker.md)):

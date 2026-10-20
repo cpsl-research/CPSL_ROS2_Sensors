@@ -4,8 +4,6 @@
 
 - **Vicon topics in the UAV presets are a placeholder.** `src/dataset_generator/configs/uav_dataset_icaraus_dataset_flow.yaml` and `..._radar.yaml` carry a disabled `vicon` stream on `vicon/<SUBJECT>/<SEGMENT>` (TransformStamped). The v1 recorder auto-discovered any `/vicon/` topic; v2 needs fixed names, and the `ros2-vicon-bridge` submodule is not checked out, so the real topic layout is unverified. Fix: run `vicon_bridge` once, read the topic names, put them in both YAMLs and set `enabled: true`.
 
-- **`scripts/install.sh` fails at the rosdep step.** It runs under `set -u` (`install.sh:15`) and sources `/opt/ros/jazzy/setup.bash` (`:131`, `:222`, `:249`), which reads unset variables (`AMENT_TRACE_SETUP_FILES: unbound variable`). Fix: wrap the `source` lines in `set +u` / `set -u`, as `scripts/rebuild.sh:12-14` does. README gives the manual finish.
-
 - **`install.sh --livox-ip` is stale.** It edits `lidar_summary_info.lidar_net_info[0].ip` and `host_net_info.host_ip` (`install.sh:163-181`); the current `MID360_config.json` has neither (host addresses are under `MID360.host_net_info`, lidar address in `lidar_configs[0].ip`). Fix or remove the flag; docker/install_cpsl_sensors_docker.sh only uses the value for `.env`.
 
 - **`src/dataset_generator/dataset_generator/depth_node.py`** is an unreferenced copy of an old recorder (no entry point, not imported). Delete it.
