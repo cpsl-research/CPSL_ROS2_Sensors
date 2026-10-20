@@ -1,18 +1,5 @@
 {
-  "radars": [
-    {
-      "role": "FRONT_RADAR",
-      "id": ""
-    },
-    {
-      "role": "BACK_RADAR",
-      "id": ""
-    },
-    {
-      "role": "DOWN_RADAR",
-      "id": ""
-    }
-  ],
+  "radars": [],
   "realsense": {
     "role": "REALSENSE",
     "id": ""
