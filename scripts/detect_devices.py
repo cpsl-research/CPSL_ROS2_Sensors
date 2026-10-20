@@ -204,11 +204,7 @@ def load_device_config(config_path):
     if not os.path.exists(config_path):
         # Create default config if missing
         default_config = {
-            "radars": [
-                {"role": "FRONT_RADAR", "id": ""},
-                {"role": "BACK_RADAR", "id": ""},
-                {"role": "DOWN_RADAR", "id": ""}
-            ],
+            "radars": [],
             "realsense": {
                 "role": "REALSENSE",
                 "id": ""
@@ -312,6 +308,12 @@ def resolve_device_roles(connected_radars, connected_realsenses, config):
                     print(f"Auto-mapped connected Radar (Serial: {radar['serial']}, Path: {radar['usb_path']}) to role {role} (raw ports: {radar['cli_port']})")
                 used_radars.add(radar_ref)
                 break
+
+    # Report connected radars that no configured role claimed (e.g. an empty
+    # "radars" list): they are left unmapped, not silently dropped.
+    for radar in connected_radars:
+        if f"{radar['cli_port']}:{radar['data_port']}" not in used_radars:
+            print(f"Unassigned Radar (Serial: {radar['serial']}, Path: {radar['usb_path']}, CLI: {radar['cli_port']}): no role in device_config.json 'radars'")
 
     # 2. Map RealSense
     realsense_config = config.get("realsense", {})
