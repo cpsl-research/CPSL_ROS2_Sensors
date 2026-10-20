@@ -36,18 +36,24 @@ cp default_template_bringup.launch.py ugv_2_bringup.launch.py
 sed -i "s/default_template.urdf.xml/cpsl_ugv_2.urdf.xml/" ugv_2_bringup.launch.py
 ```
 
-Also change the `namespace` default from `default_template` to `cpsl_ugv_2`. Read the file once; it has three parts:
+Also change the `namespace` default (the `DeclareLaunchArgument('namespace', default_value='default_template', ...)` line near the top) to your platform name:
+
+```bash
+sed -i "s/default_value='default_template'/default_value='cpsl_ugv_2'/" ugv_2_bringup.launch.py
+```
+
+ Read the file once; it has three parts:
 
 - `ARGUMENTS`: the launch arguments. `namespace` prefixes every node and topic; each `*_enable` (`livox_enable`, `front_radar_enable`, `realsense_enable`, ...) switches one sensor on, default `false`.
 - `launch_setup()`: reads the arguments, turns the namespace into a `tf_prefix` (`cpsl_ugv_2`) that is passed to the drivers so their frames match the URDF names, and builds one `IncludeLaunchDescription` or `Node` per sensor, each with `condition=IfCondition(<x>_enable)`.
 - `generate_launch_description()`: adds the arguments and runs `launch_setup`.
 
-Each sensor sits in a `TimerAction(period=...)`, so they start 3-4 s apart (`default_template_bringup.launch.py:173-326`). Drivers that start together can race for USB or network ports; the stagger prevents it. Keep it when you add or remove sensors, and give a new sensor the next free period. Set radar config files with `front_radar_config_file:=<file>.json` (files from `src/CPSL_TI_Radar/CPSL_TI_Radar_cpp/config/system/`).
+Each sensor sits in a `TimerAction(period=...)`, so they start 3-4 s apart. Drivers that start together can race for USB or network ports; the stagger prevents it. Keep it when you add or remove sensors, and give a new sensor the next free period. Set radar config files with `front_radar_config_file:=<file>.json` (files from `src/CPSL_TI_Radar/CPSL_TI_Radar_cpp/config/system/`).
 
 Install the two new files, in the terminal where you sourced `/opt/ros/jazzy/setup.bash`:
 
 ```bash
-cd ../../..
+cd "$(git rev-parse --show-toplevel)"     # back to the repo root
 colcon build --packages-select platform_descriptions cpsl_ros2_sensors_bringup --symlink-install
 source install/setup.bash
 ```

@@ -44,7 +44,7 @@ realsense-viewer
 
 ## 4. Start it from ROS
 
-[Tutorial 00](00_ubuntu_to_first_topic.md) section 6 starts the camera with `realsense_enable:=true`. That launch enables color, depth, aligned depth and a point cloud (`default_template_bringup.launch.py:222-229`); it does not pass IMU options. To stream the IMU, start the upstream driver directly. Its argument names are defined by the `realsense2_camera` package, so list them first:
+[Tutorial 00](00_ubuntu_to_first_topic.md) section 6 starts the camera with `realsense_enable:=true`. That launch enables color, depth, aligned depth and a point cloud; it does not pass IMU options. To stream the IMU, start the upstream driver directly. Its argument names are defined by the `realsense2_camera` package, so list them first:
 
 ```bash
 ros2 launch realsense2_camera rs_launch.py --show-args

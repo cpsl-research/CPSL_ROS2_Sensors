@@ -6,8 +6,7 @@ New to ROS? Start with [tutorial 00](tutorials/00_ubuntu_to_first_topic.md).
 
 ## Quick start (host)
 
-1. Install ROS 2 Jazzy desktop and `rosdep`: <https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html> (or let `scripts/install_ros2.sh` do it, see below).
-2. Clone and install the drivers for the sensors you have:
+First install ROS 2 Jazzy desktop and set up `rosdep` (`sudo rosdep init`, `rosdep update`), see [tutorial 00](tutorials/00_ubuntu_to_first_topic.md) section 2; `scripts/install_ros2.sh` does both. Then clone and install the drivers for the sensors you have:
 
 ```bash
 git clone https://github.com/cpsl-research/CPSL_ROS2_Sensors
@@ -18,7 +17,7 @@ source install/setup.bash                        # in every new terminal
 ros2 launch cpsl_ros2_sensors_bringup default_template_bringup.launch.py realsense_enable:=true
 ```
 
-`install.sh` asks for `sudo`; what it does is in [tutorial 00](tutorials/00_ubuntu_to_first_topic.md). `bash scripts/install_ros2.sh --sensors ...` installs ROS 2 first and then does the same. Flags: `--sensors` (default `radar,livox`), `--ouster-hostname`, `--skip-build`.
+`install.sh` asks for `sudo`; what it does is in [tutorial 00](tutorials/00_ubuntu_to_first_topic.md). `bash scripts/install_ros2.sh --sensors ...` installs ROS 2 first and then does the same. Flags: `--sensors` (default `radar,livox`), `--ouster-hostname`, `--skip-build`. `--sensors ouster` also sets `RMW_IMPLEMENTATION=rmw_cyclonedds_cpp` in your shell rc file (all ROS 2 terminals use it afterwards).
 
 ## Quick start (Docker)
 
@@ -33,11 +32,11 @@ docker compose -f docker/docker-compose.cpu.yaml run --rm cpsl_sensors
 
 ## Sensors
 
-`<ns>` is the launch namespace. Radar and camera names depend on the launch file.
+`<ns>` is the launch `namespace`; `<camera_name>` is the launch's `camera_name` (`camera` in the default template). Radar names depend on the launch file.
 
 | Sensor | Submodule / package | Topics | Setup |
 |---|---|---|---|
-| TI radar (serial, DCA1000) | `src/CPSL_TI_Radar` | `<ns>/<radar_name>/detected_points` (point cloud), `adc_data_cube`, `adc_meta` | radar repo README (`src/CPSL_TI_Radar/README.md`) |
+| TI radar (serial, DCA1000) | `src/CPSL_TI_Radar` | `<ns>/<radar_name>/detected_points` (point cloud), `adc_data_cube`, `adc_meta` | owned by the radar repo: `bash scripts/install.sh --sensors radar`, then `src/CPSL_TI_Radar/README.md`, `src/CPSL_TI_Radar/docs/tutorials/`, `tools/setup/host_setup.py`; [tutorial 00](tutorials/00_ubuntu_to_first_topic.md) section 7 |
 | Livox Mid-360 | `src/CPSL_ROS_livox_ros_driver2` | `<ns>/livox/lidar`, `<ns>/livox/imu` | [03](tutorials/03_livox_mid360_setup.md) |
 | Ouster | `src/ouster-ros` | `<ns>/ouster/points`, `imu`, `scan` | [04](tutorials/04_ouster_setup.md) |
 | Intel RealSense | `realsense2_camera` (apt, librealsense from source) | `<ns>/camera/<camera_name>/color/image_raw`, `depth/image_rect_raw`, `color/camera_info` | [02](tutorials/02_realsense_setup.md) |

@@ -10,11 +10,11 @@ Goal: install the Ultraleap hand-tracking SDK and the lab's two Leap Motion node
 bash scripts/install.sh --sensors leapmotion
 ```
 
-This does three Leap-specific things (`scripts/install.sh:83-84,115,123-124`):
+This does three Leap-specific things:
 
 1. `sudo bash scripts/deps/leapmotion.sh` adds Ultraleap's apt repository (`repo.ultraleap.com`) and installs the `ultraleap-hand-tracking` package. It fails, rather than skipping, if that server is not reachable.
 2. It checks out two submodules: `src/CPSL_ROS2_LeapMotion` and `submodules/leapc-python-bindings`.
-3. `bash scripts/setup_venv.sh --leapmotion` installs the Python bindings (`import leap`) into the workspace virtual environment `.venv` and builds their C bridge. The venv is created with the system's ROS Python packages visible.
+3. `bash scripts/setup_venv.sh --leapmotion` installs the Python bindings (`import leap`) into the workspace virtual environment `.venv` ([Tutorial 00](00_ubuntu_to_first_topic.md) section 4) and builds their C bridge.
 
 The nodes `import leap`, so the workspace must be built with that venv active, which `install.sh` does. If you rebuild by hand, activate it first:
 
@@ -39,7 +39,7 @@ You should see an Ultraleap service listed as `active`. If it is listed but not 
 
 ## 3. Launch
 
-The bringup starts the two lab nodes 16 s after launch (`default_template_bringup.launch.py:236-251`):
+The bringup starts the two lab nodes 16 s after launch:
 
 ```bash
 ros2 launch cpsl_ros2_sensors_bringup default_template_bringup.launch.py leapmotion_enable:=true
@@ -77,4 +77,4 @@ The `human_movement.yaml` recording config has streams for `left_hand_joints` an
 ## 6. Troubleshooting
 
 - **`ModuleNotFoundError: No module named 'leap'`.** The workspace was built without the venv, or `setup_venv.sh --leapmotion` did not run. Repeat step 1.
-- **No images.** The image node asks the service for camera images explicitly (`PolicyFlag.Images`, `image_publisher.py:122`); joints can work while images do not. Recheck step 2 and replug the device.
+- **No images.** The image node asks the service for camera images explicitly (`PolicyFlag.Images`); joints can work while images do not. Recheck step 2 and replug the device.

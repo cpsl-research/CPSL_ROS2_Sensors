@@ -11,7 +11,7 @@ bash scripts/install.sh --sensors livox
 source install/setup.bash
 ```
 
-This builds the Livox SDK2 under `/opt/Livox-SDK2` (`scripts/deps/livox.sh`, needs `gcc-9`), checks out `src/CPSL_ROS_livox_ros_driver2`, switches it to the ROS 2 `package.xml` with `build_CPSL_ROS2_Sensors.sh jazzy` (`scripts/install.sh:158`) and builds it.
+This builds the Livox SDK2 under `/opt/Livox-SDK2` (`scripts/deps/livox.sh`, needs `gcc-9`), checks out `src/CPSL_ROS_livox_ros_driver2`, switches it to the ROS 2 `package.xml` with `build_CPSL_ROS2_Sensors.sh jazzy` and builds it.
 
 ## 2. Network: the lidar and your PC share 192.168.1.x
 
@@ -43,7 +43,7 @@ In `MID360_mine.json` set every `*_ip` under `"host_net_info"` (`cmd_data_ip`, `
 
 ## 4. Launch and see the first cloud
 
-The launch argument `livox_config_file` takes the file name from that folder (`msg_MID360_launch.py:14,33-34`):
+The launch argument `livox_config_file` takes the file name from that folder:
 
 ```bash
 ros2 launch cpsl_ros2_sensors_bringup default_template_bringup.launch.py \

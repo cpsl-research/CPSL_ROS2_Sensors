@@ -1,6 +1,6 @@
 # Tutorial 07: Running in Docker
 
-Goal: build and run this repo's own Docker image (Ubuntu 24.04, ROS 2 Jazzy, the drivers you choose), on a machine with or without sensors. The containers are not privileged: they are given named devices and ports, and run on their own ROS domain. Nothing else is needed from other repos.
+Goal: build and run this repo's own Docker image (Ubuntu 24.04, ROS 2 Jazzy, the drivers you choose), on a machine with or without sensors. The containers are not run with `--privileged`: they get named devices, ports and, for the RealSense IMU, a few extra mounts (section 7), and run on their own ROS domain. Nothing else is needed from other repos.
 
 ---
 
@@ -17,7 +17,7 @@ bash docker/install_cpsl_sensors_docker.sh --sensors radar,livox     # CPU image
 bash docker/install_cpsl_sensors_docker.sh --gpu                    # CUDA image cpsl_sensors:gpu, all sensors
 ```
 
-Options (`docker/install_cpsl_sensors_docker.sh:22-33`): `--sensors` (a list from `radar,livox,ouster,realsense,leapmotion,vicon`, default `all`), `--gpu`, `--tag <name>`, `--livox-ip XX`, `--ouster-hostname <h>`, `--parent-interface <nic>` (default `eth0`, see step 5), `--skip-build` (only write the env files). The script checks Docker is running, checks out the chosen submodules on the host, writes `docker/.env` and `./.env` (sensors, host IPs, display), and runs `docker build`. The image installs each driver's system dependencies with the same `scripts/deps/<driver>.sh` that [Tutorial 00](00_ubuntu_to_first_topic.md) uses and builds the workspace into it (`docker/Dockerfile:69-80,101-130`). The first build takes a long time.
+Options: `--sensors` (a list from `radar,livox,ouster,realsense,leapmotion,vicon`, default `all`; `usb_cam` is not in the image), `--gpu`, `--tag <name>`, `--ouster-hostname <h>`, `--parent-interface <nic>` (default `eth0`, see step 5), `--skip-build` (only write the env files). The script checks Docker is running, checks out the chosen submodules on the host, writes `docker/.env` and `./.env` (sensors, host IPs, display), and runs `docker build`. The image installs each driver's system dependencies with the same `scripts/deps/<driver>.sh` that [Tutorial 00](00_ubuntu_to_first_topic.md) uses and builds the workspace into it. The first build takes a long time.
 
 The development compose file `docker-compose.dev-cpu.yaml` expects the image name `cpsl_sensors_testbench:v0.1-cpu`; for it, add `--tag cpsl_sensors_testbench:v0.1-cpu`.
 
@@ -45,7 +45,7 @@ bash scripts/rebuild.sh
 source install_docker/setup.bash
 ```
 
-In a container `rebuild.sh` builds into `build_docker/`, `install_docker/`, `log_docker/` (gitignored), never the host's `install/`, and skips drivers not in the image's sensor list (`scripts/rebuild.sh:36-60`).
+In a container `rebuild.sh` builds into `build_docker/`, `install_docker/`, `log_docker/` (gitignored), never the host's `install/`, and skips drivers not in the image's sensor list.
 
 ## 5. Network
 
@@ -63,7 +63,7 @@ The production compose files attach the container to an `ipvlan` network `cpsl_n
 
 ## 7. RealSense IMU and viewer in the container
 
-The compose files mount `/sys/devices` read-write, set `apparmor=unconfined` and add a device rule, and the entrypoint creates `/dev/iio:device*` nodes at start (`docker_entrypoint.sh:14-35`), because the SDK enables IMU channels by writing under `/sys/devices` and Docker cannot map device names containing a colon. To view the camera, use the kernel-backend build of the tools, `/opt/ros/jazzy/bin/realsense-viewer` and `rs-enumerate-devices`; the source-built ones in `/usr/local/bin` need raw USB access that the container does not have:
+The compose files mount `/sys/devices` read-write, set `apparmor=unconfined` and add a device rule, and the entrypoint creates `/dev/iio:device*` nodes at start, because the SDK enables IMU channels by writing under `/sys/devices` and Docker cannot map device names containing a colon. To view the camera, use the kernel-backend build of the tools, `/opt/ros/jazzy/bin/realsense-viewer` and `rs-enumerate-devices`; the source-built ones in `/usr/local/bin` need raw USB access that the container does not have:
 
 ```bash
 docker compose -f docker/docker-compose.cpu.yaml run --rm cpsl_sensors /opt/ros/jazzy/bin/realsense-viewer
@@ -71,5 +71,4 @@ docker compose -f docker/docker-compose.cpu.yaml run --rm cpsl_sensors /opt/ros/
 
 ## 8. Check the setup
 
-- `bash scripts/test_integration.sh [--host|--docker] [--sensors realsense,radar] [--timeout 20]` builds the workspace, detects attached sensors, starts each driver and passes if its topic appears (e.g. `/camera/camera/color/image_raw`, `test_integration.sh:229`). In a container: `docker compose -f docker/docker-compose.dev-cpu.yaml run --rm cpsl_sensors ./scripts/test_integration.sh`.
-- `bash scripts/verify_docker_setup.sh` builds a radar-only test image `test_tag:v1`, checks that the repo mounts, and runs `rebuild.sh` in it (`scripts/verify_docker_setup.sh:9-29`). It takes a long time.
+- `bash scripts/test_integration.sh [--host|--docker] [--sensors realsense,radar] [--timeout 20]` builds the workspace, detects attached sensors, starts each driver and passes if its topic appears (e.g. `/camera/camera/color/image_raw`). In a container: `docker compose -f docker/docker-compose.dev-cpu.yaml run --rm cpsl_sensors ./scripts/test_integration.sh`.

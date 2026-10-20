@@ -10,9 +10,9 @@ Goal: connect an Ouster OS-series lidar over a direct Ethernet cable, find its a
 bash scripts/install.sh --sensors ouster
 ```
 
-This installs the driver's system packages (`scripts/deps/ouster.sh`, including `fping` and the Cyclone DDS middleware), checks out `src/ouster-ros`, and builds `ouster_ros` and `ouster_sensor_msgs` in Release mode before the rest of the workspace (`scripts/install.sh:230-235`). Add `--ouster-hostname os-XXXXXXXXXXXX.local` (or an IP) to also write the sensor name into the driver config (step 3).
+This installs the driver's system packages (`scripts/deps/ouster.sh`, including `fping` and the Cyclone DDS middleware), checks out `src/ouster-ros`, and builds `ouster_ros` and `ouster_sensor_msgs` in Release mode before the rest of the workspace. Add `--ouster-hostname os-XXXXXXXXXXXX.local` (or an IP) to also write the sensor name into the driver config (step 3).
 
-It appends `export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp` to your shell's rc file (`install.sh:189-192`). The Ouster driver needs Cyclone DDS, and every terminal that runs or reads the lidar's topics must use the same setting. Open a new terminal (or `source ~/.bashrc`) and check:
+It appends `export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp` to your shell's rc file, so every new ROS 2 terminal, not just Ouster ones, uses Cyclone DDS afterwards (remove the line to undo). The Ouster driver needs Cyclone DDS, and every terminal that runs or reads the lidar's topics must use the same setting. Open a new terminal (or `source ~/.bashrc`) and check:
 
 ```bash
 echo $RMW_IMPLEMENTATION
@@ -34,7 +34,7 @@ If the name does not resolve, scan for the lidar's address instead:
 bash scripts/find_ouster_ip.sh 169.254.1.2 169.254.1.254
 ```
 
-The script runs `fping` over the range and prints every address that answers (`scripts/find_ouster_ip.sh:15`). With no arguments it scans the whole `169.254.0.1-169.254.255.255` range, which is slow; narrow it as above and widen it if nothing answers. The address that is not your own is the lidar.
+The script runs `fping` over the range and prints every address that answers. With no arguments it scans the whole `169.254.0.1-169.254.255.255` range, which is slow; narrow it as above and widen it if nothing answers. The address that is not your own is the lidar.
 
 ## 3. Tell the driver which lidar
 
@@ -59,7 +59,7 @@ ros2 topic list | grep ouster
 ros2 topic hz /ouster/points
 ```
 
-You should see the driver's topics under `/ouster/` (the launch sets the driver namespace to `ouster`, `ouster_lidar_bringup.launch.py:90`), including `points` (point cloud), `imu` and `scan`, and a rate on `points` matching the lidar's configured mode. Add `rviz:=true` to open a viewer; add `namespace:=foo` to put everything under `/foo/`.
+You should see the driver's topics under `/ouster/` (the launch sets the driver namespace to `ouster`), including `points` (point cloud), `imu` and `scan`, and a rate on `points` matching the lidar's configured mode. Add `rviz:=true` to open a viewer; add `namespace:=foo` to put everything under `/foo/`.
 
 ## 5. Troubleshooting
 

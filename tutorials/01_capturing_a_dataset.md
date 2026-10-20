@@ -4,29 +4,28 @@ Goal: record sensor topics into one HDF5 file with the `dataset_recorder` node, 
 
 ---
 
-## 1. Pick or write a recording config
+## 1. Write a recording config
 
-A config is a YAML file in `src/dataset_generator/configs/` with a `streams:` table, one entry per topic to record. The shipped ones are per setup (`ugv_dataset.yaml`, `radar_sar.yaml`, the `uav_*` and `human_movement` paper setups, see [Tutorial 08](08_paper_setups.md)). Copy one and keep only what you have:
-
-```bash
-cp src/dataset_generator/configs/ugv_dataset.yaml src/dataset_generator/configs/my_capture.yaml
-```
-
-In `my_capture.yaml`, set `dataset_path` to an existing, writable folder, and for each stream either point `topic:` at a topic that exists or set `enabled: false`. Topics are relative to the recorder's namespace. A minimal one-stream file:
+A config is a YAML file in `src/dataset_generator/configs/` with a `streams:` table, one entry per topic to record. The shipped ones are per setup and expect their sensors, for example `ugv_dataset.yaml` lists radar streams, so with no radar attached the start gate (step 3) never opens. Use the one below for a RealSense, or copy a shipped one and set `enabled: false` on what you do not have (or `allow_missing: true`). Save it as `src/dataset_generator/configs/my_capture.yaml`:
 
 ```yaml
 dataset_generator:
   ros__parameters:
-    dataset_path: "/home/you/datasets"
+    dataset_path: "/home/you/datasets"   # an existing, writable folder
     capture_mode: "all"        # all = every message; sampled = latest per tick
-    tf_track: [""]             # no /tf pairs
+    tf_track: [""]             # [""] = record no /tf pairs
     streams:
-      imu:
-        topic: "livox/imu"
-        type: "sensor_msgs/msg/Imu"
+      camera:
+        topic: "camera/camera/color/image_raw"   # relative to the recorder's namespace
+        type: "sensor_msgs/msg/Image"
+        compression: gzip
+      camera_info:             # the camera's intrinsics, recorded at a low rate
+        topic: "camera/camera/color/camera_info"
+        type: "sensor_msgs/msg/CameraInfo"
+        mode: sampled
 ```
 
-`camera_info` is an optional `sensor_msgs/msg/CameraInfo` stream (camera intrinsics); the shipped configs list it with `enabled: false`, set it to `true` to record it. Every key is explained in [`hdf5_format.md`](../src/dataset_generator/docs/hdf5_format.md).
+`topic` and `type` are the only required keys per stream; every other key is listed in [`hdf5_format.md`](../src/dataset_generator/docs/hdf5_format.md). `tf_track` lists `"parent->child"` coordinate-frame pairs to record from `/tf` over time (a moving robot's pose); the file always also keeps `/tf_static`, the fixed sensor mounting transforms from the robot description. No camera? Replace both streams with an `imu` stream (`topic: "livox/imu"`, `type: "sensor_msgs/msg/Imu"`) and see step 2 for a fake publisher.
 
 A new file must be installed once: `colcon build --packages-select dataset_generator --symlink-install`. Edits to an already installed file need no rebuild.
 
@@ -45,7 +44,7 @@ ros2 launch dataset_generator record_dataset.launch.py \
     namespace:=default_template param_file:=my_capture.yaml dataset_subpath:=run_001
 ```
 
-`param_file` is a bare file name from `configs/`. `dataset_subpath` is appended to `dataset_path`. `output_file:=/full/path.h5` overrides both. No fake sensor? Run `ros2 topic pub -r 10 /ns1/livox/imu sensor_msgs/msg/Imu "{}"` in a third terminal and use `namespace:=ns1` for the one-stream file above.
+`param_file` is a bare file name from `configs/`. `dataset_subpath` is appended to `dataset_path`. `output_file:=/full/path.h5` overrides both. No sensor? With the `imu` stream above, run `ros2 topic pub -r 10 /ns1/livox/imu sensor_msgs/msg/Imu "{}"` in a third terminal and use `namespace:=ns1`.
 
 ## 3. The start gate
 
@@ -59,10 +58,10 @@ Stop the recorder with `Ctrl-C`; it closes the file cleanly. The file is `<datas
 import glob, h5py
 f = h5py.File(sorted(glob.glob("/home/you/datasets/run_001/*.h5"))[-1])
 print(list(f.keys()), f.attrs["format_version"], f.attrs["closed_cleanly"])
-print(f["imu/data"].shape, f["imu"].attrs["resolved_topic"])
+print(f["camera/data"].shape, f["camera"].attrs["resolved_topic"])   # imu/data for the IMU file
 ```
 
-You should see the stream names plus `tf_static`, `4 True`, and a shape `(N, 10)` for the IMU with the absolute topic it listened to. Each stream group holds `data`, `stamp_header_ns` (the sender's stamp) and `stamp_recv_ns` (arrival time). `closed_cleanly` is `False` if the node was killed rather than stopped. A `camera_info` stream is an `(N, 46)` array (layout in `hdf5_format.md`).
+You should see your stream names plus `tf_static`, `4 True`, and for an `rgb8` camera a shape `(N, H, W, 3)` with the absolute topic it listened to. An IMU stream is `(N, 10)`: orientation `x y z w`, angular velocity `x y z`, linear acceleration `x y z` per sample. Each stream group holds `data`, `stamp_header_ns` (the sender's stamp) and `stamp_recv_ns` (arrival time). `closed_cleanly` is `False` if the node was killed rather than stopped. A `camera_info` stream is an `(N, 46)` array (layout in `hdf5_format.md`).
 
 ## 5. Check before a long recording
 

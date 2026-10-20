@@ -9,7 +9,7 @@ Goal: on a clean Ubuntu 24.04 machine, install ROS 2 and this repo, launch one b
 - **Workspace:** a folder with a `src/` directory of ROS packages. Here it is the repo root.
 - **colcon:** the build tool. `colcon build` fills `build/`, `install/` and `log/` next to `src/`.
 - **Sourcing:** `source install/setup.bash` tells the current terminal where the built packages are. Repeat it in every new terminal.
-- **Namespace:** a prefix on node and topic names (with `namespace:=foo`, a topic `joint_states` becomes `/foo/joint_states`). Bringup launch files take a `namespace` argument.
+- **Namespace:** a prefix on node and topic names (with `namespace:=foo`, a topic `joint_states` becomes `/foo/joint_states`). Bringup launch files take a `namespace` argument. A RealSense topic is `/<namespace>/camera/<camera_name>/color/image_raw`: `camera` is the driver's default `camera_namespace` and the bringup passes `camera_name:=camera`. Later tutorials write topics relative to the namespace.
 
 ## 2. Install ROS 2 Jazzy
 
@@ -24,7 +24,7 @@ sudo rosdep init        # skip if it says the file already exists
 rosdep update
 ```
 
-Convenience instead of the two blocks above: `bash scripts/install_ros2.sh --sensors realsense` (run from the cloned repo, step 3) does the ROS install, `rosdep init` and then the install in step 4 in one go (`scripts/install_ros2.sh:13-40`).
+Convenience instead of the two blocks above: `bash scripts/install_ros2.sh --sensors realsense` (run from the cloned repo, step 3) does the ROS install, `rosdep init` and then the install in step 4 in one go.
 
 ## 3. Get the code
 
@@ -33,7 +33,7 @@ git clone https://github.com/cpsl-research/CPSL_ROS2_Sensors
 cd CPSL_ROS2_Sensors
 ```
 
-Do not clone with `--recursive`: the sensor drivers are git submodules and the install script fetches only the ones you ask for (`scripts/install.sh:57-98`).
+Do not clone with `--recursive`: the sensor drivers are git submodules and the install script fetches only the ones you ask for.
 
 ## 4. Install and build for a RealSense
 
@@ -41,9 +41,11 @@ Do not clone with `--recursive`: the sensor drivers are git submodules and the i
 bash scripts/install.sh --sensors realsense
 ```
 
-What it does, in order (`scripts/install.sh`): checks out the submodules for the chosen sensors, installs `uv` (a Python package manager) if missing, runs `sudo bash scripts/deps/realsense.sh` (apt packages plus librealsense built from source under `/opt`; expect this to take a while), creates `.venv`, runs `rosdep install`, then `colcon build --symlink-install`. It asks for your `sudo` password. It also installs the HDF5 library the recorder needs (`scripts/deps/dataset.sh`).
+What it does, in order (`scripts/install.sh`): checks out the submodules for the chosen sensors, installs `uv` (a Python package manager) if missing, runs `sudo bash scripts/deps/realsense.sh` (apt packages plus librealsense built from source under `/opt`; expect this to take a while), creates `.venv` (see below), runs `rosdep install`, then `colcon build --symlink-install`. It asks for your `sudo` password. It also installs the HDF5 library the recorder needs (`scripts/deps/dataset.sh`).
 
-`--sensors` takes a comma-separated list from `radar,livox,ouster,realsense,leapmotion,vicon,usb_cam` (`install.sh:37`); the default is `radar,livox`. Rerun with another list to add sensors.
+`--sensors` takes a comma-separated list from `radar,livox,ouster,realsense,leapmotion,vicon,usb_cam`; the default is `radar,livox`. Rerun with another list to add sensors. `--sensors ouster` also appends `RMW_IMPLEMENTATION=rmw_cyclonedds_cpp` to your shell rc file, which changes the middleware for every ROS 2 terminal ([Tutorial 04](04_ouster_setup.md)).
+
+The `.venv` is a Python virtual environment made with `--system-site-packages` so it also sees ROS's Python packages. Only the Leap Motion nodes need it active while building ([Tutorial 05](05_leap_motion_setup.md)); `install.sh` and `scripts/rebuild.sh` activate it for you.
 
 Success looks like `Setup complete.` at the end. Then, in this and every new terminal:
 
@@ -60,7 +62,7 @@ source install/setup.bash
 ros2 launch cpsl_ros2_sensors_bringup default_template_bringup.launch.py
 ```
 
-Sensors are started on a timer, 3 s apart, so the launch does not race (`default_template_bringup.launch.py:173-326`); the description appears after 25 s. In a second terminal (source both files again):
+Sensors are started on a timer, 3 s apart, so the launch does not race; the description appears after 25 s. In a second terminal (source both files again):
 
 ```bash
 ros2 topic list
@@ -78,17 +80,21 @@ Set up the camera once (USB 3, udev rules, IMU) with [Tutorial 02](02_realsense_
 ros2 launch cpsl_ros2_sensors_bringup default_template_bringup.launch.py realsense_enable:=true
 ```
 
-The camera node starts 13 s in (`default_template_bringup.launch.py:217`). Find its topics and read one:
+The camera node starts 13 s in. Find its topics and read one:
 
 ```bash
 ros2 topic list | grep image_raw
 ros2 topic hz /default_template/camera/camera/color/image_raw
 ```
 
-You should see a color `image_raw` topic and a rate printed once frames arrive. The exact topic path is chosen by the upstream `realsense2_camera` driver from the `camera_name:=camera` this launch passes (`default_template_bringup.launch.py:222`), so trust `ros2 topic list` over the path above.
+You should see a color `image_raw` topic and a rate printed once frames arrive. The exact topic path is chosen by the upstream `realsense2_camera` driver from the `camera_name:=camera` this launch passes, so trust `ros2 topic list` over the path above.
 
-## 7. Next
+## 7. TI radar
+
+Radar setup (serial and DCA1000 network, udev rules, radar configs) is owned by the radar repo, not this one. Run `bash scripts/install.sh --sensors radar`, which pulls it in as `src/CPSL_TI_Radar`, then follow `src/CPSL_TI_Radar/README.md`, the tutorials in `src/CPSL_TI_Radar/docs/tutorials/` and `python3 src/CPSL_TI_Radar/tools/setup/host_setup.py`. Come back here for the bringup launch arguments ([Tutorial 06](06_adding_a_platform.md), [08](08_paper_setups.md)) and recording ([Tutorial 01](01_capturing_a_dataset.md)).
+
+## 8. Next
 
 - Record these topics to a file: [Tutorial 01](01_capturing_a_dataset.md).
-- Other sensors: [03 Livox](03_livox_mid360_setup.md), [04 Ouster](04_ouster_setup.md), [05 Leap Motion](05_leap_motion_setup.md). TI radars have their own repo and docs (`src/CPSL_TI_Radar/README.md` after `--sensors radar`).
+- Other sensors: [03 Livox](03_livox_mid360_setup.md), [04 Ouster](04_ouster_setup.md), [05 Leap Motion](05_leap_motion_setup.md). TI radars: see the next section.
 - Your own robot: [Tutorial 06](06_adding_a_platform.md). Developers: [`docs/DEVELOPING.md`](../docs/DEVELOPING.md).
