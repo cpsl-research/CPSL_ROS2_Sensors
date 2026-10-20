@@ -8,7 +8,7 @@ from launch.actions import (
     IncludeLaunchDescription,
     OpaqueFunction
 )
-from launch.conditions import IfCondition, UnlessCondition
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import PushRosNamespace, SetRemap, Node
@@ -82,9 +82,9 @@ def launch_setup(context, *args, **kwargs):
             'dataset_generator', {}).get('ros__parameters', {})
     if 'streams' not in ros_params:
         raise RuntimeError(
-            "%s has no `streams:` table. The v1 per-sensor YAML format is no "
-            "longer supported; convert it to a v2 recorder YAML (see "
-            "configs/uav_dataset.yaml)." % actual_param_file_path)
+            '%s has no `streams:` table. The v1 per-sensor YAML format is no '
+            'longer supported; convert it to a v2 recorder YAML (see '
+            'configs/uav_dataset.yaml).' % actual_param_file_path)
 
     node_params = [configured_params]
     if output_file_str:

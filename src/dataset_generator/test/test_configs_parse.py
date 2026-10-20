@@ -2,10 +2,9 @@
 import glob
 import os
 
+from dataset_generator.stream_config import parse_streams, parse_tf_track
 import pytest
 import yaml
-
-from dataset_generator.stream_config import parse_streams, parse_tf_track
 
 CONFIGS = sorted(glob.glob(os.path.join(
     os.path.dirname(__file__), '..', 'configs', '*.yaml')))
