@@ -96,5 +96,5 @@ Radar setup (serial and DCA1000 network, udev rules, radar configs) is owned by 
 ## 8. Next
 
 - Record these topics to a file: [Tutorial 01](01_capturing_a_dataset.md).
-- Other sensors: [03 Livox](03_livox_mid360_setup.md), [04 Ouster](04_ouster_setup.md), [05 Leap Motion](05_leap_motion_setup.md). TI radars: see the next section.
+- Other sensors: [03 Livox](03_livox_mid360_setup.md), [04 Ouster](04_ouster_setup.md), [05 Leap Motion](05_leap_motion_setup.md). TI radars: see section 7 above.
 - Your own robot: [Tutorial 06](06_adding_a_platform.md). Developers: [`docs/DEVELOPING.md`](../docs/DEVELOPING.md).

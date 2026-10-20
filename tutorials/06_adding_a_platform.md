@@ -1,6 +1,6 @@
 # Tutorial 06: Adding a platform (URDF, bringup launch, recording config)
 
-Goal: describe a new robot's sensor mounting, start its sensors with one launch file, and record it. A platform is three small files that share a name: `platform_descriptions/urdf/<name>.urdf.xml`, `cpsl_ros2_sensors_bringup/launch/<name>_bringup.launch.py`, `dataset_generator/configs/<name>.yaml`. Below the platform is `cpsl_ugv_2`. Prerequisite: [Tutorial 00](00_ubuntu_to_first_topic.md). Every step here runs without sensors.
+Goal: describe a new robot's sensor mounting, start its sensors with one launch file, and record it. A platform is three small files that share a platform name by convention (the file names below are patterns; the repo's own files vary, e.g. `cpsl_ugv_1.urdf.xml` goes with `ugv_sensor_bringup.launch.py` and `ugv_dataset.yaml`): `platform_descriptions/urdf/<name>.urdf.xml`, `cpsl_ros2_sensors_bringup/launch/<name>_bringup.launch.py`, `dataset_generator/configs/<name>.yaml`. Below the platform is `cpsl_ugv_2`. Prerequisite: [Tutorial 00](00_ubuntu_to_first_topic.md). Every step here runs without sensors.
 
 ---
 
@@ -42,7 +42,7 @@ Also change the `namespace` default (the `DeclareLaunchArgument('namespace', def
 sed -i "s/default_value='default_template'/default_value='cpsl_ugv_2'/" ugv_2_bringup.launch.py
 ```
 
- Read the file once; it has three parts:
+Read the file once; it has three parts:
 
 - `ARGUMENTS`: the launch arguments. `namespace` prefixes every node and topic; each `*_enable` (`livox_enable`, `front_radar_enable`, `realsense_enable`, ...) switches one sensor on, default `false`.
 - `launch_setup()`: reads the arguments, turns the namespace into a `tf_prefix` (`cpsl_ugv_2`) that is passed to the drivers so their frames match the URDF names, and builds one `IncludeLaunchDescription` or `Node` per sensor, each with `condition=IfCondition(<x>_enable)`.
