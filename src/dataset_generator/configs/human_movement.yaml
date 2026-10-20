@@ -1,21 +1,74 @@
+# v2 recorder config (dataset_recorder): human movement (radar_0, RealSense color+depth, Leap Motion hands).
+# Topics are relative to the recorder's namespace (default cpsl_human_movement in the paper launch).
+# v1 base_frame was "cpsl_realsense_color_optical_frame" (v1 only used it for an offline transform;
+# v2 has no such key; /tf_static is recorded so the transform can be done offline).
 dataset_generator:
   ros__parameters:
-    radar_enable: True
-    lidar_enable: False
-    lidar_topic: "livox/lidar"
-    camera_enable: True
-    camera_topic: "camera/cpsl_realsense/color/image_raw"
-    camera_depth_enable: True
-    camera_depth_topic: "camera/cpsl_realsense/depth/image_rect_raw"
-    hand_tracking_enable: True
-    hand_tracking_left_topic: "left_hand_joints"
-    hand_tracking_right_topic: "right_hand_joints"
-    imu_enable: False 
-    imu_topic: "imu"
-    vicon_enable: False
-    vehicle_odom_enable: False
-    vehicle_odom_topic: "odom"
-    base_frame: "cpsl_realsense_color_optical_frame"
-    frame_rate_save_data: 10.0 #5.0 for SAR, 20.0 for vel
-    frame_rate_high_speed_sensors: 50.0
     dataset_path: "/home/cpsl/Downloads/datasets/hands_test_dataset_midlight"
+    capture_mode: "sampled"    # v1 frame_rate_save_data
+    sample_rate_hz: 10.0
+    flush_period_s: 5.0
+    start_timeout_s: 30.0
+    allow_missing: false
+    tf_track: [""]             # no odom in this setup; /tf_static is still recorded
+    tf_topic: "tf"
+    tf_static_topic: "tf_static"
+    streams:
+      radar_adc:
+        topic: "radar_0/adc_data_cube"
+        type: "raw_radar_msgs/msg/ADCDataCube"
+        qos: reliable
+        qos_depth: 10
+        legacy_folder: "radar_0_adc"
+      radar_pc:
+        topic: "radar_0/detected_points"
+        type: "sensor_msgs/msg/PointCloud2"
+        fields: ["x", "y", "z", "vel"]
+        legacy_folder: "radar_0_pc"
+      camera:
+        topic: "camera/cpsl_realsense/color/image_raw"
+        type: "sensor_msgs/msg/Image"
+        compression: gzip
+        legacy_folder: "camera"
+      camera_info:             # intrinsics as a stream; opt-in (set enabled: true)
+        enabled: false
+        topic: "camera/cpsl_realsense/color/camera_info"
+        type: "sensor_msgs/msg/CameraInfo"
+        mode: sampled
+        qos: reliable
+      camera_depth:
+        topic: "camera/cpsl_realsense/depth/image_rect_raw"
+        type: "sensor_msgs/msg/Image"
+        compression: gzip
+        legacy_folder: "depth"
+      camera_depth_info:       # depth intrinsics; opt-in
+        enabled: false
+        topic: "camera/cpsl_realsense/depth/camera_info"
+        type: "sensor_msgs/msg/CameraInfo"
+        mode: sampled
+        qos: reliable
+      # hands: v1 wrote both to one "hands" folder; no legacy_folder here (converter default names)
+      hand_left:
+        topic: "left_hand_joints"
+        type: "sensor_msgs/msg/PointCloud2"
+      hand_right:
+        topic: "right_hand_joints"
+        type: "sensor_msgs/msg/PointCloud2"
+      # off in the v1 config; set enabled: true to record
+      lidar:
+        enabled: false
+        topic: "livox/lidar"
+        type: "sensor_msgs/msg/PointCloud2"
+        legacy_folder: "lidar"
+      imu:
+        enabled: false
+        topic: "imu"
+        type: "sensor_msgs/msg/Imu"
+        mode: all
+        legacy_folder: "imu_data"
+      vehicle_odom:
+        enabled: false
+        topic: "odom"
+        type: "nav_msgs/msg/Odometry"
+        mode: all
+        legacy_folder: "vehicle_odom"

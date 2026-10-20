@@ -1,21 +1,64 @@
+# v2 recorder config (dataset_recorder): IcaRAus UAV dataset (radar; front/back/down radars, Vicon, odom).
+# Topics are relative: they resolve in the recorder's namespace (launch with namespace:=<ns>, e.g.
+# cpsl_uav_1; the old cpsl_uav_6/8 hints in the v1 file were launch-time names, not YAML keys).
+# v1 base_frame was "cpsl_uav_8/base_footprint" (v1 only used it for an offline transform; v2 has no such key.
+# /tf_static and the tracked pair below are recorded so the transform can be done offline).
+# Radar topics assume all three of front/back/down are running; a silent one aborts the start gate
+# unless allow_missing is true (set below, so a missing radar is listed in streams_missing instead).
 dataset_generator:
   ros__parameters:
-    radar_enable: True
-    lidar_enable: False
-    lidar_topic: "livox/lidar"
-    camera_enable: False
-    camera_topic: "image_raw"
-    camera_depth_enable: False
-    camera_depth_topic: "/cpsl_uav_1/camera/cpsl_realsense/depth/image_rect_raw"
-    hand_tracking_enable: False
-    hand_tracking_left_topic: "/cpsl_human_movement/left_hand_joints"
-    hand_tracking_right_topic: "/cpsl_human_movement/right_hand_joints"
-    imu_enable: False
-    imu_topic: "imu"
-    vicon_enable: True
-    vehicle_odom_enable: True
-    vehicle_odom_topic: "odom"
-    base_frame: "cpsl_uav_8/base_footprint" #base_footprint normally though
-    frame_rate_save_data: 10.0 #5.0 for SAR, 20.0 for vel
-    frame_rate_high_speed_sensors: 40.0
     dataset_path: "/home/cpsl/Downloads/datasets/IcaRAus_UAV_dataset_radar"
+    capture_mode: "sampled"    # latest message per tick, at sample_rate_hz (v1 frame_rate_save_data)
+    sample_rate_hz: 10.0
+    flush_period_s: 5.0
+    start_timeout_s: 30.0
+    allow_missing: true
+    tf_track: ["odom->base_link"]
+    tf_topic: "tf"
+    tf_static_topic: "tf_static"
+    streams:
+      radar_front_adc:
+        topic: "front_radar/adc_data_cube"
+        type: "raw_radar_msgs/msg/ADCDataCube"
+        qos: reliable          # large cubes are lost with best_effort
+        qos_depth: 10
+        legacy_folder: "front_radar_adc"
+      radar_front_pc:
+        topic: "front_radar/detected_points"
+        type: "sensor_msgs/msg/PointCloud2"
+        fields: ["x", "y", "z", "vel"]
+        legacy_folder: "front_radar_pc"
+      radar_back_adc:
+        topic: "back_radar/adc_data_cube"
+        type: "raw_radar_msgs/msg/ADCDataCube"
+        qos: reliable          # large cubes are lost with best_effort
+        qos_depth: 10
+        legacy_folder: "back_radar_adc"
+      radar_back_pc:
+        topic: "back_radar/detected_points"
+        type: "sensor_msgs/msg/PointCloud2"
+        fields: ["x", "y", "z", "vel"]
+        legacy_folder: "back_radar_pc"
+      radar_down_adc:
+        topic: "down_radar/adc_data_cube"
+        type: "raw_radar_msgs/msg/ADCDataCube"
+        qos: reliable          # large cubes are lost with best_effort
+        qos_depth: 10
+        legacy_folder: "down_radar_adc"
+      radar_down_pc:
+        topic: "down_radar/detected_points"
+        type: "sensor_msgs/msg/PointCloud2"
+        fields: ["x", "y", "z", "vel"]
+        legacy_folder: "down_radar_pc"
+      # PLACEHOLDER: replace <SUBJECT>/<SEGMENT> with the vicon_bridge names (topic layout not yet
+      # verified; see the Sensors TODO.md), then set enabled: true. v1 recorded whatever matched /vicon/.
+      vicon:
+        enabled: false
+        topic: "vicon/<SUBJECT>/<SEGMENT>"
+        type: "geometry_msgs/msg/TransformStamped"
+        legacy_folder: "vicon_<SEGMENT>"
+      vehicle_odom:            # published by the flight stack (not this repo); every message
+        topic: "odom"
+        type: "nav_msgs/msg/Odometry"
+        mode: all
+        legacy_folder: "vehicle_odom"

@@ -1,10 +1,9 @@
 # dataset_generator v2: HDF5 capture format
 
 `ros2 launch dataset_generator record_dataset.launch.py param_file:=radar_sar.yaml [output_file:=/path/x.h5]`
-runs the `dataset_recorder` node (any YAML with a `streams:` table). YAMLs without
-one (`ugv_dataset_v1.yaml`, `uav_*.yaml`, `human_movement.yaml`) still launch the v1
-`dataset_generator` node, which writes the old folder-of-.npy layout. `ugv_dataset.yaml`
-is now v2; its v1 form is `ugv_dataset_v1.yaml`.
+runs the `dataset_recorder` node (a YAML with a `streams:` table; every file in `configs/` is one). A YAML
+without `streams:` fails at launch with a message; the v1 `.npy` recorder is removed (`hdf5_to_legacy`
+converts a capture to that folder layout).
 
 One HDF5 file per capture (default `<dataset_path>/capture_<YYYYmmdd_HHMMSS>.h5`).
 

@@ -1,7 +1,4 @@
 # v2 recorder config (dataset_recorder): one HDF5 file per capture.
-# The pre-v2 per-sensor *_enable/*_topic version is configs/ugv_dataset_v1.yaml
-# (used by the old dataset_generator node, which the launch file still picks
-# automatically for any YAML without a `streams:` table).
 dataset_generator:
   ros__parameters:
     dataset_path: "/home/cpsl/Downloads/datasets/icaRAus_ugv"   # capture_<time>.h5 goes here

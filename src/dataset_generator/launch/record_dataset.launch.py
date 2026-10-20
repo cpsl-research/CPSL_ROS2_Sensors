@@ -75,17 +75,19 @@ def launch_setup(context, *args, **kwargs):
         allow_substs=True,
     )
 
-    # v2 YAMLs (a `streams:` table) use the HDF5 recorder; anything else is a
-    # v1 per-sensor YAML and keeps the old .npy dataset_generator node.
-    try:
-        with open(actual_param_file_path, 'r') as f:
-            ros_params = yaml.safe_load(f)['dataset_generator']['ros__parameters']
-        use_recorder = 'streams' in ros_params
-    except Exception:
-        use_recorder = False
+    # Only v2 YAMLs (a `streams:` table) are supported; the v1 per-sensor
+    # .npy recorder is gone.
+    with open(actual_param_file_path, 'r') as f:
+        ros_params = (yaml.safe_load(f) or {}).get(
+            'dataset_generator', {}).get('ros__parameters', {})
+    if 'streams' not in ros_params:
+        raise RuntimeError(
+            "%s has no `streams:` table. The v1 per-sensor YAML format is no "
+            "longer supported; convert it to a v2 recorder YAML (see "
+            "configs/uav_dataset.yaml)." % actual_param_file_path)
 
     node_params = [configured_params]
-    if use_recorder and output_file_str:
+    if output_file_str:
         node_params.append({'output_file': output_file_str})
 
     # Apply the following re-mappings only within this group
@@ -95,7 +97,7 @@ def launch_setup(context, *args, **kwargs):
         #launch the point cloud combiner node
         Node(
             package='dataset_generator',
-            executable='dataset_recorder' if use_recorder else 'dataset_generator',
+            executable='dataset_recorder',
             name='dataset_generator',
             output='screen',
             parameters=node_params,
