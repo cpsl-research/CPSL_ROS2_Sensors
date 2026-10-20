@@ -20,8 +20,6 @@ The repo is a colcon workspace (`src/`). CPSL writes three packages; everything 
 | `ouster-ros`, `ros2-vicon-bridge` | Ouster lidar, Vicon | upstream, unmodified |
 | `submodules/leapc-python-bindings` | Ultraleap Python bindings | upstream |
 
-`scripts/install.sh` initialises only the submodules for the sensors you choose and de-initialises the others (`install.sh:57-98`), so the others are empty directories.
-
 ## 2. Launch, parameters and URDF: the convention
 
 Every bringup follows one pattern, described step by step in [Tutorial 06](../tutorials/06_adding_a_platform.md):
@@ -75,19 +73,14 @@ The lab forks (`CPSL_ROS_livox_ros_driver2`, `CPSL_ROS2_LeapMotion`, and `CPSL_T
 
 `main` is the current line. `v1.0` (annotated tag) is the last state with the old `.npy` recorder and the poetry environment, kept for recovery. Before a release: run the first four rows of section 5 and `bash scripts/test_integration.sh` on a machine with sensors, then tag `vX.Y` on `main`. Use feature branches and merge to `main` by pull request.
 
-## Appendix A: Scripts and files, one line each
+## Appendix A: Other scripts and files (install, Ouster, integration and Docker scripts: see README and tutorials)
 
 | Path | Purpose |
 |---|---|
-| `scripts/install.sh` | Submodules, uv, deps, venv, rosdep, per-sensor setup, colcon build, for a chosen `--sensors` list |
-| `scripts/install_ros2.sh` | Installs ROS 2 Jazzy desktop and `rosdep`, then runs `install.sh` with the same arguments |
 | `scripts/setup_venv.sh` | `.venv` with system site-packages; `--leapmotion` adds the Leap bindings |
 | `scripts/rebuild.sh` | `colcon build`; inside Docker builds into `build_docker/` and skips drivers not in the image |
-| `scripts/find_ouster_ip.sh` | `fping` sweep of a link-local range |
 | `scripts/detect_devices.py`, `.sh` | Find radar and RealSense devices, write Docker `.env` device paths |
 | `scripts/setup_realsense_udev.sh` | Shortcut for `tools/setup/realsense_host_setup.py --apply` |
-| `scripts/test_integration.sh` | Build plus per-sensor topic smoke test, host or container |
-| `scripts/verify_docker_setup.sh` | Builds a radar-only test image, checks the mount and a rebuild |
 | `tools/setup/realsense_host_setup.py` | Check/install RealSense udev rules and IMU access (stdlib only; tested by `tests/test_realsense_host_setup.py`) |
 | `docker/` | Dockerfile, four compose files, entrypoint, install script, `device_config.example.json` |
 

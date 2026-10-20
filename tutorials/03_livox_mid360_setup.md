@@ -58,7 +58,3 @@ ros2 topic hz /default_template/livox/imu
 ```
 
 You should see rates of about 10 Hz for the point cloud (`publish_freq = 10.0` in the fork's launch file) and the IMU rate for `livox/imu`. The cloud is a `sensor_msgs/msg/PointCloud2` in frame `livox_frame`, prefixed with the namespace when `tf_prefix` is set. To look at it, add `rviz:=true` to the launch. If nothing arrives, re-check the host address with `ping`, the file name, and that no other program (including a second driver) is using UDP port 56000-56401.
-
-## 5. What the lab changed in the fork
-
-Besides the config files, the fork adds the `tf_prefix` and `user_config_file` launch arguments, ROS 2 Jazzy detection in `CMakeLists.txt`, `build_CPSL_ROS2_Sensors.sh` and `tools/setup/livox_host_setup.py`. They are listed at the top of the fork's README.

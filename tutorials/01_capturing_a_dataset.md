@@ -26,7 +26,7 @@ dataset_generator:
         type: "sensor_msgs/msg/Imu"
 ```
 
-Streams that matter: images (`compression: gzip`), point clouds (`fields:` lists the columns kept), radar ADC cubes, IMU, odometry. `camera_info` is an optional `sensor_msgs/msg/CameraInfo` stream (camera intrinsics); the shipped configs list it with `enabled: false`, set it to `true` to record it. Every key is explained in [`hdf5_format.md`](../src/dataset_generator/docs/hdf5_format.md).
+`camera_info` is an optional `sensor_msgs/msg/CameraInfo` stream (camera intrinsics); the shipped configs list it with `enabled: false`, set it to `true` to record it. Every key is explained in [`hdf5_format.md`](../src/dataset_generator/docs/hdf5_format.md).
 
 A new file must be installed once: `colcon build --packages-select dataset_generator --symlink-install`. Edits to an already installed file need no rebuild.
 
@@ -62,7 +62,7 @@ print(list(f.keys()), f.attrs["format_version"], f.attrs["closed_cleanly"])
 print(f["imu/data"].shape, f["imu"].attrs["resolved_topic"])
 ```
 
-You should see the stream names plus `tf_static`, `4 True`, and a shape `(N, 10)` for the IMU with the absolute topic it listened to. Each stream group holds `data`, `stamp_header_ns` (the sender's stamp) and `stamp_recv_ns` (arrival time). `closed_cleanly` is `False` if the node was killed rather than stopped. A `camera_info` stream is an `(N, 46)` array: `width, height, K(9), R(9), P(12), D(14)`; the group's attrs hold `frame_id` and `distortion_model`.
+You should see the stream names plus `tf_static`, `4 True`, and a shape `(N, 10)` for the IMU with the absolute topic it listened to. Each stream group holds `data`, `stamp_header_ns` (the sender's stamp) and `stamp_recv_ns` (arrival time). `closed_cleanly` is `False` if the node was killed rather than stopped. A `camera_info` stream is an `(N, 46)` array (layout in `hdf5_format.md`).
 
 ## 5. Check before a long recording
 

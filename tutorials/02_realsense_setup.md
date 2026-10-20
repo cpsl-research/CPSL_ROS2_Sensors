@@ -70,4 +70,4 @@ echo "options usbcore usbfs_memory_mb=1024" | sudo tee /etc/modprobe.d/usbcore.c
 
 **USB errors.** Watch the kernel log while replugging: `sudo dmesg -w`. Look for disconnects, enumeration failures and timeouts.
 
-**Inside Docker.** The IMU needs `/sys/devices` mounted read-write and AppArmor unconfined; the compose files in `docker/` do both. The viewer and the `/sys` details are in [Tutorial 07](07_docker.md).
+Inside Docker: see [Tutorial 07](07_docker.md) section 7.

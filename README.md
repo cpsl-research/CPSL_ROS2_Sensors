@@ -18,7 +18,7 @@ source install/setup.bash                        # in every new terminal
 ros2 launch cpsl_ros2_sensors_bringup default_template_bringup.launch.py realsense_enable:=true
 ```
 
-`install.sh` (run from the repo root, asks for `sudo`) initialises only the submodules for the chosen sensors, installs each driver's system dependencies (`scripts/deps/<driver>.sh`), creates a Python venv with `uv`, runs `rosdep` and builds with `colcon`. `bash scripts/install_ros2.sh --sensors ...` installs ROS 2 first and then does the same. Flags: `--sensors` (default `radar,livox`), `--ouster-hostname`, `--skip-build`.
+`install.sh` asks for `sudo`; what it does is in [tutorial 00](tutorials/00_ubuntu_to_first_topic.md). `bash scripts/install_ros2.sh --sensors ...` installs ROS 2 first and then does the same. Flags: `--sensors` (default `radar,livox`), `--ouster-hostname`, `--skip-build`.
 
 ## Quick start (Docker)
 
@@ -65,11 +65,4 @@ One HDF5 file per capture, configured by a YAML in `src/dataset_generator/config
 
 ## Tutorials and developer guide
 
-| | |
-|---|---|
-| [00 Ubuntu to first topic](tutorials/00_ubuntu_to_first_topic.md) | ROS 2, install, first launch |
-| [01 Capturing a dataset](tutorials/01_capturing_a_dataset.md) | record and read HDF5 |
-| [02 RealSense](tutorials/02_realsense_setup.md), [03 Livox](tutorials/03_livox_mid360_setup.md), [04 Ouster](tutorials/04_ouster_setup.md), [05 Leap Motion](tutorials/05_leap_motion_setup.md) | per-sensor setup |
-| [06 Adding a platform](tutorials/06_adding_a_platform.md) | URDF, launch, recording config |
-| [07 Docker](tutorials/07_docker.md), [08 Paper setups](tutorials/08_paper_setups.md) | container; research launches |
-| [Developer guide](docs/DEVELOPING.md) | packages, conventions, tests, forks; open items in [TODO.md](TODO.md) |
+Tutorials 00-08 are in [`tutorials/`](tutorials/): 00 first topic, 01 recording, 02-05 per-sensor setup, [06 adding a platform](tutorials/06_adding_a_platform.md), 07 Docker, 08 paper setups. For packages, conventions, tests and forks see the [developer guide](docs/DEVELOPING.md); open items are in [TODO.md](TODO.md).
