@@ -26,7 +26,6 @@ setup(
         'console_scripts': [
             'dataset_recorder = dataset_generator.dataset_recorder:main',
             'hdf5_to_legacy = dataset_generator.hdf5_to_legacy:main',
-            'camera_intrinsics = dataset_generator.camera_intrinsics:main'
         ],
     },
 )

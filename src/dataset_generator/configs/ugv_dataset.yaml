@@ -31,6 +31,11 @@ dataset_generator:
         type: "sensor_msgs/msg/Image"
         compression: gzip
         legacy_folder: "camera"
+      camera_info:             # intrinsics as a stream; opt-in (set enabled: true)
+        enabled: false
+        topic: "camera/camera_info"
+        type: "sensor_msgs/msg/CameraInfo"
+        mode: sampled
       vehicle_odom:
         topic: "odom_repub"
         type: "nav_msgs/msg/Odometry"

@@ -35,7 +35,6 @@ dataset_generator:
         topic: "camera/cpsl_realsense/color/camera_info"
         type: "sensor_msgs/msg/CameraInfo"
         mode: sampled
-        qos: reliable
       camera_depth:
         topic: "camera/cpsl_realsense/depth/image_rect_raw"
         type: "sensor_msgs/msg/Image"
@@ -46,7 +45,6 @@ dataset_generator:
         topic: "camera/cpsl_realsense/depth/camera_info"
         type: "sensor_msgs/msg/CameraInfo"
         mode: sampled
-        qos: reliable
       # hands: v1 wrote both to one "hands" folder; no legacy_folder here (converter default names)
       hand_left:
         topic: "left_hand_joints"

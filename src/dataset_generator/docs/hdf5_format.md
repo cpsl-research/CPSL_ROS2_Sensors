@@ -89,7 +89,10 @@ Per stream, group `/<name>`:
 (complex = `d[:,0] + 1j*d[:,1]`; axis labels in attr `axes`); PointCloud2 `float32 (rows, len(fields))`
 (`float64` if a field is double; attr `columns`); Image `(N, H, W[, C])` in the message's encoding
 (attr `encoding`); Imu 10 cols, Odometry 13, Twist 6, TransformStamped 7, Vector3 3
-(attr `columns` names them). ADCChirpMeta: scalars `(N,)` and per-chirp arrays `(N, n_chirps)`
+(attr `columns` names them). CameraInfo `float64 (N, 46)`: `width, height, K(9), R(9), P(12), D(14)`
+(`D` is NaN-padded to 14, more coefficients is an error; attrs `columns`, `frame_id`, and
+`distortion_model` as a string; record it as a low-rate `mode: sampled` stream, `qos` best_effort by
+default so it matches either publisher). ADCChirpMeta: scalars `(N,)` and per-chirp arrays `(N, n_chirps)`
 named as in the .msg (`frame_index`, `record_valid`, `t_s`, ..., `prev_tail_sat (N,2)`).
 
 Stream attrs: `topic`, `msg_type`, `qos`, `qos_depth`, `mode`, `n_samples`, `n_errors`

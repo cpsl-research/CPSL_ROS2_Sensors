@@ -65,7 +65,6 @@ dataset_generator:
         topic: "camera_info"
         type: "sensor_msgs/msg/CameraInfo"
         mode: sampled
-        qos: reliable
       vehicle_odom:            # published by the flight stack (not this repo); every message
         topic: "odom"
         type: "nav_msgs/msg/Odometry"

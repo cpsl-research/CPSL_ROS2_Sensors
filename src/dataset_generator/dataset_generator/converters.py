@@ -158,6 +158,32 @@ def _odom(msg, opts):
         p.x, p.y, p.z, q.x, q.y, q.z, q.w, v.x, v.y, v.z, w.x, w.y, w.z)}, ())
 
 
+CAMERA_INFO_D = 14   # fixed distortion width (rational_polynomial has 8; 14 covers all models)
+CAMERA_INFO_COLUMNS = (['width', 'height'] + ['K%d' % i for i in range(9)] +
+                       ['R%d' % i for i in range(9)] +
+                       ['P%d' % i for i in range(12)] +
+                       ['D%d' % i for i in range(CAMERA_INFO_D)])
+
+
+def _camera_info(msg, opts):
+    d = np.asarray(msg.d, dtype=np.float64).ravel()
+    if d.size > CAMERA_INFO_D:
+        raise ValueError('CameraInfo D has %d coefficients, max %d' %
+                         (d.size, CAMERA_INFO_D))
+    d = np.concatenate([d, np.full(CAMERA_INFO_D - d.size, np.nan)])
+    row = np.concatenate([_f64(msg.width, msg.height),
+                          np.asarray(msg.k, np.float64).ravel(),
+                          np.asarray(msg.r, np.float64).ravel(),
+                          np.asarray(msg.p, np.float64).ravel(), d])
+    return Sample(stamp_ns(msg), {'data': row}, ())
+
+
+def _camera_info_attrs(msg, opts):
+    return {'columns': list(CAMERA_INFO_COLUMNS),
+            'frame_id': _fid(msg.header.frame_id),
+            'distortion_model': str(msg.distortion_model)}
+
+
 def _twist_vals(t):
     return _f64(t.linear.x, t.linear.y, t.linear.z,
                 t.angular.x, t.angular.y, t.angular.z)
@@ -255,6 +281,8 @@ CONVERTERS = {
         'vx', 'vy', 'vz', 'wx', 'wy', 'wz'), 'best_effort'),
     'geometry_msgs/msg/TransformStamped': Converter(_transform_stamped, _stamped_cols(
         'x', 'y', 'z', 'qx', 'qy', 'qz', 'qw', child=True), 'best_effort'),
+    'sensor_msgs/msg/CameraInfo': Converter(
+        _camera_info, _camera_info_attrs, 'best_effort'),
     'tf2_msgs/msg/TFMessage': Converter(_tf_message, _cols(*TF_COLUMNS),
                                         'reliable'),
     'geometry_msgs/msg/Vector3Stamped': Converter(

@@ -538,3 +538,32 @@ def test_v2_presets_have_gate_and_tf_params(name):
     pairs = parse_tf_track(p['tf_track'])
     assert pairs == ([] if name == 'radar_sar.yaml'
                      else [('odom', 'base_link')])
+
+
+def test_camera_info_roundtrip(tmp_path):
+    k = [600., 0., 320., 0., 600., 240., 0., 0., 1.]
+    r = [1., 0., 0., 0., 1., 0., 0., 0., 1.]
+    p = [600., 0., 320., 0., 0., 600., 240., 0., 0., 0., 1., 0.]
+    msg = NS(header=hdr(3, 4, '/cam_optical'), width=640, height=480,
+             distortion_model='plumb_bob', d=[0.1, -0.2, 0., 0., 0.], k=k, r=r, p=p)
+    conv = cv.get_converter('sensor_msgs/CameraInfo')
+    path = tmp_path / 'ci.h5'
+    cap = CaptureFile(path, {'capture_mode': 'all'}, flush_period_s=0.0)
+    cap.add_stream('camera_info', conv.describe(msg, {}))
+    put(cap, 'camera_info', msg, conv, 1)
+    put(cap, 'camera_info', msg, conv, 2)
+    cap.close()
+    with h5py.File(path, 'r') as f:
+        g = f['camera_info']
+        assert g['data'].shape == (2, 46)
+        row = g['data'][0]
+        assert list(row[:2]) == [640., 480.] and list(row[2:11]) == k
+        assert list(row[11:20]) == r and list(row[20:32]) == p
+        assert list(row[32:34]) == [0.1, -0.2] and np.isnan(row[37:]).all()
+        assert g.attrs['distortion_model'] == 'plumb_bob'
+        assert g.attrs['frame_id'] == 'cam_optical'
+        assert list(g.attrs['columns'])[2] == 'K0' and len(g.attrs['columns']) == 46
+        assert g['stamp_header_ns'][0] == 3 * 10**9 + 4
+    msg.d = [0.] * 15
+    with pytest.raises(ValueError):
+        conv.fn(msg, {})
