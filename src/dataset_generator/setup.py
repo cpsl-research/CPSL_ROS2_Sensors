@@ -19,7 +19,7 @@ setup(
     zip_safe=True,
     maintainer='david',
     maintainer_email='david.hunt@duke.edu',
-    description='TODO: Package description',
+    description='HDF5 recorder for sensor topics, recording configs and a legacy converter.',
     license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={

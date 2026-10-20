@@ -19,7 +19,7 @@ setup(
     zip_safe=True,
     maintainer='cpsl',
     maintainer_email='david.hunt@duke.edu',
-    description='TODO: Package description',
+    description='URDF platform descriptions and the launch file that publishes them as tf.',
     license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={

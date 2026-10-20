@@ -1,336 +1,84 @@
 # CPSL ROS2 Sensors
 
-Multi-sensor ROS2 platform integrating TI radar, Livox/Ouster LiDAR, depth cameras, Leap Motion hand tracking, and Vicon motion capture for UGV, UAV, and human-movement research.
+Multi-sensor ROS 2 Jazzy workspace for CPSL research platforms (ground robots, UAVs, human-movement rigs): TI radar, Livox and Ouster lidar, RealSense and USB cameras, Leap Motion hand tracking and Vicon, with launch files that start them together and an HDF5 recorder that captures their topics. It stands alone: you need only Ubuntu 24.04 and this repo. [console](https://github.com/cpsl-research/console) is an optional browser GUI that can drive the same repo; nothing here depends on it.
 
----
+New to ROS? Start with [tutorial 00](tutorials/00_ubuntu_to_first_topic.md).
 
-## Quick-Start
+## Quick start (host)
+
+1. Install ROS 2 Jazzy desktop and `rosdep`: <https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html> (or let `scripts/install_ros2.sh` do it, see below).
+2. Clone and install the drivers for the sensors you have:
 
 ```bash
-# From any directory:
 git clone https://github.com/cpsl-research/CPSL_ROS2_Sensors
 cd CPSL_ROS2_Sensors
-
-# Install dependencies, clone sensor submodules, and build:
-bash scripts/install.sh --sensors radar,livox   # choose the sensors you have
-
-# Source the workspace (repeat in every new terminal):
-source install/setup.$(basename $SHELL)
+bash scripts/install.sh --sensors realsense      # or radar,livox,ouster,realsense,leapmotion,vicon,usb_cam
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash                        # in every new terminal
+ros2 launch cpsl_ros2_sensors_bringup default_template_bringup.launch.py realsense_enable:=true
 ```
 
-`install.sh` clones only the submodules needed for the sensors you specify — unneeded sensor repos are never downloaded.
+`install.sh` (run from the repo root, asks for `sudo`) initialises only the submodules for the chosen sensors, installs each driver's system dependencies (`scripts/deps/<driver>.sh`), creates a Python venv with `uv`, runs `rosdep` and builds with `colcon`. `bash scripts/install_ros2.sh --sensors ...` installs ROS 2 first and then does the same. Flags: `--sensors` (default `radar,livox`), `--ouster-hostname`, `--skip-build`.
 
-| Flag | Argument | Default | Description |
-|------|----------|---------|-------------|
-| `--sensors` | comma-separated | `radar,livox` | Which sensors to install. Valid values: `radar`, `livox`, `ouster`, `realsense`, `leapmotion`, `vicon`, `usb_cam`. Controls which submodules are cloned and which SDK dependencies are installed. |
-| `--livox-ip` | `XX` (two digits) | _(none)_ | Last two digits of the Livox Mid360 serial number. Auto-patches `host_ip` in `MID360_config.json`. |
-| `--ouster-hostname` | hostname or IP | _(none)_ | Auto-patches `sensor_hostname` in `ouster_configs/driver_params.yaml`. |
-| `--skip-build` | _(flag)_ | off | Skip the colcon build step. Useful for setting up dependencies before hardware is connected. |
+If `install.sh` stops with `AMENT_TRACE_SETUP_FILES: unbound variable`, everything before the rosdep step is done; finish by hand (source the venv first; add the `raw_radar_msgs` build first for radar and `ouster_ros ouster_sensor_msgs` first for Ouster, as in `install.sh:224-235`):
 
-If ROS2 Jazzy is not yet installed, run `bash scripts/install_ros2.sh` instead — it installs ROS2 first, then hands off to `install.sh`.
-
-### Where dependencies come from
-
-- **System dependencies, one script per driver:** `scripts/deps/<driver>.sh` (`radar`, `livox`, `ouster`, `realsense`, `leapmotion`, `vicon`, `usb_cam`). Each installs only that driver's apt packages / SDKs (Livox-SDK2 and librealsense are built from source under `/opt` and installed to `/usr/local`), runs as root, and is a quick no-op when already satisfied. `install.sh`, the Docker image and the [console](https://github.com/cpsl-research/console) GUI all call these same scripts, so a driver's dependencies are changed in exactly one place.
-- **ROS dependencies:** `rosdep install --from-paths src ...`, for whichever driver submodules are checked out.
-- **Python dependencies:** [uv](https://docs.astral.sh/uv/) (`pyproject.toml` + `uv.lock`). `bash scripts/setup_venv.sh` creates `.venv` with `--system-site-packages`, so the ROS python packages stay importable; activate it before building (`source .venv/bin/activate`). Set `UV_PROJECT_ENVIRONMENT` to put the venv elsewhere — do this whenever a host and a container share the same checkout, so they never share one venv.
-
----
-
-## Sensor Support
-
-| Sensor | Package / Submodule | Topics Published | Notes |
-|--------|---------------------|------------------|-------|
-| TI Radar (serial) | `CPSL_TI_Radar` (`ros2/`) → `ti_radar_connect` | `<ns>/radar_N/ti_radar` (point cloud), `<ns>/radar_N/ti_radar_scan` | IWR1843 / IWR6843 via `/dev/ttyACM*` or `/dev/ttyUSB*` |
-| TI Radar (DCA1000) | `CPSL_TI_Radar` (`ros2/`) → `ti_radar_connect` | same as serial | Ethernet capture; requires IP config (see Hardware Setup) |
-| Livox Mid360 | `CPSL_ROS_livox_ros_driver2` | `<ns>/livox/lidar` (point cloud), `<ns>/livox/imu` | Static-IP ethernet; requires `MID360_config.json` update |
-| Ouster | `ouster-ros` | `<ns>/ouster/points`, `<ns>/ouster/imu`, `<ns>/ouster/scan` | Link-local ethernet; requires Eclipse Cyclone DDS |
-| Intel RealSense | `realsense2_camera` (apt) | `<ns>/cpsl_realsense/color/image_raw`, `.../depth/image_rect_raw` | USB3; plug and play after apt install |
-| Leap Motion | `CPSL_ROS2_LeapMotion` | `<ns>/left_hand_joints`, `<ns>/right_hand_joints`, `<ns>/leapmotion/image` | Requires Ultraleap Gemini service running |
-| Vicon | `ros2-vicon-bridge` | `/tf` (object poses keyed by `vicon/<object>`) | Connects to Vicon DataStream over TCP |
-
----
-
-## Hardware Setup
-
-### TI Radar — Serial (IWR1843 / IWR6843)
-
-1. Add yourself to the `dialout` group (the install script does this automatically):
-   ```bash
-   sudo usermod -a -G dialout $USER
-   # log out and back in
-   ```
-2. Port order when multiple radars are connected:
-   - IWR1843: `/dev/ttyACM0` = front radar (config), `/dev/ttyACM1` = front radar (data); `/dev/ttyACM2` = back, `/dev/ttyACM3` = back data
-   - IWR6843: `/dev/ttyUSB0` (config), `/dev/ttyUSB1` (data)
-3. Edit the JSON config in `src/CPSL_TI_Radar/ros2/ti_radar_connect/config/system/` to match the assigned ports.
-
-### TI Radar — DCA1000 Ethernet Capture
-
-**Single radar (default):**
-- Set your PC ethernet adapter to static `192.168.33.30/24`
-- DCA1000 factory FPGA IP: `192.168.33.180`
-
-**Multi-radar or co-located with Livox Mid360:**
-- Both share one adapter; reprogram DCA1000 EEPROM to the `192.168.1.x` subnet using the CLI tool in `src/CPSL_TI_Radar/DCA_Programming/`
-- PC adapter: `192.168.1.XX` (subnet 255.255.255.0)
-- Front DCA1000: `192.168.1.180` (port pair `4096/4098`)
-- Back DCA1000: `192.168.1.182` (port pair `4088/4090`)
-- See the [DCA1000 Setup instructions](https://github.com/davidmhunt/CPSL_TI_Radar/blob/main/DCA_Programming/README.md)
-**Required kernel tuning (apply once, make permanent):**
 ```bash
-sudo sysctl -w net.core.rmem_max=134217728
-# permanent:
-echo 'net.core.rmem_max=134217728' | sudo tee /etc/sysctl.d/99-radar.conf
-sudo sysctl --system
+source /opt/ros/jazzy/setup.bash
+rosdep install --from-paths src -y --rosdistro=jazzy --skip-keys "raw_radar_msgs"
+source .venv/bin/activate
+python -m colcon build --base-paths src --symlink-install
 ```
 
-### Livox Mid360
+## Quick start (Docker)
 
-1. Set your PC ethernet adapter to static `192.168.1.XX` (netmask `255.255.255.0`), where `XX` are the last two digits of the sensor's serial number.
-2. Update `src/CPSL_ROS_livox_ros_driver2/config/MID360_config.json`:
-   ```json
-   "host_net_info" : {
-      "cmd_data_ip" : "192.168.1.XX",
-      "cmd_data_port": 56101,
-      "push_msg_ip": "192.168.1.XX",
-      "push_msg_port": 56201,
-      "point_data_ip": "192.168.1.XX",
-      "point_data_port": 56301,
-      "imu_data_ip" : "192.168.1.XX",
-      "imu_data_port": 56401,
-      "log_data_ip" : "",
-      "log_data_port": 56501
-    }
-   "lidar_configs": { "ip": "192.168.1.1XX", ... }
-   ```
-   Or pass `--livox-ip XX` to `install.sh` to patch it automatically.
-
-### Ouster
-
-1. Set your PC ethernet adapter to link-local: IP `169.254.1.1`, netmask `255.255.0.0`.
-2. Set the sensor hostname in `src/cpsl_ros2_sensors_bringup/ouster_configs/driver_params.yaml`:
-   ```yaml
-   sensor_hostname: 'os-XXXXXXXXXXXX.local'   # or IP address
-   ```
-   Or pass `--ouster-hostname <host>` to `install.sh` to patch it automatically.
-3. Eclipse Cyclone DDS is required; the install script appends `export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp` to your shell RC file.
-4. **IP Discovery Helper:** If hostname resolution (`os-XXXXXXXXXXXX.local`) is finicky, you can run the discovery helper script to scan local and link-local networks and automatically find the lidar's IP address:
-   ```bash
-   bash scripts/find_ouster_ip.sh
-   ```
-   This script performs a fast sweep using `fping` over the link-local range `169.254.0.1` to `169.254.255.255`. You can also override the scan range by passing custom starting and ending IPs:
-   ```bash
-   bash scripts/find_ouster_ip.sh 169.254.1.1 169.254.1.254
-   ```
-
----
-
-## Launch Reference
-
-All launch files live in `src/cpsl_ros2_sensors_bringup/launch/`. Launch with:
-```bash
-ros2 launch cpsl_ros2_sensors_bringup <file> [arg:=value ...]
-```
-
-| Launch File | Default Namespace | Default Sensors On | Default Radar Configs |
-|-------------|-------------------|--------------------|-----------------------|
-| `default_template_bringup.launch.py` | `default_template` | _(none)_ | `front_radar_IWR1843_stress_test.json` |
-| `ugv_sensor_bringup.launch.py` | _(empty)_ | lidar, radar (×2), camera | `radar_0_IWR1843_vel_sr.json` / `radar_1_IWR1843_vel_sr.json` |
-| `ugv_sensor_bringup_ragnnarok.launch.py` | _(empty)_ | lidar, radar (×2), camera | `front_radar_IWR1843_RaGNNarok_UGV_5m.json` / `back_radar_IWR1843_RaGNNarok_UGV_5m.json` |
-| `uav_sensor_bringup_radsar.launch.py` | `cpsl_uav_1` | platform description only | `front/back_radar_IWR1843_dca_RadVel_10Hz.json`, `down_radar_IWR6843_ods_dca_RadVel.json` |
-| `uav_sensor_bringup_IcaRAus.launch.py` | `cpsl_uav_1` | platform description only | `front/back_radar_IWR1843_IcaRAus.json`, `down_radar_6843_IcaRAus_ods_10Hz.json` |
-| `ouster_lidar_bringup.launch.py` | _(empty)_ | ouster lidar | — |
-| `human_movement_sensor_bringup.launch.py` | `cpsl_human_movement` | realsense, leapmotion, platform | `radar_0_IWR6843_ods_human_movement.json` |
-| `sensor_bringup_single_radar.launch.py` | _(empty)_ | lidar, radar (×1), camera | `radar_0_IWR1843_vel_sr.json` |
-
-**Common arguments** accepted by most launch files:
-
-| Argument | Values | Description |
-|----------|--------|-------------|
-| `namespace` | string | Scopes all node names and topics |
-| `lidar_enable` | `true`/`false` | Start Livox (or Ouster) driver |
-| `radar_enable` | `true`/`false` | Start TI radar driver(s) |
-| `camera_enable` | `true`/`false` | Start USB camera node |
-| `platform_description_enable` | `true`/`false` | Publish URDF + static TF |
-| `lidar_scan_enable` | `true`/`false` | Also publish a `/scan` LaserScan |
-| `rviz` | `true`/`false` | Open an RViz window |
-
-UAV launch files replace the single `radar_enable` flag with per-radar flags: `front_radar_enable`, `back_radar_enable`, `down_radar_enable` — each with a matching `*_config_file` argument.
-
----
-
-## Dataset Recording
-
-Dataset configs live in `src/dataset_generator/configs/*.yaml`. Launch the recorder alongside a bringup launch:
+The repo has its own image, no host ROS needed ([tutorial 07](tutorials/07_docker.md)):
 
 ```bash
-# In terminal 1 — start sensors:
-ros2 launch cpsl_ros2_sensors_bringup ugv_sensor_bringup.launch.py
-
-# In terminal 2 — start recording:
-ros2 launch dataset_generator record_dataset.launch.py \
-    param_file:=ugv_dataset.yaml \
-    dataset_subpath:=run_001
-```
-
-- `param_file` — bare filename (no path); resolved inside the installed `configs/` directory
-- `dataset_subpath` — appended to `dataset_path` from the YAML; useful for numbered runs
-- `output_file` — full path of the `.h5` file (default `<dataset_path>/<dataset_subpath>/capture_<time>.h5`)
-- Output (v2 YAMLs, those with a `streams:` table, e.g. `ugv_dataset.yaml`, `radar_sar.yaml`): one HDF5 file per capture with per-message header and receive stamps. Pre-v2 per-sensor YAMLs (`*_v1.yaml`, `uav_*`, `human_movement`) still write folders of `.npy` files. Format and YAML schema: [`src/dataset_generator/docs/hdf5_format.md`](src/dataset_generator/docs/hdf5_format.md)
-
-**Install:** the HDF5 recorder needs `python3-h5py` (`sudo apt install python3-h5py`, or `sudo bash scripts/deps/dataset.sh`). `scripts/install.sh`, the Docker image and `rosdep install --from-paths src` (package.xml `exec_depend`) all install it. console's Sensors tab runs the same rosdep step in its container, so nothing extra is needed there; on a plain host install it yourself.
-
-See [`tutorials/01_capturing_a_dataset.md`](tutorials/01_capturing_a_dataset.md) for a full walkthrough.
-
----
-
-## Further Reading
-
-- [`tutorials/01_capturing_a_dataset.md`](tutorials/01_capturing_a_dataset.md) — end-to-end dataset recording guide
-- [`tutorials/02_adding_a_new_platform.md`](tutorials/02_adding_a_new_platform.md) — add a new robot URDF and wire it into bringup
-- [`tutorials/03_writing_a_bringup_launch_file.md`](tutorials/03_writing_a_bringup_launch_file.md) — write a new bringup launch file from scratch
-- [`tutorials/04_docker_setup_and_usage.md`](tutorials/04_docker_setup_and_usage.md) — guide to build and run ROS2 containers
-- [`tutorials/06_udev_setup.md`](tutorials/06_udev_setup.md) — host udev rules and device mapping setup
-- [`src/CPSL_TI_Radar/ros2/README.md`](src/CPSL_TI_Radar/ros2/README.md) — TI radar driver details and config reference
-- [`src/CPSL_ROS_livox_ros_driver2/README.md`](src/CPSL_ROS_livox_ros_driver2/README.md) — Livox driver details
-- [`src/ouster-ros/README.md`](src/ouster-ros/README.md) — Ouster driver details
-
----
-
-## Docker Containerization & GUI Support
-
-The application is containerized to support isolated execution on both CPU and GPU architectures. This guarantees identical runtimes, separates ROS2 network discovery from your host machine, and routes GUI displays (like RViz2) seamlessly.
-
-### Prerequisites
-
-#### 1. Docker Engine Setup
-Ensure Docker and Docker Compose are installed on your host. If not, follow the [Docker Engine Installation Guide](https://docs.docker.com/engine/install/).
-
-Make sure your user is added to the `docker` group so you can run container commands without `sudo`:
-```bash
-sudo usermod -aG docker $USER
-# Log out and back in for changes to take effect
-```
-
-#### 2. NVIDIA Container Toolkit (For GPU Systems)
-To run hardware-accelerated GUI interfaces (e.g., RViz2 utilizing your graphics card) or utilize GPU resources inside Docker, install the **NVIDIA Container Toolkit**:
-```bash
-# Configure the production repository:
-curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
-  && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
-    sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
-    sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
-
-# Install the toolkit:
-sudo apt-get update
-sudo apt-get install -y nvidia-container-toolkit
-
-# Configure the runtime:
-sudo nvidia-ctk runtime configure --runtime=docker
-sudo systemctl restart docker
-```
-For detailed setup instructions, visit the [NVIDIA Container Toolkit Installation Guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
-
-#### 3. X11 GUI Display Permissions
-For GUI applications running inside the container (like RViz2) to display on your host screen, authorize local connection permissions to the X11 server on the host:
-```bash
-xhost +local:root
-```
-
----
-
-### Usage
-
-For a detailed step-by-step guide, see the [Docker Setup and Usage Tutorial](tutorials/04_docker_setup_and_usage.md).
-
-#### 1. Building the Docker Images
-You can build the containers for either CPU or GPU systems using the wrapper script inside the `docker/` directory. The script will first verify Docker Engine is installed and running:
-```bash
-# Build the image with all sensors enabled (CPU):
-bash docker/install_cpsl_sensors_docker.sh
-
-# Build the image with all sensors enabled (GPU/NVIDIA):
-bash docker/install_cpsl_sensors_docker.sh --gpu
-
-# Or customize built sensors (e.g., only build for radar and livox lidar):
 bash docker/install_cpsl_sensors_docker.sh --sensors radar,livox
+docker compose -f docker/docker-compose.cpu.yaml run --rm cpsl_sensors
 ```
-The script auto-generates a `.env` file inside the `docker/` directory containing interface mappings, display paths, and chosen sensors for Docker Compose.
 
-#### 2. Running with Docker Compose
-Bring up the containers using the respective compose files inside `docker/`:
+`--gpu` and `docker-compose.gpu.yaml` give the CUDA variant; `docker-compose.dev-*.yaml` mount the repo for editing.
 
-*   **Production/Deployment Mode** (Runs the compiled codebase embedded directly in the Docker image layers; does NOT mount host files):
-    ```bash
-    # CPU:
-    docker compose -f docker/docker-compose.cpu.yaml run --rm cpsl_sensors
+## Sensors
 
-    # GPU:
-    docker compose -f docker/docker-compose.gpu.yaml run --rm cpsl_sensors
-    ```
-*   **Development Mode** (Mounts the host repository parent directory at `/workspace/CPSL_ROS2_Sensors` to allow live-code editing):
-    ```bash
-    # CPU Dev:
-    docker compose -f docker/docker-compose.dev-cpu.yaml run --rm cpsl_sensors
+`<ns>` is the launch namespace. Radar and camera names depend on the launch file.
 
-    # GPU Dev:
-    docker compose -f docker/docker-compose.dev-gpu.yaml run --rm cpsl_sensors
-    ```
+| Sensor | Submodule / package | Topics | Setup |
+|---|---|---|---|
+| TI radar (serial, DCA1000) | `src/CPSL_TI_Radar` | `<ns>/<radar_name>/detected_points` (point cloud), `adc_data_cube`, `adc_meta` | radar repo README (`src/CPSL_TI_Radar/README.md`) |
+| Livox Mid-360 | `src/CPSL_ROS_livox_ros_driver2` | `<ns>/livox/lidar`, `<ns>/livox/imu` | [03](tutorials/03_livox_mid360_setup.md) |
+| Ouster | `src/ouster-ros` | `<ns>/ouster/points`, `imu`, `scan` | [04](tutorials/04_ouster_setup.md) |
+| Intel RealSense | `realsense2_camera` (apt, librealsense from source) | `<ns>/camera/<camera_name>/color/image_raw`, `depth/image_rect_raw`, `color/camera_info` | [02](tutorials/02_realsense_setup.md) |
+| USB camera | `usb_cam` (apt) | `<ns>/image_raw` | `--sensors usb_cam` |
+| Leap Motion | `src/CPSL_ROS2_LeapMotion` | `<ns>/left_hand_joints`, `right_hand_joints`, `leap_image/left`, `leap_image/right` | [05](tutorials/05_leap_motion_setup.md) |
+| Vicon | `src/ros2-vicon-bridge` | poses under the `vicon` tf namespace | launch arg `vicon_enable` |
 
-#### 3. Network Isolation
-The containers use a custom bridge network `cpsl_net` and run on `ROS_DOMAIN_ID=42`. This ensures that:
-- Containers can discover each other and communicate via ROS2.
-- ROS2 nodes running inside the container are **completely hidden** from ROS2 nodes running on the host machine (and vice versa), avoiding network naming and discovery interference.
+## Launch files
 
-#### 4. Hardware & Peripherals Configuration
+All in `src/cpsl_ros2_sensors_bringup/launch/`; run `ros2 launch cpsl_ros2_sensors_bringup <file> [arg:=value]`. Every sensor has an `*_enable` argument and every file a `namespace`.
 
-When deploying containers in production, physical hardware interfaces must be connected and correctly mapped. If a peripheral device is not plugged in, you must modify the Compose configuration to prevent start errors.
+| File | Use |
+|---|---|
+| `default_template_bringup` | all sensors, all off by default; the starting point for a new platform |
+| `ugv_sensor_bringup`, `sensor_bringup_single_radar`, `ouster_lidar_bringup` | generic bench bringups |
+| `ugv_sensor_bringup_ragnnarok`, `uav_sensor_bringup_radsar`, `uav_sensor_bringup_IcaRAus`, `human_movement_sensor_bringup` | the research setups, [tutorial 08](tutorials/08_paper_setups.md) |
 
-##### TI Radar Serial Passthrough
-By default, the compose configuration expects the radar's stable serial links `/dev/radar/<id>-cli` and `/dev/radar/<id>-data` (written by `CPSL_TI_Radar`'s `tools/setup/host_setup.py --udev --apply`) to be available (which fallback to `/dev/null` if not mapped in the `.env` file).
-- **If connected:** Run `src/CPSL_TI_Radar/tools/setup/host_setup.py --udev --apply` once on the host so the `/dev/radar/<id>-*` symlinks exist.
-- **If disconnected (Testing/Development):** No actions are needed; the ports will automatically default to `/dev/null` inside the container without causing startup errors.
+## Recording
 
-##### Ethernet Sensors (DCA1000, Livox Mid360, Ouster)
-Configure static or link-local IP addresses on the host machine network adapters:
-1. **TI Radar DCA1000:** Set host adapter to static IP `192.168.33.30`, netmask `255.255.255.0`.
-2. **Livox Mid360 Lidar:** Set host adapter to static IP `192.168.1.78` (or matching custom `.env` IP), netmask `255.255.255.0`.
-3. **Ouster Lidar:** Set host adapter to link-local IP `169.254.1.1`, netmask `255.255.0.0`.
-
-##### Intel RealSense Camera (USB3 / IMU)
-To enable Intel RealSense camera IMU streaming (gyroscope/accelerometer) inside containerized environments:
-1. **Sysfs Mount:** The container must mount `/sys/devices` as read-write (`rw`) to allow the RealSense SDK to set the power state of the IIO/IMU scan elements and walk up the device hierarchy.
-2. **AppArmor Unconfining:** The container must run with `security_opt: ["apparmor=unconfined"]` (which is configured by default in all four compose targets). This allows the SDK to write enabling flags to the camera sysfs directories without being blocked by AppArmor's default `/sys/**` write prevention. Other parts of `/sys` remain safely read-only as defined by Docker's layout.
-
-
-#### 5. Running inside console (privileged)
-
-The [console](https://github.com/cpsl-research/console) GUI vendors this repo as a submodule and runs the drivers in **its own** container rather than this repo's image. That container:
-
-- installs a driver's dependencies only when the driver is enabled in its Settings > Sensors page, by running `scripts/deps/<driver>.sh` from this repo, then `rosdep` and `scripts/setup_venv.sh`;
-- builds into `build_docker/` / `install_docker/` (like this repo's own image and `rebuild.sh`), never the host's `install/`;
-- runs **`privileged: true`** with `/dev` mounted. This is a deliberate difference from this repo's compose files, which stay non-privileged and map named devices (decision 2026-06-28). console enables and disables drivers at run time and must see devices plugged in after it starts, which a fixed `devices:` list cannot do. The trade-off — root in that container is close to root on the host — and how console's token guards it are documented in console's `README.md` and `docs/DOCKERIZATION.md`.
-
-Nothing in this repo depends on console: the deps scripts are plain root shell scripts with no console-specific behaviour.
-
-#### 6. Automated Verification & Integration Testing
-You can verify the repository installation (both on the host and inside Docker containers) as well as the basic operation of any connected physical sensors (e.g. RealSense camera, TI Radar) using the automated integration testing script:
 ```bash
-# Run on the host (auto-detects environment, builds, and smoke-tests connected hardware):
-bash scripts/test_integration.sh
-
-# Run inside the docker container environment:
-docker compose -f docker/docker-compose.dev-cpu.yaml run --rm cpsl_sensors bash -c "./scripts/test_integration.sh"
-
-# Test specific sensors only:
-bash scripts/test_integration.sh --sensors realsense
+ros2 launch dataset_generator record_dataset.launch.py param_file:=ugv_dataset.yaml dataset_subpath:=run_001
 ```
-For more detailed information on test options, refer to the [Docker Setup and Usage Tutorial](tutorials/04_docker_setup_and_usage.md#8-automated-integration-testing-framework).
 
+One HDF5 file per capture, configured by a YAML in `src/dataset_generator/configs/`. Walkthrough: [tutorial 01](tutorials/01_capturing_a_dataset.md); format: [`hdf5_format.md`](src/dataset_generator/docs/hdf5_format.md). The recorder needs `python3-h5py` (installed by `install.sh`).
 
-> [!IMPORTANT]
-> **Docker Container Networking and Host IP Binding:**
-> When configuring host/system IPs for sensor drivers (such as the TI Radar config JSON files) within the Docker environment, set the host-ip parameter (or system IP) to `0.0.0.0`. This ensures the software inside the container binds to all internal network interfaces and correctly receives the incoming UDP streams forwarded from the host.
+## Tutorials and developer guide
 
-
+| | |
+|---|---|
+| [00 Ubuntu to first topic](tutorials/00_ubuntu_to_first_topic.md) | ROS 2, install, first launch |
+| [01 Capturing a dataset](tutorials/01_capturing_a_dataset.md) | record and read HDF5 |
+| [02 RealSense](tutorials/02_realsense_setup.md), [03 Livox](tutorials/03_livox_mid360_setup.md), [04 Ouster](tutorials/04_ouster_setup.md), [05 Leap Motion](tutorials/05_leap_motion_setup.md) | per-sensor setup |
+| [06 Adding a platform](tutorials/06_adding_a_platform.md) | URDF, launch, recording config |
+| [07 Docker](tutorials/07_docker.md), [08 Paper setups](tutorials/08_paper_setups.md) | container; research launches |
+| [Developer guide](docs/DEVELOPING.md) | packages, conventions, tests, forks; open items in [TODO.md](TODO.md) |

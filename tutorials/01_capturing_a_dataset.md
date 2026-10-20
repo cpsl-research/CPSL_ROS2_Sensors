@@ -1,182 +1,84 @@
-# Tutorial 01: Capturing a Dataset
+# Tutorial 01: Capturing a dataset
 
-This tutorial walks through recording a synchronized multi-sensor dataset from start to finish. No prior reading required.
-
----
-
-## 1. Choosing the Right Bringup Launch File
-
-Select the launch file that matches your platform and sensor hardware:
-
-| Platform | Launch File | Default Sensors |
-|----------|-------------|-----------------|
-| UGV with Livox + 2× IWR1843 radars | `ugv_sensor_bringup.launch.py` | Livox lidar, radar_0, radar_1, USB camera |
-| UGV with Livox + 2× IWR1843 (RaGNNarok config) | `ugv_sensor_bringup_ragnnarok.launch.py` | Livox lidar, radar_0, radar_1, USB camera |
-| UAV with Livox + 3× radars (RadSAR config) | `uav_sensor_bringup_radsar.launch.py` | platform description only; enable sensors with flags |
-| UAV with Livox + 3× radars (IcaRAus config) | `uav_sensor_bringup_IcaRAus.launch.py` | platform description only; enable sensors with flags |
-| UGV/standalone with Ouster LiDAR | `ouster_lidar_bringup.launch.py` | Ouster lidar |
-| Human movement (RealSense + Leap Motion) | `human_movement_sensor_bringup.launch.py` | RealSense, Leap Motion, platform description |
-| Quick single-radar test | `sensor_bringup_single_radar.launch.py` | Livox lidar, radar_0, USB camera |
-
-All bringup launch files accept boolean `*_enable` flags to turn individual sensors on or off. For example:
-```bash
-# Start UGV bringup but skip the camera:
-ros2 launch cpsl_ros2_sensors_bringup ugv_sensor_bringup.launch.py camera_enable:=false
-```
+Goal: record sensor topics into one HDF5 file with the `dataset_recorder` node, then open it in Python. Prerequisite: [Tutorial 00](00_ubuntu_to_first_topic.md) (installed, built, sourced). The recorder works on any topics, so steps 1-4 can be tried with a fake publisher if you have no sensor yet.
 
 ---
 
-## 2. Creating or Editing a Dataset YAML
+## 1. Pick or write a recording config
 
-Dataset configs live in `src/dataset_generator/configs/`. Working directory for editing: the **workspace root** (`CPSL_ROS2_Sensors/`).
+A config is a YAML file in `src/dataset_generator/configs/` with a `streams:` table, one entry per topic to record. The shipped ones are per setup (`ugv_dataset.yaml`, `radar_sar.yaml`, the `uav_*` and `human_movement` paper setups, see [Tutorial 08](08_paper_setups.md)). Copy one and keep only what you have:
 
-Copy an existing config as a starting point:
 ```bash
-# From workspace root:
-cp src/dataset_generator/configs/ugv_dataset.yaml \
-   src/dataset_generator/configs/my_experiment.yaml
+cp src/dataset_generator/configs/ugv_dataset.yaml src/dataset_generator/configs/my_capture.yaml
 ```
 
-Annotated example (based on `ugv_dataset.yaml`):
+In `my_capture.yaml`, set `dataset_path` to an existing, writable folder, and for each stream either point `topic:` at a topic that exists or set `enabled: false`. Topics are relative to the recorder's namespace. A minimal one-stream file:
 
 ```yaml
 dataset_generator:
   ros__parameters:
-
-    # --- Sensor enable/disable ---
-    radar_enable: True          # record radar point clouds
-    lidar_enable: False         # record Livox/Ouster point cloud
-    lidar_topic: "livox/lidar"  # topic name within the namespace
-
-    camera_enable: True                          # record USB camera
-    camera_topic: "/cpsl_ugv_1/image_raw"        # full topic path (namespaced)
-
-    camera_depth_enable: False
-    camera_depth_topic: "/cpsl_ugv_1/camera/cpsl_realsense/depth/image_rect_raw"
-
-    hand_tracking_enable: False
-    hand_tracking_left_topic: "/cpsl_human_movement/left_hand_joints"
-    hand_tracking_right_topic: "/cpsl_human_movement/right_hand_joints"
-
-    imu_enable: False
-    imu_topic: "livox/imu"
-
-    vicon_enable: False          # record Vicon ground truth
-
-    vehicle_odom_enable: True
-    vehicle_odom_topic: "odom_repub"   # relative to namespace
-
-    # --- Reference frame ---
-    # Must match the base_link name in the active URDF.
-    # Format: "<namespace>/base_footprint"
-    base_frame: "cpsl_ugv_1/base_footprint"
-
-    # --- Recording rates ---
-    frame_rate_save_data: 10.0          # Hz — rate at which frames are saved to disk
-    frame_rate_high_speed_sensors: 50.0 # Hz — internal acquisition rate for fast sensors
-
-    # --- Output path ---
-    # dataset_subpath (from launch arg) is appended to this path at runtime.
-    dataset_path: "/home/cpsl/Downloads/datasets/my_experiment"
+    dataset_path: "/home/you/datasets"
+    capture_mode: "all"        # all = every message; sampled = latest per tick
+    tf_track: [""]             # no /tf pairs
+    streams:
+      imu:
+        topic: "livox/imu"
+        type: "sensor_msgs/msg/Imu"
 ```
 
-Topic names that are relative (no leading `/`) are resolved within the node's namespace. Absolute paths (leading `/`) are used as-is.
+Streams that matter: images (`compression: gzip`), point clouds (`fields:` lists the columns kept), radar ADC cubes, IMU, odometry. `camera_info` is an optional `sensor_msgs/msg/CameraInfo` stream (camera intrinsics); the shipped configs list it with `enabled: false`, set it to `true` to record it. Every key is explained in [`hdf5_format.md`](../src/dataset_generator/docs/hdf5_format.md).
 
----
+A new file must be installed once: `colcon build --packages-select dataset_generator --symlink-install`. Edits to an already installed file need no rebuild.
 
-## 3. Launching the Recorder
+## 2. Start the sensors, then the recorder
 
-The recorder is a separate launch from the sensor bringup. Run them in two separate terminals.
+Terminal 1, a bringup for your hardware (source both setup files first):
 
-**Terminal 1 — sensors:**
 ```bash
-# From workspace root:
-source install/setup.$(basename $SHELL)
-ros2 launch cpsl_ros2_sensors_bringup ugv_sensor_bringup.launch.py
+ros2 launch cpsl_ros2_sensors_bringup default_template_bringup.launch.py realsense_enable:=true
 ```
 
-**Terminal 2 — recorder:**
+Terminal 2, the recorder in the same namespace as the sensors (`default_template` here):
+
 ```bash
-# From workspace root:
-source install/setup.$(basename $SHELL)
 ros2 launch dataset_generator record_dataset.launch.py \
-    param_file:=my_experiment.yaml \
-    dataset_subpath:=run_001
+    namespace:=default_template param_file:=my_capture.yaml dataset_subpath:=run_001
 ```
 
-Key arguments:
+`param_file` is a bare file name from `configs/`. `dataset_subpath` is appended to `dataset_path`. `output_file:=/full/path.h5` overrides both. No fake sensor? Run `ros2 topic pub -r 10 /ns1/livox/imu sensor_msgs/msg/Imu "{}"` in a third terminal and use `namespace:=ns1` for the one-stream file above.
 
-| Argument | Description |
-|----------|-------------|
-| `param_file` | Bare filename only (e.g. `my_experiment.yaml`). The launch file resolves it to the installed `configs/` directory automatically — do not provide a full path. |
-| `dataset_subpath` | Appended to `dataset_path` from the YAML. Useful for numbering runs without editing the YAML each time. |
-| `namespace` | Match the namespace used by the bringup launch (default: empty). |
+## 3. The start gate
 
-The final output path is: `<dataset_path>/<dataset_subpath>/`
+The recorder writes nothing until **every enabled stream** has delivered a message, then logs `GATE open`. If one never arrives within `start_timeout_s` (30 s) it logs `GATE abort missing=<topics>`, creates no file and exits with code 2. To record what is there anyway, set `allow_missing: true`; silent streams are listed in the file's `streams_missing` attribute. Details: `hdf5_format.md`, section "Start gate".
 
----
+## 4. Stop and read the file
 
-## 4. Verifying Output
+Stop the recorder with `Ctrl-C`; it closes the file cleanly. The file is `<dataset_path>/<dataset_subpath>/capture_<time>.h5`:
 
-After recording, the output directory has this structure:
-
-```
-<dataset_path>/<dataset_subpath>/
-├── radar_0/
-│   ├── frame_000000.npy
-│   ├── frame_000001.npy
-│   └── ...
-├── radar_1/
-│   └── ...
-├── lidar/
-│   └── ...
-├── camera/
-│   └── ...
-├── vehicle_odom/
-│   └── ...
-└── timestamps.npy      # per-frame wall-clock timestamps
+```python
+import glob, h5py
+f = h5py.File(sorted(glob.glob("/home/you/datasets/run_001/*.h5"))[-1])
+print(list(f.keys()), f.attrs["format_version"], f.attrs["closed_cleanly"])
+print(f["imu/data"].shape, f["imu"].attrs["resolved_topic"])
 ```
 
-- Files are named `frame_NNNNNN.npy` (zero-padded, six digits).
-- Each `.npy` file is a NumPy array. Load with `np.load('frame_000000.npy', allow_pickle=True)`.
-- `timestamps.npy` contains the ROS wall-clock time for each saved frame.
+You should see the stream names plus `tf_static`, `4 True`, and a shape `(N, 10)` for the IMU with the absolute topic it listened to. Each stream group holds `data`, `stamp_header_ns` (the sender's stamp) and `stamp_recv_ns` (arrival time). `closed_cleanly` is `False` if the node was killed rather than stopped. A `camera_info` stream is an `(N, 46)` array: `width, height, K(9), R(9), P(12), D(14)`; the group's attrs hold `frame_id` and `distortion_model`.
 
-Quick sanity checks:
-```bash
-# Count frames recorded across sensors:
-ls <dataset_path>/<dataset_subpath>/radar_0/ | wc -l
-ls <dataset_path>/<dataset_subpath>/lidar/   | wc -l
-
-# They should be equal (synchronized save rate).
-```
-
----
-
-## 5. Pre-Recording Checklist
-
-Before starting the recorder, confirm each sensor is publishing at its expected rate:
+## 5. Check before a long recording
 
 ```bash
-# Check lidar (expect ~10–20 Hz):
-ros2 topic hz /livox/lidar
-
-# Check radar (expect ~10 Hz):
-ros2 topic hz /radar_0/ti_radar
-
-# Check camera (expect ~10–30 Hz):
-ros2 topic hz /image_raw
-
-# Check odometry:
-ros2 topic hz /odom_repub
+ros2 topic hz /default_template/camera/camera/color/image_raw   # your real topic
+df -h /home/you/datasets                                       # free disk
 ```
 
-Healthy output looks like:
-```
-average rate: 10.021
-    min: 0.095s  max: 0.106s  std dev: 0.00234s  window: 50
+Radar ADC cubes are several MB per frame; use `qos: reliable` for them as `ugv_dataset.yaml` does.
+
+## Legacy: the old `.npy` folders
+
+Older tools expect one folder per sensor with `frame_<n>.npy` files. Convert a capture (sample-aligned to the first stream, or `--reference <stream>`):
+
+```bash
+ros2 run dataset_generator hdf5_to_legacy capture.h5 out_dir
 ```
 
-Warning signs:
-- Rate much lower than expected → check hardware connection or driver logs
-- `min` and `max` wildly different → sensor is dropping packets (check network buffer, rmem_max for radar)
-- No output at all → topic name mismatch; run `ros2 topic list` to verify the actual topic names
+You should see a count per stream printed, and `out_dir/<legacy_folder or stream>/frame_0.npy`. Differences from the old recorder (no base-frame transform, camera frames as `.npy`) are listed in `hdf5_format.md`, section "Old-format compatibility". The old recorder itself is gone; configs without a `streams:` table are rejected with an error.

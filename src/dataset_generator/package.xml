@@ -3,7 +3,7 @@
 <package format="3">
   <name>dataset_generator</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>HDF5 recorder for sensor topics, recording configs and a legacy converter.</description>
   <maintainer email="david.hunt@duke.edu">david</maintainer>
   <license>Apache-2.0</license>
 
