@@ -61,7 +61,7 @@ print(list(f.keys()), f.attrs["format_version"], f.attrs["closed_cleanly"])
 print(f["camera/data"].shape, f["camera"].attrs["resolved_topic"])   # imu/data for the IMU file
 ```
 
-You should see your stream names plus `tf_static`, `4 True`, and for an `rgb8` camera a shape `(N, H, W, 3)` with the absolute topic it listened to. An IMU stream is `(N, 10)`: orientation `x y z w`, angular velocity `x y z`, linear acceleration `x y z` per sample. Each stream group holds `data`, `stamp_header_ns` (the sender's stamp) and `stamp_recv_ns` (arrival time). `closed_cleanly` is `False` if the node was killed rather than stopped. A `camera_info` stream is an `(N, 46)` array (layout in `hdf5_format.md`).
+You should see your stream names plus `tf_static`, `4 True`, and for an `rgb8` camera a shape `(N, H, W, 3)` with the absolute topic it listened to. An IMU stream is `(N, 10)`: orientation `x y z w`, angular velocity `x y z`, linear acceleration `x y z` per sample. Each stream group holds `data`, `stamp_header_ns` (the sender's stamp) and `stamp_recv_ns` (arrival time). `closed_cleanly` is `False` if the node was killed rather than stopped. A `camera_info` stream is an `(N, 46)` array (layout in `hdf5_format.md`). To read each stream type, move data into the robot's base frame or align streams in time, see [`reading_datasets.md`](../src/dataset_generator/docs/reading_datasets.md).
 
 ## 5. Check before a long recording
 
@@ -80,4 +80,4 @@ Older tools expect one folder per sensor with `frame_<n>.npy` files. Convert a c
 ros2 run dataset_generator hdf5_to_legacy capture.h5 out_dir
 ```
 
-You should see a count per stream printed, and `out_dir/<legacy_folder or stream>/frame_0.npy`. Differences from the old recorder (no base-frame transform, camera frames as `.npy`) are listed in `hdf5_format.md`, section "Old-format compatibility". The old recorder itself is gone; configs without a `streams:` table are rejected with an error.
+You should see a count per stream printed, and `out_dir/<legacy_folder or stream>/frame_0.npy`. Differences from the old recorder (no base-frame transform, camera frames as `.npy`) are listed in [`reading_datasets.md`](../src/dataset_generator/docs/reading_datasets.md), section 5 (clouds stay in the sensor frame there; the transform is in the file). Pass `--reference STREAM` to choose the stream that sets the frame count. The old recorder itself is gone; configs without a `streams:` table are rejected with an error.

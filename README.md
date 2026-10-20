@@ -60,7 +60,7 @@ All in `src/cpsl_ros2_sensors_bringup/launch/`; run `ros2 launch cpsl_ros2_senso
 ros2 launch dataset_generator record_dataset.launch.py param_file:=ugv_dataset.yaml dataset_subpath:=run_001
 ```
 
-One HDF5 file per capture, configured by a YAML in `src/dataset_generator/configs/`. Walkthrough: [tutorial 01](tutorials/01_capturing_a_dataset.md); format: [`hdf5_format.md`](src/dataset_generator/docs/hdf5_format.md). The recorder needs `python3-h5py` (installed by `install.sh`).
+One HDF5 file per capture, configured by a YAML in `src/dataset_generator/configs/`. Walkthrough: [tutorial 01](tutorials/01_capturing_a_dataset.md); format: [`hdf5_format.md`](src/dataset_generator/docs/hdf5_format.md); reading it (including transforms and migrating a v1 `frame_N.npy` reader): [`reading_datasets.md`](src/dataset_generator/docs/reading_datasets.md). The recorder needs `python3-h5py` (installed by `install.sh`).
 
 ## Tutorials and developer guide
 

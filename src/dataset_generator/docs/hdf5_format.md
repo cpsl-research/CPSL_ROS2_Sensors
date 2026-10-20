@@ -1,11 +1,32 @@
-# dataset_generator v2: HDF5 capture format
+# dataset_generator: HDF5 capture format
 
-`ros2 launch dataset_generator record_dataset.launch.py param_file:=radar_sar.yaml [output_file:=/path/x.h5]`
-runs the `dataset_recorder` node (a YAML with a `streams:` table; every file in `configs/` is one). A YAML
-without `streams:` fails at launch with a message; the v1 `.npy` recorder is removed (`hdf5_to_legacy`
-converts a capture to that folder layout).
+Reference for the file `dataset_recorder` writes. How to read it (numpy/h5py examples, time alignment,
+transforms, migrating a v1 `frame_N.npy` reader) is in [reading_datasets.md](reading_datasets.md).
 
-One HDF5 file per capture (default `<dataset_path>/capture_<YYYYmmdd_HHMMSS>.h5`).
+`ros2 launch dataset_generator record_dataset.launch.py param_file:=radar_sar.yaml [output_file:=/path/x.h5] [namespace:=<ns>]`
+runs the `dataset_recorder` node. Every file in `configs/` is a `param_file`. A YAML without `streams:` fails
+at launch; the v1 `.npy` recorder is removed (`hdf5_to_legacy` converts a capture back to that layout).
+One HDF5 file per capture, default `<dataset_path>/capture_<YYYYmmdd_HHMMSS>.h5` (current directory if
+`dataset_path` is empty).
+
+## Generation flow
+
+```mermaid
+flowchart LR
+    Y["param_file YAML<br/>streams + options"] --> N["dataset_recorder node<br/>one subscription per stream"]
+    N --> G{"start gate<br/>every enabled stream<br/>delivered?"}
+    G -- "no, timeout" --> X["abort: no file, exit 2"]
+    G -- yes --> C["converters.py<br/>msg to header_ns + fields"]
+    C --> Q["bounded queue<br/>queue_size, overflow counted"]
+    Q --> W["writer: hdf5_writer.CaptureFile<br/>chunked, resizable datasets"]
+    L["latched: radar cfg path,<br/>/tf_static, robot_description"] --> W
+    W --> H[("capture.h5")]
+```
+
+Messages before the gate opens are discarded; latched inputs are held and written at gate open. The file is
+flushed every `flush_period_s` and closed on SIGINT/SIGTERM or after `duration_s`. A killed process leaves
+`closed_cleanly=False`; samples up to the last flush are readable, but file recovery after a kill is HDF5's
+behaviour and is not tested here. Console's `record_h5.py` runs this same recorder as a job, so there is one format.
 
 ## YAML
 
@@ -18,15 +39,15 @@ dataset_generator:
     sample_rate_hz: 10.0   # sampled-mode tick rate
     flush_period_s: 5.0
     duration_s: 0.0        # >0: stop and close cleanly after this long
-    queue_size: 256        # writer-thread queue (samples); overflow is counted, not blocking
-    start_timeout_s: 30.0  # start gate: wait for every enabled stream; 0 = forever (see Start gate)
+    queue_size: 256        # writer queue (samples); overflow is counted, not blocking
+    start_timeout_s: 30.0  # start gate: 0 = wait forever
     allow_missing: false   # true: start at the timeout anyway instead of aborting
-    tf_topic: tf           # transforms (v4): where tracked pairs are read from (relative: resolves in the node namespace)
+    tf_topic: tf           # relative names resolve in the node namespace
     tf_static_topic: tf_static
-    tf_track: ["odom->base_link"]   # flat "parent->child" strings; [""] = none (see Transforms)
+    tf_track: ["odom->base_link"]   # flat "parent->child" strings; [""] = none
     robot_description_topic: robot_description   # "" = off; URDF goes to a root attr
     streams:
-      <name>:              # HDF5 group name (no '.' or '/')
+      <name>:              # HDF5 group name (no '.' or '/'; 'tf', 'tf_static' reserved)
         topic: radar_0/adc_data_cube
         type: raw_radar_msgs/msg/ADCDataCube
         enabled: true
@@ -34,7 +55,7 @@ dataset_generator:
         qos_depth: 10      # reliable is raised to >= 10
         mode: all          # per-stream override of capture_mode
         fields: [x,y,z,vel]  # PointCloud2 columns (default: all fields)
-        skip_nans: true      # PointCloud2
+        skip_nans: true      # PointCloud2: drop rows with a non-finite value
         compression: gzip    # optional (gzip | lzf), any stream
         legacy_folder: radar_0_adc  # folder name used by hdf5_to_legacy
         meta_for: radar_adc  # on an ADCChirpMeta stream: the cube stream to cross-check
@@ -42,242 +63,196 @@ dataset_generator:
                              # adc_data_cube -> radar_config_path (see Radar cfg)
 ```
 
-Supported `type`s: `raw_radar_msgs/ADCDataCube`, `raw_radar_msgs/ADCChirpMeta`,
-`sensor_msgs/{PointCloud2,Image,Imu}`, `nav_msgs/Odometry`,
-`geometry_msgs/{Twist,TwistStamped,TransformStamped,Vector3Stamped}`,
-`tf2_msgs/TFMessage` (ragged: one row per transform; the recorder uses it for `tf_track`)
-(`converters.py`; add one function + a table row for a new type).
+Any `mount_*` key is accepted and kept verbatim in `config_streams`; it is an annotation only.
 
-QoS defaults: ADCDataCube and ADCChirpMeta `reliable`; all others `best_effort`
-(a best-effort subscriber matches any publisher). The ADC cube MUST be reliable: best-effort
-lost about half of the 3.4 MB SAR frames (running/radar-03_step2_rate_diag.log, in the console repo).
+`type` (with or without `msg/`): `raw_radar_msgs/ADCDataCube`, `raw_radar_msgs/ADCChirpMeta`,
+`sensor_msgs/{PointCloud2,Image,Imu,CameraInfo}`, `nav_msgs/Odometry`,
+`geometry_msgs/{Twist,TwistStamped,TransformStamped,Vector3Stamped}`, `tf2_msgs/TFMessage`. Image encodings:
+`mono8`/`8UC1`, `mono16`/`16UC1`, `32FC1`, `rgb8`/`bgr8`/`8UC3`, `rgba8`/`bgra8`; others are rejected
+(counted in `n_dropped_node`). To add a type, add one function and one table row in `converters.py`.
 
-## Layout
+QoS defaults: ADCDataCube, ADCChirpMeta and TFMessage `reliable`; all others `best_effort` (matches any
+publisher). The ADC cube must be reliable: in a rate diagnostic on a 3.4 MB SAR cube, best-effort received
+28 of 59 frames (47%), reliable 59 of 59.
 
-Root attrs: `format="cpsl_dataset_hdf5"`, `format_version=4`, `closed_cleanly` (False
-until a clean close; False means the node died), `start_recv_ns` (the gate-open time, see
-Start gate), `end_recv_ns`,
-`last_flush_recv_ns`, `created_utc`, `host`, `ros_node`, `capture_mode`, `sample_rate_hz`,
-`config_streams` (the stream table as JSON), `timestamps` (field meaning). Format v4 adds
-`start_gate` (JSON), `streams_missing`, `tf_track`, `tf_topic`, `tf_static_topic` and, when a
-URDF was received, `robot_description` (see below). Besides the stream groups the file has the
-non-stream groups `/tf_static` and `/tf` (the latter holds the tracked pairs); a reader that loops
-over the root group must skip those two names (`hdf5_to_legacy` does).
+## File layout
 
-Topic names: the defaults `tf` / `tf_static` and the presets' stream topics are relative, so they
-resolve under the recorder's namespace (`namespace:=<ns>` on the launch file gives `/<ns>/tf`).
-The `tf_topic` / `tf_static_topic` attrs hold the RESOLVED absolute names, not the configured ones;
-the `topic` in `config_streams` is as configured. Files recorded before this change hold `/tf`.
+```mermaid
+flowchart TD
+    R["/ (root attrs: format, format_version, closed_cleanly, start_recv_ns, ..., config_streams)"]
+    R --> S["/&lt;stream&gt;  (one per configured stream)"]
+    R --> TS["/tf_static  (always)"]
+    R --> TF["/tf  (only if tf_track is non-empty)"]
+    S --> S1["stamp_header_ns, stamp_recv_ns, data, row_count (ragged only)"]
+    S --> S2["attrs: topic, resolved_topic, msg_type, qos, mode, n_samples, columns, frame_id, ..."]
+    TS --> T1["parent, child, xyz, quat_xyzw, stamp_ns, recv_ns"]
+    TF --> TG["/tf/&lt;parent&gt;__&lt;child&gt;  data (N,7), stamp_header_ns, stamp_recv_ns"]
+```
 
-Additive, no format-version bump: the root attr `namespace` is the recorder node's namespace
-(`/` when none), and each stream group carries `resolved_topic` next to `topic` (as configured,
-unchanged): the absolute topic it subscribed to. A radar stream with a cfg subscription also gets
-`radar_cfg_resolved_topic` next to `radar_cfg_topic`. Files recorded before this change have none
-of these; a reader falls back to `topic`.
+Root attrs: `format="cpsl_dataset_hdf5"`, `format_version`, `closed_cleanly` (False until a clean close),
+`start_recv_ns` (gate-open time), `end_recv_ns`, `last_flush_recv_ns`, `created_utc`, `host`, `ros_node`,
+`namespace` (`/` if none), `capture_mode`, `sample_rate_hz`, `config_streams` (the stream table as JSON,
+topics as configured), `timestamps` (field meaning), `start_gate` (JSON), `streams_missing`, `tf_track`,
+`tf_topic`, `tf_static_topic` (resolved absolute names), and `robot_description` when a URDF arrived.
+A reader looping over the root must skip `tf` and `tf_static`.
 
-Per stream, group `/<name>`:
+Every stream group has `stamp_header_ns` (int64 (N,), `-1` if the message has no header), `stamp_recv_ns`
+(int64 (N,), host `time.time_ns()` at receipt; in `sampled` mode, of the chosen message) and, per type,
+`data` (below). Common attrs: `topic` (as configured), `resolved_topic` (absolute), `msg_type`, `qos`,
+`qos_depth`, `mode`, optional `legacy_folder`, `n_samples`, `n_errors` (samples the writer rejected, e.g. a
+shape change against the first sample), `n_dropped_node` (converter errors plus queue overflow). A stream with
+a `frame_index` field also gets `frame_index_first/last`, `frame_index_recorded_gaps` (uint32 wrap-safe) and
+`frame_index_nonmonotonic`. `frame_id` is the first message's `header.frame_id` (no leading `/`, never
+updated); `child_frame_id` likewise.
 
-| dataset | dtype / shape | meaning |
+## Columns and dtypes per type
+
+N = samples. `data` unless noted. Ragged: `row_count` int64 (N,), sample `i` is
+`data[off[i]:off[i+1]]` with `off = concatenate([[0], cumsum(row_count)])`.
+
+| Type | `data` dtype, shape | Columns (attr `columns`) | Other attrs |
+|---|---|---|---|
+| ADCDataCube | int16 (N,2,rx,sample,chirp) | `real`,`imag` along axis 1 | `axes`=`[re_im, rx, sample, chirp]` (labels from the message), `frame_id`, `radar_cfg_*` |
+| ADCChirpMeta | none: one dataset per field (next table) | none | none (no `frame_id`, no `columns`) |
+| PointCloud2 | float32 (rows,K), float64 if any field is double; ragged | `fields` option, else all message fields in order; integer fields cast to float; non-finite rows dropped if `skip_nans` | `columns`, `frame_id`, `skip_nans` |
+| Image | per encoding (N,H,W) or (N,H,W,C): u8 / u16 / f32; C = 3 or 4 | none | `encoding`, `frame_id` |
+| Imu | float64 (N,10) | qx qy qz qw wx wy wz ax ay az | `frame_id` |
+| Odometry | float64 (N,13) | x y z qx qy qz qw vx vy vz wx wy wz (pose in `frame_id`, twist in `child_frame_id`) | `frame_id`, `child_frame_id` |
+| Twist | float64 (N,6), stamp `-1` | vx vy vz wx wy wz | `columns` only |
+| TwistStamped | float64 (N,6) | vx vy vz wx wy wz | `frame_id` |
+| TransformStamped | float64 (N,7) | x y z qx qy qz qw | `frame_id`, `child_frame_id` |
+| Vector3Stamped | float64 (N,3) | x y z | `frame_id` |
+| CameraInfo | float64 (N,46) | width height K0..K8 R0..R8 P0..P11 D0..D13 (D NaN-padded; more than 14 is an error) | `frame_id`, `distortion_model` (str) |
+| TFMessage (explicit stream only) | float64 (rows,7), ragged, stamp `-1` | x y z qx qy qz qw | `columns` |
+
+Quaternions are x-first everywhere. A group whose payload shape or dtype changes against its first sample
+rejects that sample (`n_errors`). An empty cloud has `row_count` 0.
+
+ADCChirpMeta datasets (C chirps per frame; names as in the .msg):
+
+| Dataset | dtype | shape |
 |---|---|---|
-| `stamp_header_ns` | int64 (N,) | message header stamp, ns (`-1` for unstamped, e.g. Twist) |
-| `stamp_recv_ns` | int64 (N,) | host `time.time_ns()` when the node received it |
-| `data` | per type, (N, ...) | the payload, one row per sample, chunked + resizable |
-| other fields | (N, ...) | ADCChirpMeta only: one dataset per message field |
-| `row_count` | int64 (N,) | ragged streams (PointCloud2) only: rows of `data` per sample; sample `i` is `data[cumsum[i-1]:cumsum[i]]` |
+| frame_index | uint32 | (N,) |
+| record_valid, adc_complete, has_time, time_interpolated | bool | (N,C) |
+| flags, run_idx | uint16 | (N,C) |
+| global_chirp_idx | uint32 | (N,C) |
+| ts_ticks | uint64 | (N,C) |
+| sat_slices, sat_ref_lag | uint8 | (N,C) |
+| sat_slices_aligned | int16 | (N,C) |
+| t_s | float64 | (N,C) |
+| prev_tail_sat | int16 | (N,2) |
+| run_known | bool | (N,) |
+| run_idx_frame | uint16 | (N,) |
+| records_valid, records_invalid, records_other_run | uint32 | (N,) |
 
-`data` by type: ADCDataCube `int16 (N, 2, rx, sample, chirp)` with index 0 = real, 1 = imag
-(complex = `d[:,0] + 1j*d[:,1]`; axis labels in attr `axes`); PointCloud2 `float32 (rows, len(fields))`
-(`float64` if a field is double; attr `columns`); Image `(N, H, W[, C])` in the message's encoding
-(attr `encoding`); Imu 10 cols, Odometry 13, Twist 6, TransformStamped 7, Vector3 3
-(attr `columns` names them). CameraInfo `float64 (N, 46)`: `width, height, K(9), R(9), P(12), D(14)`
-(`D` is NaN-padded to 14, more coefficients is an error; attrs `columns`, `frame_id`, and
-`distortion_model` as a string; record it as a low-rate `mode: sampled` stream, `qos` best_effort by
-default so it matches either publisher). ADCChirpMeta: scalars `(N,)` and per-chirp arrays `(N, n_chirps)`
-named as in the .msg (`frame_index`, `record_valid`, `t_s`, ..., `prev_tail_sat (N,2)`).
+Lost-frame cross-check (written at close when the meta stream sets `meta_for`; the driver must run with
+`publish_chirp_meta`; cube and meta matched on header stamp): cube attrs `meta_stream`, `n_without_meta`,
+`frame_index_published` (span first..last of the meta stream, a lower bound if the meta topic itself lost
+messages), `frame_index_recorded`, `frame_index_gap`; meta attrs `cube_stream`, `n_without_cube`. In `sampled`
+mode gaps are expected.
 
-Stream attrs: `topic`, `msg_type`, `qos`, `qos_depth`, `mode`, `n_samples`, `n_errors`
-(samples rejected by the writer, e.g. a shape change), `n_dropped_node` (converter errors +
-queue overflow), and for any stream with a `frame_index` field `frame_index_first/last`,
-`frame_index_recorded_gaps` (missing indices between consecutive recorded messages, uint32
-wrap-safe) and `frame_index_nonmonotonic`. Every stamped stream also has `frame_id` (the
-message `header.frame_id`, no leading `/`), and Odometry and TransformStamped streams add
-`child_frame_id`; these are taken from the first message received and not updated. Unstamped
-Twist has none.
+## Format versions
 
-Capture metadata for lost ADC frames (written at close when `meta_for` is set; `adc_meta`
-must be published, i.e. the driver ran with `publish_chirp_meta`): on the cube stream
-`frame_index_published` (span first..last of the meta stream), `frame_index_recorded`,
-`frame_index_gap = published - recorded`, `n_without_meta`; on the meta stream `n_without_cube`.
-Cubes and metas are matched on header stamp. The published count is a lower bound if the meta
-topic itself lost messages. In `sampled` mode these gaps are expected.
+`format_version` is the root attr. The writer constant is 4. Detect optional features by attribute or
+group presence, never by version alone.
 
-The file is flushed every `flush_period_s` and closed on SIGINT/SIGTERM or `duration_s`.
-A killed process leaves an HDF5 file that may need recovery; check `closed_cleanly`.
+| Version | Added | Detect |
+|---|---|---|
+| 2 | first HDF5 recorder: root and stream attrs above (minus the ones below), `frame_id` on cube/cloud/image only, cross-check attrs; no radar cfg, no tf, no gate | `format_version == 2` |
+| 3 | per cube stream `radar_cfg_topic`, `_status`, `_path`, `_text`, `_sha256`, `_metrics`, `_changed`; `config_topic` key in `config_streams` | `format_version >= 3`; `'radar_cfg_status' in attrs` |
+| 3 with gate | the start gate shipped minutes before the bump to 4: root `start_gate`, `streams_missing`, file created at gate open | `'start_gate' in root.attrs` (a v3 file can have it; only development files do) |
+| 4 | `/tf_static` (always), `/tf/<p>__<c>` per `tf_track`, root `tf_track`, `tf_topic`, `tf_static_topic`, optional `robot_description` | `format_version >= 4`; `'tf_static' in f` |
 
-## Start gate (format v4)
+Additive changes with no version bump (detect by presence; older v4 files lack them):
 
-The file is created only when every **enabled** `streams:` entry has delivered a message, so the
-first sample of every stream is at or after `start_recv_ns` and no stream starts late with an
-empty group. Messages that arrive earlier are discarded; latched data (the radar cfg path,
-`/tf_static`, `robot_description`) is held in memory and written when the gate opens.
-Only `streams:` entries gate the start. Tracked tf pairs, `/tf_static` and `robot_description`
-never do (the Rover Pro runs with `publish_tf: false`, the Create 3 puts its tf on `/<ns>/tf`).
+| Change | Reader fallback |
+|---|---|
+| `frame_id` on Imu, Odometry, TwistStamped, TransformStamped, Vector3Stamped; `child_frame_id` on Odometry, TransformStamped | `attrs.get('frame_id')` |
+| `tf_topic` / `tf_static_topic` hold resolved absolute names (older: as configured, default `/tf`, `/tf_static`) | treat as the name subscribed |
+| root `namespace`; stream `resolved_topic`; cube `radar_cfg_resolved_topic` (also on tf pair groups) | fall back to `topic` |
+| CameraInfo converter (new stream type) | none needed |
+
+A v3 reader works on a v4 file if it skips `tf` and `tf_static`.
+
+## Start gate
+
+The file is created only when every **enabled** `streams:` entry has delivered a message, so every stream's
+first sample is at or after `start_recv_ns` and no stream starts with an empty group. Only `streams:` entries
+gate the start; tracked tf pairs, `/tf_static` and `robot_description` never do. The Create 3 puts its tf on
+`/<ns>/tf`; the Rover Pro driver now publishes `odom->base_link` too, but the recorder would not wait for it.
 
 | param | default | meaning |
 |---|---|---|
-| `start_timeout_s` | 30.0 | how long to wait for the silent streams; `0` waits forever |
-| `allow_missing` | false | at the timeout, start anyway; the silent streams keep empty groups and are listed in root attr `streams_missing` |
+| `start_timeout_s` | 30.0 | how long to wait for silent streams; `0` waits forever |
+| `allow_missing` | false | at the timeout start anyway; silent streams keep empty groups and are listed in `streams_missing` |
 
-At the timeout without `allow_missing` the node logs `GATE abort missing=<topics>`, creates **no
-file** and exits with code **2**. Stopping it (SIGINT/SIGTERM) before the gate opens also leaves
-no file.
-
-State is reported in two places: one stable log line per change,
-`GATE waiting missing=a,b` (the topics still silent), `GATE open wait_s=1.23` or
-`GATE abort missing=a,b`, and the same state as JSON on the latched `std_msgs/String` topic
-`~/gate` (`{"state","missing","missing_topics","wait_s","timeout_s","allow_missing"}`).
-Root attr `start_gate` is JSON `{"timeout_s","allow_missing","wait_s","opened_recv_ns"}`;
-`streams_missing` is a list of stream names (empty when everything arrived).
+At the timeout without `allow_missing` the node logs `GATE abort missing=<topics>`, creates **no file** and
+exits with code **2**; stopping it (SIGINT/SIGTERM) before the gate opens also leaves no file.
+State is one log line per change (`GATE waiting missing=a,b`, `GATE open wait_s=1.23`, `GATE abort
+missing=a,b`) and the same as JSON on the latched `std_msgs/String` topic `~/gate`
+(`{"state","missing","missing_topics","wait_s","timeout_s","allow_missing"}`). Root attr `start_gate` is JSON
+`{"timeout_s","allow_missing","wait_s","opened_recv_ns"}`; `streams_missing` is a list of stream names.
 
 ## Transforms (format v4)
 
-Clouds, images, radar and IMU data stay in their **sensor frame**: every stamped stream records
-its `frame_id` attr (Odometry and TransformStamped also `child_frame_id`; no leading `/`, from the
-first message). The file carries the transforms needed to move them into the body or odom frame.
+Data stays in its **sensor frame**; the file carries the transforms. Using them is in
+[reading_datasets.md](reading_datasets.md) section 4.
 
-**`/tf_static`**: group `/tf_static`, the last transform seen per (parent, child) from
-`tf_static_topic` (RELIABLE + TRANSIENT_LOCAL, so a latched publisher is picked up even if it
-started first). It is written at gate open, rewritten when a new or changed pair arrives, and
-once more at close. Datasets: `parent`, `child` (variable-length strings, frame names without a
-leading `/`), `xyz` (N,3) f64, `quat_xyzw` (N,4) f64, `stamp_ns`, `recv_ns` (int64). This is
-the authoritative mount: the YAML `mount_*` keys are still accepted and kept in `config_streams`,
-but they are only annotations. When a `robot_description` message (latched String) is received the
-URDF text is stored in root attr `robot_description`.
+**`/tf_static`**: `parent`, `child` (vlen UTF-8, frame names without leading `/`), `xyz` (N,3) f64,
+`quat_xyzw` (N,4) f64, `stamp_ns`, `recv_ns` (int64), attr `n_transforms`. One row per distinct (parent,
+child): the last value received (`stamp_ns`/`recv_ns` are when that value first appeared). Subscribed
+RELIABLE + TRANSIENT_LOCAL, so a latched publisher is caught late. Written at gate open, rewritten wholesale
+when a pair is new or changes, and at close; N=0 if nothing arrived. Frame names are not namespace-stripped.
 
-**Tracked `/tf` pairs**: each `tf_track` entry `"parent->child"` (a flat list of strings; rcl
-parameters cannot hold nested lists, and an empty list does not load, so "off" is `[""]`) is
-recorded from `tf_topic` as stream `/tf/<parent>__<child>` (a `/` inside a frame name becomes `.`).
-Only the direct edge is matched (leading `/` stripped); chains are not composed by the recorder.
-Anything that is not exactly `a->b` is rejected at startup. Datasets as in any stream:
-`stamp_header_ns` (the transform's own stamp), `stamp_recv_ns`, and `data` `float64 (N, 7)` =
-`x y z qx qy qz qw` (attr `columns`). Attrs `parent_frame` / `child_frame` hold the exact names.
-A pair that never appears gives a warning and a group with `n_samples=0` (no `data`), not an abort.
+**Tracked `/tf` pairs**: each `tf_track` entry (flat `"parent->child"` strings; rcl parameters cannot hold
+nested lists or an empty list, so "off" is `[""]`) becomes group `/tf/<parent>__<child>` (a `/` in a frame
+becomes `.`). Only the direct edge is matched (leading `/` stripped); anything not exactly `a->b` is rejected
+at startup; chains are not composed. Datasets `stamp_header_ns` (the transform's own stamp), `stamp_recv_ns`,
+`data` float64 (N,7) `x y z qx qy qz qw`. Attrs `columns`, `parent_frame`, `child_frame`, `topic`,
+`resolved_topic`, `msg_type`, `qos` (reliable, depth 100), `mode`, `n_samples`, `n_errors`,
+`n_dropped_node`; no `frame_id`, no `row_count`. A pair that never appears gives a warning and
+`n_samples=0` with no `data`. `[""]` (the `radar_sar` and `human_movement` presets) creates no `/tf` group.
+Only samples after the gate opens are kept.
 
-**Recipe: a sensor point in the odom frame** at the time of a cloud, `T_odom_sensor = T_odom_base(t) · T_base_sensor`:
-interpolate the tracked series at the cloud's `stamp_header_ns`, and chain `/tf_static` edges
-from the cloud's `frame_id` up to the tracked child.
-
-```python
-import h5py, numpy as np
-
-def T(xyz, q):                                  # 4x4 from x y z, qx qy qz qw
-    x, y, z, w = np.asarray(q) / np.linalg.norm(q)
-    M = np.eye(4)
-    M[:3, :3] = [[1-2*(y*y+z*z), 2*(x*y-z*w),   2*(x*z+y*w)],
-                 [2*(x*y+z*w),   1-2*(x*x+z*z), 2*(y*z-x*w)],
-                 [2*(x*z-y*w),   2*(y*z+x*w),   1-2*(x*x+y*y)]]
-    M[:3, 3] = xyz
-    return M
-
-def pose_at(g, t_ns):                            # tracked group -> T_parent_child at t
-    ts, d = g['stamp_header_ns'][:], g['data'][:]
-    j = int(np.clip(np.searchsorted(ts, t_ns), 1, max(len(ts) - 1, 1)))
-    a, b = max(j - 1, 0), min(j, len(ts) - 1)
-    u = 0.0 if ts[b] == ts[a] else float(np.clip((t_ns - ts[a]) / (ts[b] - ts[a]), 0, 1))
-    qa, qb = d[a, 3:], d[b, 3:]
-    qb = -qb if qa @ qb < 0 else qb              # same hemisphere, then nlerp
-    return T((1-u) * d[a, :3] + u * d[b, :3], (1-u) * qa + u * qb)
-
-def static_chain(f, frame, up_to):               # T_up_to_frame from /tf_static
-    g = f['tf_static']
-    parent, child = g['parent'].asstr()[:], g['child'].asstr()[:]
-    row = {c: i for i, c in enumerate(child)}
-    M = np.eye(4)
-    while frame != up_to:
-        i = row[frame]                           # KeyError = no static path to up_to
-        M = T(g['xyz'][i], g['quat_xyzw'][i]) @ M
-        frame = parent[i]
-    return M
-
-with h5py.File('capture.h5') as f:
-    i = 10
-    cloud = f['radar_pc']
-    off = np.concatenate([[0], np.cumsum(cloud['row_count'][:])])
-    pts = cloud['data'][off[i]:off[i + 1], :3]
-    t = cloud['stamp_header_ns'][i]
-    trk = f['tf/odom__base_link']
-    T_odom_base = pose_at(trk, t)
-    T_base_sensor = static_chain(f, cloud.attrs['frame_id'], trk.attrs['child_frame'])
-    T_odom_sensor = T_odom_base @ T_base_sensor
-    pts_odom = pts @ T_odom_sensor[:3, :3].T + T_odom_sensor[:3, 3]
-```
-
-The pose is clamped to the first/last sample outside the tracked time range, and the
-quaternion is nlerp-ed (fine for the small steps between consecutive odometry samples). If the
-tracked series is empty (`n_samples=0`) there is no odom pose: use the body frame only
-(`static_chain`) or the `odom` stream. Header stamps from different drivers are only comparable
-if their clocks are; fall back to `stamp_recv_ns` (the recording host's clock) if they are not.
-
-### v3 vs v4
-
-v4 only adds: the start gate (file created at gate open, so `start_recv_ns` moves later and a
-file can be absent), root attrs `start_gate`, `streams_missing`, `tf_track`, `tf_topic`,
-`tf_static_topic`, `robot_description`, and the groups `/tf_static` and `/tf/*`. Stream groups
-are unchanged. A v3 reader keeps working if it skips the two new non-stream groups; `radar_cfg_*`
-attrs (v3) are unchanged. `hdf5_to_legacy` handles both.
+**`robot_description`**: root attr, URDF text of the last message on `robot_description_topic`
+(RELIABLE + TRANSIENT_LOCAL); absent if no publisher.
 
 ## Radar cfg (format v3)
 
-Each `ADCDataCube` stream carries the radar `.cfg` it was captured with, so a file
-describes itself. `ti_radar_connect` publishes the absolute cfg path on
-`<radar_name>/radar_config_path` (`std_msgs/String`, RELIABLE + TRANSIENT_LOCAL, depth 5);
-the recorder subscribes with the same QoS (so it gets the latched value even if started
-after the radar), reads the file on the recording host, and writes these stream attrs:
+Each `ADCDataCube` stream carries the radar `.cfg` it was captured with. The driver (`ti_radar_connect`, in
+the CPSL_TI_Radar repo) publishes the cfg path on `<radar_name>/radar_config_path` (`std_msgs/String`,
+RELIABLE + TRANSIENT_LOCAL, depth 5); the recorder subscribes with the same QoS, reads the file on the
+recording host and writes these stream attrs:
 
 | attr | meaning |
 |---|---|
-| `radar_cfg_topic` | the topic subscribed (`config_topic`, or the cube topic with `adc_data_cube` replaced by `radar_config_path`) |
-| `radar_cfg_path` | path the driver reported (the driver's view of the filesystem) |
-| `radar_cfg_text` | the file's text (UTF-8; undecodable bytes replaced) |
-| `radar_cfg_sha256` | SHA-256 of the file's raw bytes |
+| `radar_cfg_topic` / `radar_cfg_resolved_topic` | topic subscribed (`config_topic`, or the cube topic with `adc_data_cube` replaced by `radar_config_path`) |
+| `radar_cfg_path` | path the driver reported (its view of the filesystem) |
+| `radar_cfg_text` | the file's text (UTF-8, undecodable bytes replaced) |
+| `radar_cfg_sha256` | SHA-256 of the raw bytes |
 | `radar_cfg_metrics` | JSON of derived specs (below) |
-| `radar_cfg_status` | `ok`, `unreadable: <error>` (path stored, no text/hash/metrics), or `not_received` (nothing arrived on the topic; written at close) |
-| `radar_cfg_changed` | `True` if a later message named a different path (warning logged; the first cfg is kept) |
+| `radar_cfg_status` | `ok`; `unreadable: <error>` (path kept, no text/hash/metrics); `not_received` (written at close) |
+| `radar_cfg_changed` | `True` if a later message named a different path (the first cfg is kept) |
 
-`radar_cfg_metrics` keys come from `dataset_generator/radar_cfg.py`, a stdlib calculator for
-single-chip TDM cfgs pinned to `radar_gui.cfg.metrics` (CPSL_TI_Radar) by `test/test_radar_cfg.py`:
-`scheme` (`"tdm"`), `calculator`, `calculator_version`, `start_ghz`, `slope_mhz_us`, `idle_us`,
-`ramp_us`, `num_samples` (ADC samples), `sample_rate_ksps`, `bandwidth_mhz`, `center_ghz`,
-`lambda_mm`, `chirp_us`, `n_rx`, `n_tx`, `n_virtual`, `chirps_per_loop`, `n_loops`, `n_chirps`,
-`range_res_m`, `max_range_m` (0.9 x ideal), `max_range_ideal_m`, `velocity_res_ms`,
-`max_velocity_ms`, `azimuth_res_deg`, `loop_period_us`, `doppler_bins`, `frame_period_ms`,
-`frame_rate_hz`, `bytes_per_chirp`, `bytes_per_frame`, `lvds_data_fmt`. A cfg it cannot handle
-(advFrameCfg, cascade, missing commands) gives `{"error": ...}` instead; the stored text lets you
-recompute with radar_gui. DDMA/cascade metrics are not computed.
+`radar_cfg_metrics` comes from `radar_cfg.py`, a stdlib calculator for single-chip TDM cfgs. Keys: `scheme`
+(`"tdm"`), `calculator`, `calculator_version`, `start_ghz`, `slope_mhz_us`, `idle_us`, `adc_start_us`,
+`ramp_us`, `num_samples`, `sample_rate_ksps`, `bandwidth_mhz`, `center_ghz`, `lambda_mm`, `chirp_us`,
+`sampling_us`, `n_rx`, `n_tx`, `n_virtual`, `n_az_virtual`, `chirps_per_loop`, `n_loops`, `n_chirps`,
+`range_res_m`, `max_range_m` (0.9 x ideal), `max_range_ideal_m`, `velocity_res_ms`, `max_velocity_ms`,
+`azimuth_res_deg`, `loop_period_us`, `doppler_bins`, `doppler_step_ms`, `frame_period_ms`, `frame_rate_hz`,
+`num_frames`, `bytes_per_sample`, `bytes_per_chirp`, `bytes_per_frame`, `lvds_data_fmt`. A cfg it cannot
+handle (advFrameCfg, cascade, missing commands) gives `{"error", "calculator", "calculator_version"}`;
+DDMA and cascade metrics are not computed. The stored text lets you recompute the specs with the external
+`radar_gui` tool (CPSL_TI_Radar); `test/test_radar_cfg.py` checks parity with it when it is importable.
 
-A **v2** file has none of the `radar_cfg_*` attrs (nor `config_topic` in `config_streams`);
-check `format_version` before reading them.
-
-## Reading
-
-```python
-import h5py, numpy as np
-with h5py.File("capture.h5") as f:
-    cube = f["radar_adc/data"][3]; iq = cube[0] + 1j * cube[1]
-    latency_ns = f["radar_adc/stamp_recv_ns"][:] - f["radar_adc/stamp_header_ns"][:]
-    # v3: the radar's cfg and derived specs travel with the file
-    import json
-    specs = json.loads(f["radar_adc"].attrs["radar_cfg_metrics"])  # range_res_m, ...
-    cfg_text = f["radar_adc"].attrs["radar_cfg_text"]              # the .cfg verbatim
-```
-
-## Old-format compatibility
+## Legacy export and install
 
 `ros2 run dataset_generator hdf5_to_legacy capture.h5 out_dir [--reference STREAM]` writes
-`out_dir/<legacy_folder or stream>/frame_<idx>.npy`, one index per sample of the reference
-stream (default first); other streams contribute their newest sample received at or before it,
-which is the v1 "latest message" rule. ADC cubes become complex `[rx, sample, chirp]`.
-Differences from v1: no base-frame transform of point clouds, camera frames are `.npy` not
-PNG, IMU/odometry are the single latest sample, not the buffered high-rate window.
+`out_dir/<legacy_folder or stream>/frame_<idx>.npy`, one index (from 0) per sample of the reference stream.
+The default reference is the first stream in h5py iteration order, which is alphabetical, not YAML order.
+Other streams contribute their newest sample received at or before the reference sample's `stamp_recv_ns`.
+Cubes become complex `[rx, sample, chirp]`. See reading_datasets.md section 5 for the differences from v1.
 
-**Install:** `sudo apt install python3-h5py` (or `sudo bash scripts/deps/dataset.sh`). It is declared as `exec_depend` in package.xml, so `rosdep install --from-paths src`, `scripts/install.sh`, the Docker image and console's container (which runs rosdep) install it automatically; on a plain host, install it yourself.
+**Install:** `sudo apt install python3-h5py` (or `sudo bash scripts/deps/dataset.sh`); declared as `exec_depend`
+in `package.xml`, so `rosdep install --from-paths src`, `scripts/install.sh`, the Docker image and console's
+container install it automatically.

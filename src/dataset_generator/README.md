@@ -3,7 +3,7 @@
 Records sensor streams. One recorder, `dataset_recorder`, launched by `record_dataset.launch.py` from a YAML with a `streams:` table:
 
 * **`dataset_recorder`** - every file in `configs/` (e.g. `ugv_dataset.yaml`, `radar_sar.yaml`, `uav_dataset.yaml`). One HDF5 file per capture, per-message header + receive stamps.
-  Format, YAML schema, QoS and the old-format converter: [docs/hdf5_format.md](docs/hdf5_format.md).
+  Format, YAML schema, QoS and versions: [docs/hdf5_format.md](docs/hdf5_format.md). Reading it, transforms and v1 migration: [docs/reading_datasets.md](docs/reading_datasets.md).
   The recorder waits for every enabled stream before it writes (`start_timeout_s`, `allow_missing`;
   abort = no file, exit code 2) and, since format v4, records `/tf_static` and the `/tf` pairs
   listed in `tf_track`, so sensor-frame data can be moved into the body or odom frame.

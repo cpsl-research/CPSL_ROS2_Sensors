@@ -5,9 +5,10 @@
 Old layout: ``<out_dir>/<folder>/frame_<idx>.npy`` (camera: PNG in v1; here
 .npy too). Folder = the stream's ``legacy_folder`` attr, else its name.
 Sample ``idx`` is a row of the *reference* stream (default: the first stream
-in the file); for every other stream the newest sample received at or before
-the reference sample's receive time is used, mirroring v1's "latest message"
-semantics. ADC cubes become complex arrays [rx, samples, chirps], as in v1.
+in h5py iteration order, which is alphabetical, not the YAML order); for
+every other stream the newest sample received at or before the reference
+sample's receive time is used, mirroring v1's "latest message" semantics.
+ADC cubes become complex arrays [rx, samples, chirps], as in v1.
 """
 import argparse
 import os
