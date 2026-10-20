@@ -84,19 +84,12 @@ with h5py.File('capture.h5') as f:
 ## 4. Transforms and the tf tree
 
 The file does **not** move data into the body frame. Clouds, radar, images and IMU stay in their sensor
-frame (`frame_id` attr = the first message's `header.frame_id`, no leading `/`). The transforms live
-beside them:
-
-| Where | What | Notes |
-|---|---|---|
-| `/tf_static` | last transform per (parent, child): `parent`, `child` (vlen str, read with `.asstr()[:]`), `xyz (N,3)`, `quat_xyzw (N,4)`, `stamp_ns`, `recv_ns`; attr `n_transforms` | always present, possibly N=0; mounts and URDF joints. Caught even if latched before the recorder started |
-| `/tf/<parent>__<child>` | one group per `tf_track` entry: `data (N,7)` = `x y z qx qy qz qw`, `stamp_header_ns` = the transform's own stamp, `stamp_recv_ns`; attrs `parent_frame`, `child_frame` | the direct edge only (default `odom->base_link`); group absent when `tf_track` is `[""]`; no `frame_id` attr, no `row_count`; `n_samples=0` and no `data` if the edge never appeared |
-| root attr `robot_description` | URDF text | only if a publisher existed; `<joint><origin xyz rpy>` mirrors the mounts; `/tf_static` is authoritative |
-| root attrs `tf_topic`, `tf_static_topic`, `tf_track` | resolved topics and tracked pairs | |
+frame (`frame_id` attr = the first message's `header.frame_id`, no leading `/`). Storage of `/tf_static`, the tracked `/tf/<parent>__<child>` pairs and the root attrs is in
+[hdf5_format.md](hdf5_format.md) (Transforms). `robot_description` (root attr, URDF text) exists only if a
+publisher existed; `<joint><origin xyz rpy>` mirrors the mounts, but `/tf_static` is authoritative.
 
 Every transform is `T_parent_child`: it maps a point in `child` coordinates into `parent` coordinates.
-Frame names keep any namespace prefix (`cpsl_uav_6/base_footprint`). Only `tf_track` edges are recorded over
-time; any other moving link is not in the file.
+Only `tf_track` edges are recorded over time; any other moving link is not in the file.
 
 ```mermaid
 flowchart LR
@@ -162,9 +155,7 @@ with h5py.File('capture.h5') as f:
     print(v1_cloud[0], xyz_odom[0])
 ```
 
-`static_chain` walks `child -> parent` rows from the sensor frame to `up_to` (an ancestor), and raises
-`ValueError` if `/tf_static` has no such chain. `interpolate=False` takes the nearest tracked sample; the
-default interpolates at the sample's own stamp (clamped outside the tracked range). Match stamps on
+The default interpolates at the sample's own stamp (clamped outside the tracked range). Match stamps on
 `stamp_recv_ns` if the clocks differ. `pose_at` returns the tracked edge only.
 
 ## 5. Migrating a v1 `frame_N.npy` reader
@@ -217,7 +208,6 @@ Behavioural differences:
   sample has both stamps; align per section 3, or use `capture_mode: sampled` (newest unseen message per tick).
 - **Numbering and ticks.** v1 files were `frame_10000`, ...; here rows start at 0. v1 skipped a tick until every
   sensor had data and emptied its folders at start; now the start gate waits once and each capture is a new `.h5`.
-- **Duplicates.** v1 IMU/odom windows repeated the latest message at the timer rate; HDF5 rows are real messages.
 - **Export tool.** `ros2 run dataset_generator hdf5_to_legacy capture.h5 out_dir [--reference STREAM]` writes
   `frame_<idx>.npy` from 0, one per sample of the reference stream, with the newest sample of each other stream
   received at or before it. The default reference is the first stream in h5py order, **alphabetical** (not YAML

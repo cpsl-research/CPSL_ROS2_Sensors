@@ -94,7 +94,6 @@ Root attrs: `format="cpsl_dataset_hdf5"`, `format_version`, `closed_cleanly` (Fa
 `namespace` (`/` if none), `capture_mode`, `sample_rate_hz`, `config_streams` (the stream table as JSON,
 topics as configured), `timestamps` (field meaning), `start_gate` (JSON), `streams_missing`, `tf_track`,
 `tf_topic`, `tf_static_topic` (resolved absolute names), and `robot_description` when a URDF arrived.
-A reader looping over the root must skip `tf` and `tf_static`.
 
 Every stream group has `stamp_header_ns` (int64 (N,), `-1` if the message has no header), `stamp_recv_ns`
 (int64 (N,), host `time.time_ns()` at receipt; in `sampled` mode, of the chosen message) and, per type,
@@ -195,8 +194,7 @@ missing=a,b`) and the same as JSON on the latched `std_msgs/String` topic `~/gat
 
 ## Transforms (format v4)
 
-Data stays in its **sensor frame**; the file carries the transforms. Using them is in
-[reading_datasets.md](reading_datasets.md) section 4.
+Using the transforms is in [reading_datasets.md](reading_datasets.md) section 4.
 
 **`/tf_static`**: `parent`, `child` (vlen UTF-8, frame names without leading `/`), `xyz` (N,3) f64,
 `quat_xyzw` (N,4) f64, `stamp_ns`, `recv_ns` (int64), attr `n_transforms`. One row per distinct (parent,
@@ -245,14 +243,8 @@ handle (advFrameCfg, cascade, missing commands) gives `{"error", "calculator", "
 DDMA and cascade metrics are not computed. The stored text lets you recompute the specs with the external
 `radar_gui` tool (CPSL_TI_Radar); `test/test_radar_cfg.py` checks parity with it when it is importable.
 
-## Legacy export and install
+## Install
 
-`ros2 run dataset_generator hdf5_to_legacy capture.h5 out_dir [--reference STREAM]` writes
-`out_dir/<legacy_folder or stream>/frame_<idx>.npy`, one index (from 0) per sample of the reference stream.
-The default reference is the first stream in h5py iteration order, which is alphabetical, not YAML order.
-Other streams contribute their newest sample received at or before the reference sample's `stamp_recv_ns`.
-Cubes become complex `[rx, sample, chirp]`. See reading_datasets.md section 5 for the differences from v1.
-
-**Install:** `sudo apt install python3-h5py` (or `sudo bash scripts/deps/dataset.sh`); declared as `exec_depend`
+`sudo apt install python3-h5py` (or `sudo bash scripts/deps/dataset.sh`); declared as `exec_depend`
 in `package.xml`, so `rosdep install --from-paths src`, `scripts/install.sh`, the Docker image and console's
 container install it automatically.
