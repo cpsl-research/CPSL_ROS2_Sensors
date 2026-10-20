@@ -62,7 +62,7 @@ Other tools can drive the same scripts and files. The ones known to: `scripts/de
 
 ## 6. Lab forks and pins
 
-The lab forks (`CPSL_ROS_livox_ros_driver2`, `CPSL_ROS2_LeapMotion`, and `CPSL_TI_Radar`) are separate lab repos with their own history; change them there, then bump the pin here in its own commit. Rules:
+The lab repo `CPSL_TI_Radar` and the lab forks `CPSL_ROS_livox_ros_driver2` and `CPSL_ROS2_LeapMotion` are separate repos with their own history; change them there, then bump the pin here in its own commit. Rules:
 
 - **Pin on the fork's default branch** (`main` or `master`). A pin that exists only on a feature branch breaks when the branch is merged or deleted.
 - **Tag the fork before removing anything** from it (`git tag v1.0 && git push origin v1.0`), so the removal can be recovered. Some forks have no tag yet; cut one first.
