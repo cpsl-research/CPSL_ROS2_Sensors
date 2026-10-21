@@ -3,12 +3,11 @@
 # Must be run from the workspace root (the directory containing src/ and pyproject.toml).
 #
 # Usage:
-#   bash scripts/install.sh [--sensors <list>] [--livox-ip <XX>] \
+#   bash scripts/install.sh [--sensors <list>] \
 #                           [--ouster-hostname <host>] [--skip-build]
 #
 # --sensors   Comma-separated subset of: radar,livox,ouster,realsense,leapmotion,vicon,usb_cam
 #             Default: radar,livox
-# --livox-ip  Last two digits of the Livox Mid360 serial number (sets static host IP)
 # --ouster-hostname  Hostname or IP of the Ouster sensor
 # --skip-build  Skip the colcon build step
 
@@ -20,14 +19,12 @@ contains() { echo ",$1," | grep -q ",$2,"; }
 
 # ── argument parsing ───────────────────────────────────────────────────────────
 SENSORS="radar,livox"
-LIVOX_IP=""
 OUSTER_HOSTNAME=""
 SKIP_BUILD=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --sensors)        SENSORS="$2";        shift 2 ;;
-        --livox-ip)       LIVOX_IP="$2";       shift 2 ;;
         --ouster-hostname) OUSTER_HOSTNAME="$2"; shift 2 ;;
         --skip-build)     SKIP_BUILD=true;     shift ;;
         *) echo "Unknown argument: $1"; exit 1 ;;
@@ -50,7 +47,6 @@ header "Step 1: Summary"
 echo "Workspace root : $WORKSPACE_ROOT"
 echo "Sensors        : $SENSORS"
 echo "Shell RC file  : $RC_FILE"
-[[ -n "$LIVOX_IP" ]]        && echo "Livox host IP  : 192.168.1.${LIVOX_IP}"
 [[ -n "$OUSTER_HOSTNAME" ]] && echo "Ouster hostname: $OUSTER_HOSTNAME"
 [[ "$SKIP_BUILD" == true ]] && echo "Colcon build   : SKIPPED"
 
@@ -158,30 +154,6 @@ if contains "$SENSORS" livox; then
 
     # Configure Livox driver package.xml
     bash src/CPSL_ROS_livox_ros_driver2/build_CPSL_ROS2_Sensors.sh jazzy
-
-    # Optionally patch MID360_config.json with the user's host IP
-    if [[ -n "$LIVOX_IP" ]]; then
-        CONFIG_FILE="src/CPSL_ROS_livox_ros_driver2/config/MID360_config.json"
-        SENSOR_LAST=$(python3 -c "
-import json, sys
-with open('$CONFIG_FILE') as f:
-    d = json.load(f)
-ip = d['lidar_summary_info']['lidar_net_info'][0]['ip']
-print(ip.split('.')[-1])
-")
-        HOST_IP="192.168.1.${LIVOX_IP}"
-        SENSOR_IP="192.168.1.${SENSOR_LAST}"
-        python3 - <<PYEOF
-import json
-with open('$CONFIG_FILE') as f:
-    d = json.load(f)
-d['lidar_summary_info']['lidar_net_info'][0]['ip'] = '$SENSOR_IP'
-d['host_net_info']['host_ip'] = '$HOST_IP'
-with open('$CONFIG_FILE', 'w') as f:
-    json.dump(d, f, indent=4)
-print("Patched $CONFIG_FILE: host_ip=$HOST_IP")
-PYEOF
-    fi
 fi
 
 # ouster ───────────────────────────────────────────────────────────────────────
@@ -277,13 +249,8 @@ fi
 if contains "$SENSORS" livox; then
     echo ""
     echo "  Livox Mid360:"
-    if [[ -z "$LIVOX_IP" ]]; then
-        echo "    - Set PC ethernet adapter to 192.168.1.XX/24 (XX = last 2 digits of serial)"
-        echo "    - Update host_ip in src/CPSL_ROS_livox_ros_driver2/config/MID360_config.json"
-    else
-        echo "    - PC host IP already set to 192.168.1.${LIVOX_IP} in MID360_config.json"
-        echo "    - Set PC ethernet adapter to 192.168.1.${LIVOX_IP}/24"
-    fi
+    echo "    - Set PC ethernet adapter to 192.168.1.XX/24 (XX = last 2 digits of serial)"
+    echo "    - Update host_ip in src/CPSL_ROS_livox_ros_driver2/config/MID360_config.json"
 fi
 
 if contains "$SENSORS" ouster; then
