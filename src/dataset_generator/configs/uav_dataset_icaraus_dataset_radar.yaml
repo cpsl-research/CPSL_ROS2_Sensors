@@ -50,12 +50,16 @@ dataset_generator:
         type: "sensor_msgs/msg/PointCloud2"
         fields: ["x", "y", "z", "vel"]
         legacy_folder: "down_radar_pc"
-      # PLACEHOLDER: replace <SUBJECT>/<SEGMENT> with the vicon_bridge names (topic layout not yet
-      # verified; see the Sensors TODO.md), then set enabled: true. v1 recorded whatever matched /vicon/.
+      # PLACEHOLDER topic (cannot match). vicon_bridge layout, verified from source: vicon/<subject>/<segment>
+      # is a TransformStamped (subject is usually the same as the segment); vicon/<subject>/<segment>/pose
+      # is a PoseStamped, do not use it. Occluded segments are not published (top-level allow_missing: true
+      # lets the capture start anyway). Once the names are known (`ros2 topic list | grep vicon`), put
+      # them in `topic`, set enabled: true, and add one stream per segment if there are several.
       vicon:
         enabled: false
         topic: "vicon/<SUBJECT>/<SEGMENT>"
         type: "geometry_msgs/msg/TransformStamped"
+        mode: all
         legacy_folder: "vicon_<SEGMENT>"
       vehicle_odom:            # published by the flight stack (not this repo); every message
         topic: "odom"

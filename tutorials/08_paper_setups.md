@@ -38,7 +38,7 @@ The platform description is chosen by the namespace: `namespace:=cpsl_uav_6` loa
 
 ## 4. IcaRAus: UAV with Vicon
 
-Same radar arguments as RadSAR, with IcaRAus radar files (`IWR1843_demo_IcaRAus_front.json`, `..._back.json`, `IWR6843ODS_demo_IcaRAus_10Hz_down.json`) and `vicon_enable:=true`, which starts `vicon_bridge` against a Vicon computer at the address in the launch file (edit the address in the launch file for your lab) and publishes poses under the `vicon` namespace. The two recording configs list the radars and odometry, and a **placeholder** Vicon stream (`vicon/<SUBJECT>/<SEGMENT>`, `enabled: false`). Run the bridge once, read the real pose topic names with `ros2 topic list | grep vicon`, put them in the stream, and set `enabled: true`. The open question about the exact topic layout is tracked in the repo's `TODO.md`.
+Same radar arguments as RadSAR, with IcaRAus radar files (`IWR1843_demo_IcaRAus_front.json`, `..._back.json`, `IWR6843ODS_demo_IcaRAus_10Hz_down.json`) and `vicon_enable:=true`, which starts `vicon_bridge` against a Vicon computer at the address in the launch file (edit the address in the launch file for your lab) and publishes poses under the `vicon` namespace. The two recording configs list the radars and odometry, and a **placeholder** Vicon stream (`vicon/<SUBJECT>/<SEGMENT>`, `enabled: false`). Run the bridge once, read the real pose topic names with `ros2 topic list | grep vicon`, put them in the stream, and set `enabled: true`. The layout is `vicon/<subject>/<segment>` (TransformStamped); the open item, the real subject and segment names, is tracked in the repo's `TODO.md`.
 
 ## 5. Human movement: person tracking
 
