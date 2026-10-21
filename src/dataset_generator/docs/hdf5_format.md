@@ -76,32 +76,34 @@ publisher). The ADC cube must be reliable: best-effort received 28 of 59 frames 
 
 ### Preset streams
 
-Stream (group) names are the `streams:` keys of the YAML and are arbitrary. The presets in `configs/` use these;
-the last column is the `base_frame` the v1 recorder used (from each file's comment).
+Stream (group) names are the `streams:` keys of the YAML and are arbitrary. The presets in `configs/` enable the
+streams below (disabled ones in parentheses). The last two columns are from the v1 recorder's config
+(`git show 7f000a6^:src/dataset_generator/configs/<name>.yaml`; `ugv_dataset` is `ugv_dataset_v1.yaml`): the
+`base_frame` its clouds were in, and `frame_rate_high_speed_sensors` (Hz), the timer behind its IMU/odom rows.
 
-| preset | streams | v1 `base_frame` |
-|---|---|---|
-| [ugv_dataset](../configs/ugv_dataset.yaml) | `radar_pc camera vehicle_odom lidar imu` | `cpsl_ugv_1/base_footprint` |
-| [uav_dataset](../configs/uav_dataset.yaml) | `radar_{front,back,down}_{adc,pc} lidar camera imu` | `cpsl_uav_6/base_footprint` |
-| [uav_dataset_radvel](../configs/uav_dataset_radvel.yaml) | radars as above, `lidar` | `cpsl_uav_6/base_level` |
-| [uav_dataset_radar_vs_flow](../configs/uav_dataset_radar_vs_flow.yaml) | radars, `lidar camera` | `cpsl_uav_8/base_level` |
-| [icaraus flow](../configs/uav_dataset_icaraus_dataset_flow.yaml), [radar](../configs/uav_dataset_icaraus_dataset_radar.yaml) | radars, `vicon` | `cpsl_uav_8/base_footprint` |
-| [human_movement](../configs/human_movement.yaml) | `radar_adc radar_pc camera camera_depth hand_left hand_right lidar imu vehicle_odom` | `cpsl_realsense_color_optical_frame` |
-| [radar_sar](../configs/radar_sar.yaml) | `radar_adc radar_pc` | none recorded |
-| [rover_pro_radar](../configs/rover_pro_radar.yaml) | `radar_adc adc_meta odom` | none recorded |
+| preset | enabled streams (disabled) | v1 `base_frame` | v1 high-rate Hz |
+|---|---|---|---|
+| [ugv_dataset](../configs/ugv_dataset.yaml) | `radar_adc radar_pc camera vehicle_odom` (`camera_info lidar imu`) | `cpsl_ugv_1/base_footprint` | 50 |
+| [uav_dataset](../configs/uav_dataset.yaml) | `radar_{front,back,down}_{adc,pc} lidar camera vehicle_odom` (`camera_info imu`) | `cpsl_uav_6/base_footprint` | 20 |
+| [uav_dataset_radvel](../configs/uav_dataset_radvel.yaml) | radars as above, `lidar vehicle_odom` | `cpsl_uav_6/base_level` | 40 |
+| [uav_dataset_radar_vs_flow](../configs/uav_dataset_radar_vs_flow.yaml) | radars, `lidar camera vehicle_odom` (`camera_info`) | `cpsl_uav_8/base_level` | 40 |
+| [icaraus flow](../configs/uav_dataset_icaraus_dataset_flow.yaml), [radar](../configs/uav_dataset_icaraus_dataset_radar.yaml) | radars, `vehicle_odom` (`vicon`) | `cpsl_uav_8/base_footprint` | 40 |
+| [human_movement](../configs/human_movement.yaml) | `radar_adc radar_pc camera camera_depth hand_left hand_right` (`camera_info camera_depth_info lidar imu vehicle_odom`) | `cpsl_realsense_color_optical_frame` | 50 |
+| [radar_sar](../configs/radar_sar.yaml) | `radar_adc adc_meta` (`radar_pc`) | none (no v1) | none |
+| [rover_pro_radar](../configs/rover_pro_radar.yaml) | `radar_adc adc_meta odom cmd_vel` | none (no v1) | none |
 
 ## File layout
 
 ```mermaid
 flowchart TD
     R["/ (root attrs: format, format_version, closed_cleanly, start_recv_ns, ..., config_streams)"]
-    R --> S["/&lt;stream&gt;  (one per configured stream)"]
+    R --> S["/#lt;stream#gt;  (one per configured stream)"]
     R --> TS["/tf_static  (always)"]
     R --> TF["/tf  (only if tf_track is non-empty)"]
     S --> S1["stamp_header_ns, stamp_recv_ns, data, row_count (ragged only)"]
     S --> S2["attrs: topic, resolved_topic, msg_type, qos, mode, n_samples, columns, frame_id, ..."]
     TS --> T1["parent, child, xyz, quat_xyzw, stamp_ns, recv_ns"]
-    TF --> TG["/tf/&lt;parent&gt;__&lt;child&gt;  data (N,7), stamp_header_ns, stamp_recv_ns"]
+    TF --> TG["/tf/#lt;parent#gt;__#lt;child#gt;  data (N,7), stamp_header_ns, stamp_recv_ns"]
 ```
 
 Root attrs: `format="cpsl_dataset_hdf5"`, `format_version`, `closed_cleanly` (False until a clean close),

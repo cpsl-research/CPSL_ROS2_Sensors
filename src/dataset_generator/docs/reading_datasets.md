@@ -169,7 +169,7 @@ v1 wrote `<dataset>/<folder>/frame_<N>.npy` (camera and depth `.png`), one file 
 | `<radar>_pc`: float32 `(n, 4)` x y z vel, **base frame** | `radar_pc`: ragged slice, **sensor frame** | apply `T_base_sensor` (section 4); NaN rows dropped as before |
 | `lidar`: float32 `(n, 4)` x y z intensity, base frame | `lidar` ragged | as above; columns follow `columns` (set `fields` to match) |
 | `camera`: 8-bit BGR `.png`; `depth`: `.png` as published | `camera/data[i]`, `camera_depth/data[i]` | message encoding (`encoding` attr): convert with `V1_BGR` below, write PNGs yourself; depth needs none |
-| `hands`: `(2, n, 3)` | `hand_left`, `hand_right` ragged | two streams, not transformed; `np.stack` yourself, counts may differ |
+| `hands`: `(2, n, 3)`, base frame | `hand_left`, `hand_right` ragged, sensor frame | two streams (v1 transformed both to the base frame: apply `T_base_sensor`); `np.stack` yourself, counts may differ |
 | `imu_data`: `(m, 7)` t wx wy wz ax ay az | `imu/data` cols `wx wy wz ax ay az` | one row per message (v1 repeated the latest row); has orientation; v1 t was the node clock in s; use `stamp_recv_ns` |
 | `vehicle_odom`: `(m, 14)` t x y z **qw qx qy qz** vx vy vz wx wy wz | `odom/data`: x y z **qx qy qz qw** vx vy vz wx wy wz | quaternion reorder on the raw 13 columns (below); no time column |
 | `vehicle_vel`: `(m, 3)` t vx wz | none | `odom` columns `vx`, `wz` |
@@ -177,7 +177,7 @@ v1 wrote `<dataset>/<folder>/frame_<N>.npy` (camera and depth `.png`), one file 
 
 Recipe, on **one clock, `stamp_recv_ns`** (host clock, shared by all streams; header stamps only if the
 drivers share a clock, section 3). Each v1 save tick wrote the newest message per sensor; its IMU/odom files
-held one row per tick of a timer (`frame_rate_high_speed_sensors`: v1 default 20 Hz, UGV preset 50) that
+held one row per tick of a timer (`frame_rate_high_speed_sensors`: 20 to 50 Hz by preset, `hdf5_format.md`) that
 repeated the newest message, since the previous save tick, with the node clock in seconds as column 0.
 
 ```python
@@ -190,15 +190,15 @@ def gray(a):                                           # 1 channel -> BGR, as cv
     return np.repeat(a[..., None], 3, 2)
 
 V1_BGR = {                                             # encoding -> v1 camera PNG (uint8 H, W, 3 BGR)
-    'bgr8': lambda a: a, '8UC3': lambda a: a,          # 8UC3 has no declared order: taken as BGR
-    'rgb8': lambda a: a[..., ::-1], 'rgba8': lambda a: a[..., 2::-1], 'bgra8': lambda a: a[..., :3],
-    'mono8': gray, '8UC1': gray, 'mono16': lambda a: gray(a >> 8), '16UC1': lambda a: gray(a >> 8),
-    '32FC1': lambda a: gray(np.clip(a * 255, 0, 255).astype(np.uint8))}   # cv_bridge depth scaling
+    'bgr8': lambda a: a, 'rgb8': lambda a: a[..., ::-1],              # 8UC1, 8UC3, 16UC1, 32FC1: cv_bridge
+    'rgba8': lambda a: a[..., 2::-1], 'bgra8': lambda a: a[..., :3],  # refuses these, v1 wrote no PNG
+    'mono8': gray, 'mono16': lambda a: gray(np.rint(a * (255 / 65535)).astype(np.uint8))}
 
 with h5py.File('capture.h5') as f:
     imu, od, ref = f['imu'], f['odom'], f['radar_pc']['stamp_recv_ns'][:]   # ticks: any stream's stamps
     k = 2; prev, tick = ref[k - 1], ref[k]             # row k of the tick stream = v1 frame 10000 + k
-    grid = np.arange(prev + 50_000_000, tick + 1, 50_000_000)    # 20 Hz timer in (prev, tick]
+    dt = int(1e9 / 50)                                 # v1 high-rate period: the preset's Hz
+    grid = np.arange(prev + dt, tick + 1, dt)          # timer ticks in (prev, tick]
     gi, go, j = latest(imu, grid), latest(od, grid), latest(f['radar_adc'], tick)
     if min(gi.min(initial=0), go.min(initial=0), j) < 0:    # a stream has no sample yet: skip (v1 did too)
         print('skip tick', k)
