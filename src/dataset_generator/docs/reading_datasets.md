@@ -1,8 +1,8 @@
 # Reading a dataset_generator HDF5 capture
 
 Reader guide: h5py + numpy only, no ROS. Layout, columns and versions: [hdf5_format.md](hdf5_format.md).
-Every block runs against a file the real writer produced (`capture.h5`). Stream names come from the recorder YAML and are arbitrary; per-preset names and v1
-base frames are in [hdf5_format.md](hdf5_format.md) (Preset streams).
+Every block runs against a file the real writer produced (`capture.h5`). Stream names are arbitrary YAML keys;
+presets and v1 base frames: [hdf5_format.md](hdf5_format.md) (Preset streams).
 
 ## 1. Open, detect, iterate
 
@@ -213,9 +213,8 @@ with h5py.File('capture.h5') as f:
         print(v1_imu.shape, v1_odom.shape, v1_vel[0], j, png.shape)
 ```
 
-`latest` gives `-1` before a stream's first sample: skip the tick. The start gate opens once every stream
-(bar `allow_missing` ones, which stay empty) has delivered, but earlier messages are not stored, so first rows
-differ slightly: start at the `max` of the streams' first `stamp_recv_ns`.
+The start gate opens once every stream (bar `allow_missing` ones, which stay empty) has delivered, but earlier
+messages are not stored, so first rows differ slightly: start at the `max` of the streams' first `stamp_recv_ns`.
 
 Behavioural differences:
 
