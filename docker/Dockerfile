@@ -154,9 +154,10 @@ RUN . /opt/ros/jazzy/setup.sh && \
 COPY docker/docker_entrypoint.sh /workspace/docker_entrypoint.sh
 RUN chmod +x /workspace/docker_entrypoint.sh
 
-# `docker exec` bypasses the entrypoint; give its interactive shells the same
-# multiarch library path (the entrypoint exports it for the main process).
-RUN echo 'export LD_LIBRARY_PATH="/opt/ros/jazzy/lib/$(uname -m)-linux-gnu:${LD_LIBRARY_PATH:-}"' >> /etc/bash.bashrc
+# Multiarch library dirs (RealSense and other apt libraries). Static, so every
+# process, including a non-interactive `docker exec`, gets it; a directory for
+# the other architecture is harmless, and `:+` keeps a base image's own value.
+ENV LD_LIBRARY_PATH=/opt/ros/jazzy/lib/x86_64-linux-gnu:/opt/ros/jazzy/lib/aarch64-linux-gnu${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
 
 # Set the default entrypoint
 ENTRYPOINT ["/workspace/docker_entrypoint.sh"]

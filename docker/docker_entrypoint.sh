@@ -11,10 +11,6 @@ elif [ -f "/workspace/CPSL_ROS2_Sensors/install/setup.bash" ]; then
     source "/workspace/CPSL_ROS2_Sensors/install/setup.bash"
 fi
 
-# RealSense (and anything else from apt) puts its libraries in the multiarch
-# directory of whatever machine the image was built for.
-export LD_LIBRARY_PATH="/opt/ros/jazzy/lib/$(uname -m)-linux-gnu:${LD_LIBRARY_PATH:-}"
-
 # Dynamically create IIO device nodes (RealSense IMU) inside the container
 # (This bypasses the OCI runtime/runc colon-parsing limitation on /dev/iio:device*)
 if [ -d "/sys/bus/iio/devices" ]; then
