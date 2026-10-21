@@ -44,7 +44,9 @@ Edit `sensor_hostname` in `src/cpsl_ros2_sensors_bringup/ouster_configs/driver_p
     sensor_hostname: 'os-122517001998.local'   # or the IP address found above
 ```
 
-The installed copy is a link to this file (the workspace is built with `--symlink-install`), so no rebuild is needed. The same file holds the optional `lidar_mode`, `timestamp_mode` and port settings; leaving them empty (or `0` for the ports) lets the driver choose.
+The installed copy is a link to this file (the workspace is built with `--symlink-install`), so no rebuild is needed. The same file holds the optional `lidar_mode`, `timestamp_mode` and port settings; leaving them empty (or `0` for the ports) lets the driver choose. `timestamp_mode` is set to `TIME_FROM_ROS_TIME` so header stamps use the host clock and line up with the other sensors (the per-point `t` field keeps timing within a scan).
+
+Recording: `configs/ouster.yaml` ([Tutorial 01](01_capturing_a_dataset.md)).
 
 ## 4. Launch and see the first scan
 

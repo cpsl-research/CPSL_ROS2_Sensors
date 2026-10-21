@@ -89,6 +89,7 @@ streams below (disabled ones in parentheses). The last two columns are from the 
 | [uav_dataset_radar_vs_flow](../configs/uav_dataset_radar_vs_flow.yaml) | radars, `lidar camera vehicle_odom` (`camera_info`) | `cpsl_uav_8/base_level` | 40 |
 | [icaraus flow](../configs/uav_dataset_icaraus_dataset_flow.yaml), [radar](../configs/uav_dataset_icaraus_dataset_radar.yaml) | radars, `vehicle_odom` (`vicon`) | `cpsl_uav_8/base_footprint` | 40 |
 | [human_movement](../configs/human_movement.yaml) | `radar_adc radar_pc camera camera_depth hand_left hand_right` (`camera_info camera_depth_info lidar imu vehicle_odom`) | `cpsl_realsense_color_optical_frame` | 50 |
+| [ouster](../configs/ouster.yaml) | `ouster_lidar` | none (no v1) | none |
 | [radar_sar](../configs/radar_sar.yaml) | `radar_adc adc_meta` (`radar_pc`) | none (no v1) | none |
 | [rover_pro_radar](../configs/rover_pro_radar.yaml) | `radar_adc adc_meta odom cmd_vel` | none (no v1) | none |
 
