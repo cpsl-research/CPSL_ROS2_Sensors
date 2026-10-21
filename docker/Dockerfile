@@ -154,6 +154,10 @@ RUN . /opt/ros/jazzy/setup.sh && \
 COPY docker/docker_entrypoint.sh /workspace/docker_entrypoint.sh
 RUN chmod +x /workspace/docker_entrypoint.sh
 
+# `docker exec` bypasses the entrypoint; give its interactive shells the same
+# multiarch library path (the entrypoint exports it for the main process).
+RUN echo 'export LD_LIBRARY_PATH="/opt/ros/jazzy/lib/$(uname -m)-linux-gnu:${LD_LIBRARY_PATH:-}"' >> /etc/bash.bashrc
+
 # Set the default entrypoint
 ENTRYPOINT ["/workspace/docker_entrypoint.sh"]
 CMD ["bash"]
