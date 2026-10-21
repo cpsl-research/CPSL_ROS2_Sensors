@@ -6,12 +6,41 @@
 # repo.ultraleap.com is not always reachable; if it is not, this fails rather
 # than pretending the SDK is installed. Callers that want to carry on without
 # Leap Motion (the Dockerfile does) handle the non-zero exit themselves.
-source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
+#
+# Usage:
+#   sudo bash leapmotion.sh       install whatever is missing
+#   bash leapmotion.sh --check    no root, installs nothing: exit 0 if the packages
+#                                 below are installed, else exit 1 and list what is
+#                                 missing on stderr.
+#
+# --check does NOT verify the Ultraleap apt source (key and list file) beyond
+# the ultraleap-hand-tracking package itself being installed.
 
 KEYRING=/usr/share/keyrings/ultraleap-archive-keyring.gpg
 LIST=/etc/apt/sources.list.d/ultraleap.list
 
-apt_ensure curl ca-certificates gnupg
+PREREQ=(curl ca-certificates gnupg)
+PACKAGES=("${PREREQ[@]}" ultraleap-hand-tracking)
+
+# Handled before _common.sh, whose root check would fail for a normal user.
+if [ "${1:-}" = "--check" ]; then
+    missing=()
+    for pkg in "${PACKAGES[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "install ok installed"; then
+            missing+=("$pkg")
+        fi
+    done
+    if [ ${#missing[@]} -ne 0 ]; then
+        echo "missing: ${missing[*]}" >&2
+        exit 1
+    fi
+    exit 0
+fi
+
+source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
+
+# The SDK package comes from the Ultraleap repo, so it is installed last.
+apt_ensure "${PREREQ[@]}"
 
 if [ ! -f "$LIST" ]; then
     tmp=$(mktemp)

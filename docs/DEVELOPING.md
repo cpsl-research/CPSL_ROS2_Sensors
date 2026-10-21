@@ -39,6 +39,7 @@ Published frames follow the REP-105 names `base_footprint`, `base_link`, `odom`,
 - run as root with no `sudo` inside (`install.sh` calls `sudo bash scripts/deps/<driver>.sh`; the Dockerfile runs it directly);
 - idempotent and quick when already satisfied, so a container can re-run it at every start;
 - a non-zero exit means the dependencies are not in place.
+- `bash scripts/deps/<driver>.sh --check` needs no root and installs nothing: exit 0 if everything it lists is in place, else exit 1 with `missing: ...` on stderr (it does not verify livox's `ping` capability, the Ultraleap apt source beyond its package, or an SDK built outside `/usr/local/lib`).
 
 New driver: add `scripts/deps/<name>.sh`, add the name to `VALID_SENSORS` (`install.sh:37`), the submodule lists (`install.sh:61-76`), the Dockerfile and `rebuild.sh` lists, and `docker/install_cpsl_sensors_docker.sh:56`. Python dependencies are in `pyproject.toml` and `uv.lock`; `scripts/setup_venv.sh` creates `.venv` with `--system-site-packages` (ROS's Python packages are not on PyPI), and the workspace must be built with it active.
 
