@@ -4,5 +4,3 @@
 
 - **Vicon topics in the UAV presets are a placeholder.** `src/dataset_generator/configs/uav_dataset_icaraus_dataset_flow.yaml` and `..._radar.yaml` carry a disabled `vicon` stream on `vicon/<SUBJECT>/<SEGMENT>` (TransformStamped; the layout is verified from the `vicon_bridge` source). Open: the real subject/segment names. Fix: run `vicon_bridge` once, read them with `ros2 topic list | grep vicon`, put them in both YAMLs and set `enabled: true`.
 
-
-- **`src/dataset_generator/dataset_generator/depth_node.py`** is an unreferenced copy of an old recorder (no entry point, not imported). Delete it.

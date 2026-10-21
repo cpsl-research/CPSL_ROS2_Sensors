@@ -86,6 +86,5 @@ The lab repo `CPSL_TI_Radar` and the lab forks `CPSL_ROS_livox_ros_driver2` and 
 
 ## Appendix B: Known problems
 
-Open items are kept in [`TODO.md`](../TODO.md): camera packages pulled in by `rosdep` on every machine, the Vicon placeholder, and the problems below.
+Open items are kept in [`TODO.md`](../TODO.md): camera packages pulled in by `rosdep` on every machine, and the Vicon placeholder.
 
-- `src/dataset_generator/dataset_generator/depth_node.py` is an unreferenced copy of an old recorder, awaiting deletion.
