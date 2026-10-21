@@ -72,7 +72,7 @@ You should see these topics (under the launch's namespace; no namespace with `ro
 
 ## 5. Recording
 
-The `human_movement.yaml` recording config has streams for `left_hand_joints` and `right_hand_joints` ([Tutorial 01](01_capturing_a_dataset.md)). The image topics are not in it; add a stream with `type: "sensor_msgs/msg/Image"` and the topic `leap_image/left` if you need them.
+The `human_movement.yaml` recording config has streams for `left_hand_joints` and `right_hand_joints` ([Tutorial 01](01_capturing_a_dataset.md)). It also has the `leap_left` and `leap_right` image streams (`leap_image/left|right`, enabled), so the start gate waits for the image node too; set `enabled: false` on them to record joints only.
 
 ## 6. Troubleshooting
 

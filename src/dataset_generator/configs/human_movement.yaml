@@ -52,6 +52,16 @@ dataset_generator:
       hand_right:
         topic: "right_hand_joints"
         type: "sensor_msgs/msg/PointCloud2"
+      # Leap camera images (mono8). Enabled: the start gate waits for them, so a capture aborts if the
+      # image node is not publishing (set enabled: false to record joints only).
+      leap_left:
+        topic: "leap_image/left"
+        type: "sensor_msgs/msg/Image"
+        compression: gzip
+      leap_right:
+        topic: "leap_image/right"
+        type: "sensor_msgs/msg/Image"
+        compression: gzip
       # off in the v1 config; set enabled: true to record
       lidar:
         enabled: false

@@ -117,4 +117,13 @@
         <child link="cpsl_realsense_link"/>
     </joint>
 
+    <!-- Leap image frame (unprefixed: image_publisher.py hardcodes it).
+         PLACEHOLDER: camera offset from leap_link not measured -->
+    <link name="leap_camera_frame"/>
+    <joint name="leap_camera_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="cpsl_human_movement/leap_link"/>
+        <child link="leap_camera_frame"/>
+    </joint>
+
 </robot>
