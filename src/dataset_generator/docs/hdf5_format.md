@@ -72,8 +72,23 @@ Any `mount_*` key is accepted and kept verbatim in `config_streams`; it is an an
 (counted in `n_dropped_node`). To add a type, add one function and one table row in `converters.py`.
 
 QoS defaults: ADCDataCube, ADCChirpMeta and TFMessage `reliable`; all others `best_effort` (matches any
-publisher). The ADC cube must be reliable: in a rate diagnostic on a 3.4 MB SAR cube, best-effort received
-28 of 59 frames (47%), reliable 59 of 59.
+publisher). The ADC cube must be reliable: best-effort received 28 of 59 frames of a 3.4 MB SAR cube.
+
+### Preset streams
+
+Stream (group) names are the `streams:` keys of the YAML and are arbitrary. The presets in `configs/` use these;
+the last column is the `base_frame` the v1 recorder used (from each file's comment).
+
+| preset | streams | v1 `base_frame` |
+|---|---|---|
+| [ugv_dataset](../configs/ugv_dataset.yaml) | `radar_pc camera vehicle_odom lidar imu` | `cpsl_ugv_1/base_footprint` |
+| [uav_dataset](../configs/uav_dataset.yaml) | `radar_{front,back,down}_{adc,pc} lidar camera imu` | `cpsl_uav_6/base_footprint` |
+| [uav_dataset_radvel](../configs/uav_dataset_radvel.yaml) | radars as above, `lidar` | `cpsl_uav_6/base_level` |
+| [uav_dataset_radar_vs_flow](../configs/uav_dataset_radar_vs_flow.yaml) | radars, `lidar camera` | `cpsl_uav_8/base_level` |
+| [icaraus flow](../configs/uav_dataset_icaraus_dataset_flow.yaml), [radar](../configs/uav_dataset_icaraus_dataset_radar.yaml) | radars, `vicon` | `cpsl_uav_8/base_footprint` |
+| [human_movement](../configs/human_movement.yaml) | `radar_adc radar_pc camera camera_depth hand_left hand_right lidar imu vehicle_odom` | `cpsl_realsense_color_optical_frame` |
+| [radar_sar](../configs/radar_sar.yaml) | `radar_adc radar_pc` | none recorded |
+| [rover_pro_radar](../configs/rover_pro_radar.yaml) | `radar_adc adc_meta odom` | none recorded |
 
 ## File layout
 
