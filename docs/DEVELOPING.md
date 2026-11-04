@@ -31,6 +31,8 @@ Every bringup follows one pattern, described step by step in [Tutorial 06](../tu
 
 Published frames follow the REP-105 names `base_footprint`, `base_link`, `odom`, `map`; TI radars output east-north-up, handled in the URDF joint, not in the driver.
 
+UAV URDF mounts (`cpsl_uav_*.urdf.xml`) assume `base_link` is FLU (x forward, y left, z up). PX4 XRCE odometry before the 2026-11 fix published `base_link` rolled 180 deg, and older mounts carried a compensating roll/pitch of pi.
+
 ## 3. `scripts/deps/`: system dependencies, one script per driver
 
 `scripts/deps/<driver>.sh` (`radar`, `livox`, `ouster`, `realsense`, `leapmotion`, `vicon`, `usb_cam`, plus `dataset` for the recorder's `python3-h5py`) is the **only** place a driver's system dependencies are listed. The contract, from `scripts/deps/_common.sh:1-12`:

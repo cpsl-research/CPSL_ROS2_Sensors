@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <robot name="create_3">
+    <!-- Mounts assume base_link = FLU (x forward, y left, z up), rpy fixed-axis in radians. PX4 XRCE odometry before the 2026-11 fix published base_link rolled 180 deg; older mounts included a compensating roll/pitch of pi. -->
 
 
     <!-- Robot's base link (cylindrical) -->
@@ -31,8 +32,9 @@
     </link>
 
     <!-- Fixed joint to attach lidar to base_link -->
+    <!-- Livox is physically inverted on uav_1 (roll pi). Verify lidar yaw on the bench (x axis may be rotated 90 deg). -->
     <joint name="lidar_joint" type="fixed">
-        <origin xyz="0.0 0.0 0.1" rpy="0.0 0.0 0.0"/>
+        <origin xyz="0.0 0.0 0.1" rpy="3.141592653589793 0.0 0.0"/>
         <parent link="cpsl_uav_1/base_link"/>
         <child link="cpsl_uav_1/livox_frame"/>
     </joint>
@@ -52,7 +54,7 @@
 
     <!-- Fixed joint to attach radar to base_link -->
     <joint name="front_radar_joint" type="fixed">
-        <origin xyz="0.095 0.0 -0.05" rpy="0.0 3.141592653589793 -1.57079633"/>
+        <origin xyz="0.095 0.0 -0.05" rpy="0.0 0.0 -1.57079633"/>
         <parent link="cpsl_uav_1/base_link"/>
         <child link="cpsl_uav_1/front_radar"/>
     </joint>
@@ -72,7 +74,7 @@
 
     <!-- Fixed joint to attach radar to base_link -->
     <joint name="down_radar_joint" type="fixed">
-        <origin xyz="-0.105 0.0 -0.05" rpy="0.0 3.141592653589793 1.57079633"/>
+        <origin xyz="-0.105 0.0 -0.05" rpy="0.0 0.0 1.57079633"/>
         <parent link="cpsl_uav_1/base_link"/>
         <child link="cpsl_uav_1/down_radar"/>
     </joint>
