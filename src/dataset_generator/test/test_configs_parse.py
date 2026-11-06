@@ -24,3 +24,17 @@ def test_config_parses(path):
     streams = parse_streams(flat)
     assert streams.keys() == params['streams'].keys()
     parse_tf_track(params.get('tf_track'))
+
+
+def test_b210_preset_streams_do_not_gate():
+    path = [p for p in CONFIGS if p.endswith('rover_pro_b210.yaml')][0]
+    with open(path) as f:
+        streams = yaml.safe_load(f)['dataset_generator'][
+            'ros__parameters']['streams']
+    assert streams['b210_bursts']['optional'] is True
+    assert streams['b210_clock_sync']['optional'] is True
+    assert not streams['odom'].get('optional')
+
+
+def test_optional_key_accepted():
+    assert parse_streams({'a.topic': 't', 'a.type': 'x', 'a.optional': True})

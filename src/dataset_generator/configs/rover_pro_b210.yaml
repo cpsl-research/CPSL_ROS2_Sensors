@@ -5,6 +5,9 @@
 # 112000 int16 = ~14.6 MB/s (~0.9 GB/min); check free disk. All B210 streams are RELIABLE (a
 # best-effort recorder loses bursts). With the node on publish_iq:=false the bursts carry no IQ:
 # the HDF5 holds metadata only and stream attr b210_run_dir points at the raw run folder.
+# The node publishes bursts/clock_sync only during a run, so those two streams are `optional: true`: they
+# do not gate the recorder start (start the recorder first, then b210/start; or the reverse order).
+# Odom and cmd_vel still gate; on a bench without the rover use a copy with allow_missing: true.
 dataset_generator:
   ros__parameters:
     dataset_path: ""           # empty = the directory the launch was started from; or pass dataset_path:=...
@@ -23,11 +26,13 @@ dataset_generator:
         status_topic: "b210/status"     # SarStatus.run_dir -> attr b210_run_dir
         qos: reliable
         qos_depth: 64
+        optional: true                  # silent until a run starts: must not gate the start
       b210_clock_sync:
         topic: "b210/clock_sync"
         type: "sar_b210_msgs/msg/SarClockSync"
         qos: reliable
         qos_depth: 50
+        optional: true
       odom:
         topic: "odometry/wheels"
         type: "nav_msgs/msg/Odometry"

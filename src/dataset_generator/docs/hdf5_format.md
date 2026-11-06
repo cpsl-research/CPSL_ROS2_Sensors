@@ -57,6 +57,7 @@ dataset_generator:
         fields: [x,y,z,vel]  # PointCloud2 columns (default: all fields)
         skip_nans: true      # PointCloud2: drop rows with a non-finite value
         compression: gzip    # optional (gzip | lzf), any stream
+        optional: true       # does not gate the start gate (default false)
         legacy_folder: radar_0_adc  # folder name used by hdf5_to_legacy
         meta_for: radar_adc  # on an ADCChirpMeta stream: the cube stream to cross-check
         config_topic: radar_0/radar_config_path  # ADCDataCube only; default: topic with
@@ -233,6 +234,10 @@ gate the start; tracked tf pairs, `/tf_static` and `robot_description` never do.
 |---|---|---|
 | `start_timeout_s` | 30.0 | how long to wait for silent streams; `0` waits forever |
 | `allow_missing` | false | at the timeout start anyway; silent streams keep empty groups and are listed in `streams_missing` |
+
+A stream with `optional: true` never gates the start and is not listed in `streams_missing`; it is recorded
+from the moment it publishes (after the gate opens). `rover_pro_b210.yaml` marks the B210 bursts and clock sync
+this way, because the node publishes them only during a run: the recorder can start before or after `b210/start`.
 
 At the timeout without `allow_missing` the node logs `GATE abort missing=<topics>`, creates **no file** and
 exits with code **2**; stopping it (SIGINT/SIGTERM) before the gate opens also leaves no file.

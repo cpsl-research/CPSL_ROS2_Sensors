@@ -7,8 +7,9 @@ host receive time.
 
 Start gate: nothing is written until every enabled stream has delivered a
 message (``start_timeout_s``; ``allow_missing`` starts anyway at the timeout).
-On timeout without ``allow_missing`` the node logs ``GATE abort`` and exits
-with code 2, having created no file.
+A stream with ``optional: true`` never gates the start but is recorded once it
+publishes. On timeout without ``allow_missing`` the node logs ``GATE abort``
+and exits with code 2, having created no file.
 
 Transforms (format v4): the last ``/tf_static`` transform per frame pair is
 written to group ``/tf_static``, and every direct ``parent->child`` edge named
@@ -110,8 +111,10 @@ class DatasetRecorder(Node):
             self._add_stream(name, cfg)
 
         self._add_tf()
+        # 'optional' streams never gate the start (they are still recorded
+        # once they publish, e.g. the B210 node publishes only during a run)
         self._enabled = [n for n, c in self.cfgs.items()
-                         if c.get('enabled', True)]
+                         if c.get('enabled', True) and not c.get('optional')]
         self._topics = {n: self.cfgs[n]['topic'] for n in self._enabled}
         self._t0 = time.monotonic()
         # latched, so a late subscriber still sees the last gate state
