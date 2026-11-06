@@ -92,6 +92,7 @@ streams below (disabled ones in parentheses). The last two columns are from the 
 | [ouster](../configs/ouster.yaml) | `ouster_lidar` | none (no v1) | none |
 | [radar_sar](../configs/radar_sar.yaml) | `radar_adc adc_meta` (`radar_pc`) | none (no v1) | none |
 | [rover_pro_radar](../configs/rover_pro_radar.yaml) | `radar_adc adc_meta odom cmd_vel` | none (no v1) | none |
+| [rover_pro_b210](../configs/rover_pro_b210.yaml) | `b210_bursts b210_clock_sync odom cmd_vel` | none (no v1) | none |
 
 ## File layout
 
@@ -168,6 +169,35 @@ Lost-frame cross-check (written at close when the meta stream sets `meta_for`; t
 messages), `frame_index_recorded`, `frame_index_gap`; meta attrs `cube_stream`, `n_without_cube`. In `sampled`
 mode gaps are expected.
 
+## B210 streams (sar_b210_msgs, additive)
+
+`sar_b210_msgs/msg/SarBurst` and `SarClockSync` from the `sar_b210` ROS node; both default `reliable`
+(a best-effort recorder drops bursts). The types are looked up only when such a stream is configured, so
+the recorder runs on machines without `sar_b210_msgs`. Preset: `rover_pro_b210.yaml`.
+
+SarBurst stream (N = bursts): one dataset per field, like ADCChirpMeta; stamp = `header.stamp` (host
+realtime at burst centre).
+
+| Dataset | dtype | Shape |
+|---|---|---|
+| index, sample_offset, num_samples | uint64 | (N,) |
+| sweep, step, error_flags | uint32 | (N,) |
+| usrp_ticks | int64 | (N,) |
+| usrp_time_s, tx_freq_hz, rx_freq_hz, lo_offset_hz, tx_gain_db, rx_gain_db | float64 | (N,) |
+| valid | bool | (N,) |
+| iq | int16 | (N, 2*num_samples): interleaved I,Q; row i is byte-identical to `iq.bin` at `sample_offset[i]` of the run folder. **Absent** when the node ran with `publish_iq:=false` |
+
+SarClockSync stream: `data` int64 (N,4), columns `usrp_ticks host_monotonic_ns host_realtime_ns
+round_trip_ns`, stamp `-1`.
+
+Extra attrs on the SarBurst stream (`config_topic`, `status_topic` stream keys; defaults: `bursts` replaced
+by `config` / `status`): `iq_layout`, `frame_id`, `b210_config_status` (`ok`, or `not_received`),
+`b210_config_text` (run config YAML from the latched `b210/config`; the last one before the file opens,
+then the first wins and a later different one sets `b210_config_changed`), `b210_config_sha256`,
+`b210_config_topic` / `_resolved_topic`, `b210_status_topic` / `_resolved_topic`, `b210_run_dir` (latest
+`SarStatus.run_dir` seen, written at close, `''` if none: the raw run folder, the only raw data when `iq` is
+absent). Chunking: one burst per chunk, no compression.
+
 ## Format versions
 
 `format_version` is the root attr. The writer constant is 4. Detect optional features by attribute or
@@ -188,6 +218,7 @@ Additive changes with no version bump (detect by presence; older v4 files lack t
 | `tf_topic` / `tf_static_topic` hold resolved absolute names (older: as configured, default `/tf`, `/tf_static`) | treat as the name subscribed |
 | root `namespace`; stream `resolved_topic`; cube `radar_cfg_resolved_topic` (also on tf pair groups) | fall back to `topic` |
 | CameraInfo converter (new stream type) | none needed |
+| SarBurst / SarClockSync converters and `b210_*` stream attrs (see B210 streams) | none needed |
 
 A v3 reader works on a v4 file if it skips `tf` and `tf_static`.
 

@@ -1,0 +1,40 @@
+# Rover Pro + USRP B210 SAR (sar_b210 ROS node): bursts (IQ + per-burst metadata) + clock sync +
+# run config + wheel odometry + cmd_vel.
+# Usage: ros2 launch dataset_generator record_dataset.launch.py param_file:=rover_pro_b210.yaml
+# Run the node and recorder on the same ROS_DOMAIN_ID/RMW as the rover driver. Rate: ~65 bursts/s of
+# 112000 int16 = ~14.6 MB/s (~0.9 GB/min); check free disk. All B210 streams are RELIABLE (a
+# best-effort recorder loses bursts). With the node on publish_iq:=false the bursts carry no IQ:
+# the HDF5 holds metadata only and stream attr b210_run_dir points at the raw run folder.
+dataset_generator:
+  ros__parameters:
+    dataset_path: ""           # empty = the directory the launch was started from; or pass dataset_path:=...
+    capture_mode: "all"
+    sample_rate_hz: 10.0
+    flush_period_s: 5.0
+    queue_size: 1024           # bursts are 224 KB each: ~230 MB of headroom for a slow disk
+    start_timeout_s: 30.0
+    allow_missing: false       # true on the bench without the rover (odom/cmd_vel silent)
+    tf_track: ["odom->base_link"]
+    streams:
+      b210_bursts:
+        topic: "b210/bursts"
+        type: "sar_b210_msgs/msg/SarBurst"
+        config_topic: "b210/config"     # latched run-config YAML text (std_msgs/String)
+        status_topic: "b210/status"     # SarStatus.run_dir -> attr b210_run_dir
+        qos: reliable
+        qos_depth: 64
+      b210_clock_sync:
+        topic: "b210/clock_sync"
+        type: "sar_b210_msgs/msg/SarClockSync"
+        qos: reliable
+        qos_depth: 50
+      odom:
+        topic: "odometry/wheels"
+        type: "nav_msgs/msg/Odometry"
+        qos: reliable
+        qos_depth: 10
+      cmd_vel:
+        topic: "cmd_vel"
+        type: "geometry_msgs/msg/Twist"
+        qos: reliable
+        qos_depth: 10

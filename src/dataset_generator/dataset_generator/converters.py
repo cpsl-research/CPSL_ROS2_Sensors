@@ -78,6 +78,55 @@ def _adc_meta(msg, opts):
     return Sample(stamp_ns(msg), f, ())
 
 
+# ---- B210 SAR bursts (sar_b210_msgs) -------------------------------------
+# SarBurst: one dataset per scalar field (like ADCChirpMeta) plus `iq`, int16
+# (N, 2*num_samples) interleaved I,Q: row i is byte-identical to that burst's
+# slice of the run folder's iq.bin. `iq` is omitted when the message carries
+# none (node run with publish_iq:=false); the run folder is then the only raw
+# data. The array is handed on as a view (no copy, no Python list).
+_BURST_SCALARS = {
+    'index': np.uint64, 'sweep': np.uint32, 'step': np.uint32,
+    'sample_offset': np.uint64, 'num_samples': np.uint64,
+    'usrp_ticks': np.int64, 'usrp_time_s': np.float64,
+    'tx_freq_hz': np.float64, 'rx_freq_hz': np.float64,
+    'lo_offset_hz': np.float64, 'tx_gain_db': np.float64,
+    'rx_gain_db': np.float64, 'valid': np.bool_, 'error_flags': np.uint32,
+}
+
+
+def _int16_view(a):
+    if isinstance(a, (bytes, bytearray, memoryview)):
+        return np.frombuffer(a, dtype=np.int16)
+    return np.asarray(a, dtype=np.int16)   # array.array / ndarray: buffer view
+
+
+def _sar_burst(msg, opts):
+    f = {k: np.asarray(getattr(msg, k), dtype=dt)
+         for k, dt in _BURST_SCALARS.items()}
+    iq = _int16_view(msg.iq)
+    if iq.size:
+        if iq.size != 2 * int(msg.num_samples):
+            raise ValueError('SarBurst %d: iq has %d values, num_samples=%d '
+                             '(want 2*num_samples)' %
+                             (int(msg.index), iq.size, int(msg.num_samples)))
+        f['iq'] = iq
+    return Sample(stamp_ns(msg), f, ())
+
+
+def _sar_burst_attrs(msg, opts):
+    return {'frame_id': _fid(msg.header.frame_id),
+            'iq_layout': 'interleaved int16: iq[2k]=I, iq[2k+1]=Q'}
+
+
+CLOCK_SYNC_COLUMNS = ['usrp_ticks', 'host_monotonic_ns', 'host_realtime_ns',
+                      'round_trip_ns']
+
+
+def _sar_clock_sync(msg, opts):
+    return Sample(-1, {'data': np.array(
+        [getattr(msg, k) for k in CLOCK_SYNC_COLUMNS], dtype=np.int64)}, ())
+
+
 # ---- PointCloud2 ---------------------------------------------------------
 _PF = {1: np.int8, 2: np.uint8, 3: np.int16, 4: np.uint16,
        5: np.int32, 6: np.uint32, 7: np.float32, 8: np.float64}
@@ -267,6 +316,10 @@ CONVERTERS = {
         _adc_cube, _adc_cube_attrs, 'reliable'),
     'raw_radar_msgs/msg/ADCChirpMeta': Converter(
         _adc_meta, _NO_ATTRS, 'reliable'),
+    'sar_b210_msgs/msg/SarBurst': Converter(
+        _sar_burst, _sar_burst_attrs, 'reliable'),
+    'sar_b210_msgs/msg/SarClockSync': Converter(
+        _sar_clock_sync, _cols(*CLOCK_SYNC_COLUMNS), 'reliable'),
     'sensor_msgs/msg/PointCloud2': Converter(_cloud, _cloud_attrs, 'best_effort'),
     'sensor_msgs/msg/Image': Converter(_image, _image_attrs, 'best_effort'),
     'sensor_msgs/msg/Imu': Converter(_imu, _stamped_cols(

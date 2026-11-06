@@ -101,6 +101,8 @@ class DatasetRecorder(Node):
         self.cfg_streams = {}   # stream -> config topic
         self._cfg_first = {}    # stream -> first radar cfg path seen
         self._cfg_writer_path = {}   # writer thread only
+        self._b210_run_dir = {}      # SarBurst stream -> latest run_dir
+        self._b210_cfg_text = {}     # SarBurst stream -> first config text
         self.subs = []
         for name, cfg in self.cfgs.items():
             if not cfg.get('enabled', True):
@@ -358,6 +360,8 @@ class DatasetRecorder(Node):
         self.subs.append(sub)
         if msg_type.endswith('ADCDataCube'):
             self._add_cfg_sub(name, cfg)
+        if msg_type.endswith('SarBurst'):
+            self._add_b210_subs(name, cfg)
         self.get_logger().info('stream %s: %s [%s] qos=%s depth=%d mode=%s' %
                                (name, cfg['topic'], msg_type, rel, depth, mode))
 
@@ -385,6 +389,57 @@ class DatasetRecorder(Node):
             String, topic, lambda m, n=name: self._on_cfg_path(n, m), qos))
         self.get_logger().info('stream %s: radar cfg path from %s' %
                                (name, topic))
+
+    # ---- B210 run config text + run folder (sar_b210_msgs) --------------
+    def _add_b210_subs(self, name, cfg):
+        """Store b210/config text and the latest SarStatus.run_dir as attrs."""
+        topic = cfg.get('config_topic') or \
+            cfg['topic'].replace('bursts', 'config')
+        stopic = cfg.get('status_topic') or \
+            cfg['topic'].replace('bursts', 'status')
+        self._set_attrs(name, {'b210_config_status': 'not_received',
+                               'b210_config_topic': topic,
+                               'b210_config_resolved_topic':
+                                   self._resolved(topic),
+                               'b210_status_topic': stopic,
+                               'b210_status_resolved_topic':
+                                   self._resolved(stopic)})
+        qos = QoSProfile(   # matches the node: RELIABLE + TRANSIENT_LOCAL, 1
+            reliability=QoSReliabilityPolicy.RELIABLE,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+            history=QoSHistoryPolicy.KEEP_LAST, depth=1)
+        self.subs.append(self.create_subscription(
+            String, topic, lambda m, n=name: self._on_b210_cfg(n, m), qos))
+        self._b210_run_dir[name] = None
+        try:   # status needs sar_b210_msgs; the burst type already did
+            status_t = get_message('sar_b210_msgs/msg/SarStatus')
+            self.subs.append(self.create_subscription(
+                status_t, stopic,
+                lambda m, n=name: self._b210_run_dir.__setitem__(
+                    n, str(m.run_dir) or self._b210_run_dir.get(n)),
+                QoSProfile(reliability=QoSReliabilityPolicy.RELIABLE,
+                           durability=QoSDurabilityPolicy.VOLATILE,
+                           history=QoSHistoryPolicy.KEEP_LAST, depth=5)))
+        except Exception as e:  # noqa: BLE001
+            self.get_logger().warning('%s: no b210 status (%s)' % (name, e))
+
+    def _on_b210_cfg(self, name, msg):
+        text = str(msg.data)
+        attrs = {'b210_config_text': text,
+                 'b210_config_sha256': hashlib.sha256(
+                     text.encode('utf-8')).hexdigest(),
+                 'b210_config_status': 'ok'}
+        if not self._gate_open:   # latest wins until the file exists
+            self._b210_cfg_text[name] = text
+            self._set_attrs(name, attrs)
+            return
+        first = self._b210_cfg_text.setdefault(name, text)
+        if first != text:
+            self.get_logger().warning(
+                '%s: b210 config changed during the capture; keeping the '
+                'first' % name)
+            attrs = {'b210_config_changed': True}
+        self._queue_call(lambda: self.cap.update_stream_attrs(name, attrs))
 
     def _on_cfg_path(self, name, msg):
         path = str(msg.data)
@@ -537,6 +592,8 @@ class DatasetRecorder(Node):
                 self.get_logger().warning(
                     '%s: no radar cfg path received on %s' %
                     (name, self.cfg_streams[name]))
+        for name, rd in self._b210_run_dir.items():
+            self.cap.update_stream_attrs(name, {'b210_run_dir': rd or ''})
         for name, n in self.dropped.items():
             self.cap.update_stream_attrs(name, {'n_dropped_node': n})
         self.cap.close()
