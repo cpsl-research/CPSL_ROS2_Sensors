@@ -61,6 +61,7 @@ SUBMODULE_PATHS=(
     "src/ros2-vicon-bridge"
     "src/CPSL_ROS2_LeapMotion"
     "submodules/leapc-python-bindings"
+    "src/sar_b210"
 )
 SUBMODULE_SENSORS=(
     "radar"
@@ -69,6 +70,7 @@ SUBMODULE_SENSORS=(
     "vicon"
     "leapmotion"
     "leapmotion"
+    "b210"
 )
 
 for i in "${!SUBMODULE_PATHS[@]}"; do

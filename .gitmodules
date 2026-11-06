@@ -16,3 +16,6 @@
 [submodule "src/CPSL_TI_Radar"]
 	path = src/CPSL_TI_Radar
 	url = https://github.com/davidmhunt/CPSL_TI_Radar.git
+[submodule "src/sar_b210"]
+	path = src/sar_b210
+	url = https://github.com/cpsl-research/sar_b210.git
