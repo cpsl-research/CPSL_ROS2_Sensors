@@ -10,8 +10,12 @@
 #      (MODE 0666); just reload and trigger.
 #   2. limits: /etc/security/limits.d/90-b210.conf, memlock unlimited + rtprio 99 for
 #      the invoking user's primary group (uhd-host's own file only covers group usrp).
-#   3. USB autosuspend off: runtime now, and persistent via
-#      /etc/modprobe.d/usbcore-autosuspend.conf (GRUB is not touched).
+#   3. USB autosuspend off for the B210: udev rule /etc/udev/rules.d/61-b210-power.rules
+#      sets power/control=on on the device (persistent, per device; modprobe.d does not
+#      work where usbcore is built into the kernel), plus the global runtime
+#      parameter now. An earlier version of this script wrote
+#      /etc/modprobe.d/usbcore-autosuspend.conf; it is removed if unchanged.
+#      GRUB is not touched.
 set -euo pipefail
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -55,13 +59,31 @@ write_if_differs "$LIMITS" "$LIMITS_BODY"
 
 # 3. USB autosuspend
 PARAM=/sys/module/usbcore/parameters/autosuspend
-MODPROBE=/etc/modprobe.d/usbcore-autosuspend.conf
-echo "[3/3] USB autosuspend: set $PARAM = -1 now, and persist in $MODPROBE:"
-echo "    options usbcore autosuspend=-1"
+POWER_RULE=/etc/udev/rules.d/61-b210-power.rules
+POWER_BODY='# B210: no USB runtime autosuspend (power/control=on); 2500:0020 unloaded, 0021/0022 after firmware
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="2500", ATTR{idProduct}=="002[0-2]", TEST=="power/control", ATTR{power/control}="on"'
+echo "[3/3] USB autosuspend: set $PARAM = -1 now (runtime only), and persist per device in $POWER_RULE:"
+echo "$POWER_BODY" | sed 's/^/    /'
 echo -1 > "$PARAM"
-write_if_differs "$MODPROBE" "options usbcore autosuspend=-1"
-echo "  (usbcore is built into most kernels; if the modprobe.d file has no effect after"
-echo "   reboot, check $PARAM and add usbcore.autosuspend=-1 to the kernel command line.)"
+write_if_differs "$POWER_RULE" "$POWER_BODY"
+
+# Stale file from an earlier version of this script (no effect with built-in usbcore).
+OLD=/etc/modprobe.d/usbcore-autosuspend.conf
+if [ -f "$OLD" ]; then
+    echo "  stale $OLD found, content:"
+    sed 's/^/    /' "$OLD"
+    if [ "$(cat "$OLD")" = "options usbcore autosuspend=-1" ]; then
+        rm -f "$OLD"
+        echo "  removed: $OLD (content was exactly what this script wrote)"
+    else
+        echo "  left in place: content differs from what this script wrote"
+    fi
+fi
+udevadm control --reload
+udevadm trigger --subsystem-match=usb --action=add
+for d in /sys/bus/usb/devices/*; do
+    [ "$(cat "$d/idVendor" 2>/dev/null)" = 2500 ] && echo "  $(basename "$d") power/control = $(cat "$d/power/control" 2>/dev/null)"
+done
 
 echo
 echo "Done. Now: log out and back in, then replug the B210 into a USB 3 port."

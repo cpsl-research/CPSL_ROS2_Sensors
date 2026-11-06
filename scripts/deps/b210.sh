@@ -10,6 +10,7 @@
 #                              apt packages and the B210 FPGA image + B200 firmware are
 #                              present, else exit 1 and list what is missing on stderr.
 #
+# --check also requires power/control == on for an attached Ettus (2500) USB device.
 # --check does NOT verify: that a B210 is attached, its USB speed, or the image
 # versions matching the installed UHD.
 IMAGES_DIR=/usr/share/uhd/images
@@ -31,6 +32,12 @@ if [ "${1:-}" = "--check" ]; then
         if [ ! -e "$IMAGES_DIR/$f" ]; then
             missing+=("image:$IMAGES_DIR/$f")
         fi
+    done
+    # Autosuspend: per-device (udev rule from setup_b210_host.sh), only when a B210 is attached.
+    for d in /sys/bus/usb/devices/*; do
+        [ "$(cat "$d/idVendor" 2>/dev/null)" = 2500 ] || continue
+        pc="$(cat "$d/power/control" 2>/dev/null)"
+        [ "$pc" = on ] || missing+=("usb-power:$(basename "$d") power/control=$pc (want on; run setup_b210_host.sh, replug)")
     done
     if [ ${#missing[@]} -ne 0 ]; then
         echo "missing: ${missing[*]}" >&2
