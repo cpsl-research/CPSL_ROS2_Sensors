@@ -6,7 +6,7 @@
 #   bash scripts/install.sh [--sensors <list>] \
 #                           [--ouster-hostname <host>] [--skip-build]
 #
-# --sensors   Comma-separated subset of: radar,livox,ouster,realsense,leapmotion,vicon,usb_cam
+# --sensors   Comma-separated subset of: radar,livox,ouster,realsense,leapmotion,vicon,usb_cam,b210
 #             Default: radar,livox
 # --ouster-hostname  Hostname or IP of the Ouster sensor
 # --skip-build  Skip the colcon build step
@@ -31,7 +31,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-VALID_SENSORS="radar livox ouster realsense leapmotion vicon usb_cam"
+VALID_SENSORS="radar livox ouster realsense leapmotion vicon usb_cam b210"
 for s in $(echo "$SENSORS" | tr ',' ' '); do
     if ! echo "$VALID_SENSORS" | grep -qw "$s"; then
         echo "ERROR: unknown sensor '$s'. Valid options: $VALID_SENSORS"
