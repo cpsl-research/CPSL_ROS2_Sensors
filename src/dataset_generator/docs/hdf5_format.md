@@ -193,7 +193,7 @@ round_trip_ns`, stamp `-1`.
 
 Extra attrs on the SarBurst stream (`config_topic`, `status_topic` stream keys; defaults: `bursts` replaced
 by `config` / `status`): `iq_layout`, `frame_id`, `b210_config_status` (`ok`, or `not_received`),
-`b210_config_text` (run config YAML from the latched `b210/config`; the last one before the file opens,
+`b210_config_text` (run config YAML from the latched `B210_1/b210/config`; the last one before the file opens,
 then the first wins and a later different one sets `b210_config_changed`), `b210_config_sha256`,
 `b210_config_topic` / `_resolved_topic`, `b210_status_topic` / `_resolved_topic`, `b210_run_dir` (latest
 `SarStatus.run_dir` seen, written at close, `''` if none: the raw run folder, the only raw data when `iq` is
@@ -238,6 +238,8 @@ gate the start; tracked tf pairs, `/tf_static` and `robot_description` never do.
 A stream with `optional: true` never gates the start and is not listed in `streams_missing`; it is recorded
 from the moment it publishes (after the gate opens). `rover_pro_b210.yaml` marks the B210 bursts and clock sync
 this way, because the node publishes them only during a run: the recorder can start before or after `b210/start`.
+It also marks `cmd_vel` optional (a parked robot publishes none), so only `odom` gates the start. Its B210
+topics are `B210_1/b210/...` (relative to the sensors namespace; single device `B210_1`); there is no IMU stream.
 
 At the timeout without `allow_missing` the node logs `GATE abort missing=<topics>`, creates **no file** and
 exits with code **2**; stopping it (SIGINT/SIGTERM) before the gate opens also leaves no file.

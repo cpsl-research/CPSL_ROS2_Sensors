@@ -1,5 +1,5 @@
 # Rover Pro + USRP B210 SAR (sar_b210 ROS node): bursts (IQ + per-burst metadata) + clock sync +
-# run config + wheel odometry + cmd_vel.
+# run config + wheel odometry + cmd_vel (optional).
 # Usage: ros2 launch dataset_generator record_dataset.launch.py param_file:=rover_pro_b210.yaml
 # Run the node and recorder on the same ROS_DOMAIN_ID/RMW as the rover driver. Rate: ~65 bursts/s of
 # 112000 int16 = ~14.6 MB/s (~0.9 GB/min); check free disk. All B210 streams are RELIABLE (a
@@ -7,7 +7,10 @@
 # the HDF5 holds metadata only and stream attr b210_run_dir points at the raw run folder.
 # The node publishes bursts/clock_sync only during a run, so those two streams are `optional: true`: they
 # do not gate the recorder start (start the recorder first, then b210/start; or the reverse order).
-# Odom and cmd_vel still gate; on a bench without the rover use a copy with allow_missing: true.
+# B210 topics are relative to the sensors namespace and resolve to /<robot>/B210_1/b210/... (single device
+# B210_1; b210-20 generates per-device presets). cmd_vel is optional: a parked robot publishes none, so
+# the recorder starts parked. Only odom gates; on a bench without the rover use a copy with
+# allow_missing: true. No IMU is mounted, so there is no imu stream.
 dataset_generator:
   ros__parameters:
     dataset_path: ""           # empty = the directory the launch was started from; or pass dataset_path:=...
@@ -20,15 +23,15 @@ dataset_generator:
     tf_track: ["odom->base_link"]
     streams:
       b210_bursts:
-        topic: "b210/bursts"
+        topic: "B210_1/b210/bursts"
         type: "sar_b210_msgs/msg/SarBurst"
-        config_topic: "b210/config"     # latched run-config YAML text (std_msgs/String)
-        status_topic: "b210/status"     # SarStatus.run_dir -> attr b210_run_dir
+        config_topic: "B210_1/b210/config"     # latched run-config YAML text (std_msgs/String)
+        status_topic: "B210_1/b210/status"     # SarStatus.run_dir -> attr b210_run_dir
         qos: reliable
         qos_depth: 64
         optional: true                  # silent until a run starts: must not gate the start
       b210_clock_sync:
-        topic: "b210/clock_sync"
+        topic: "B210_1/b210/clock_sync"
         type: "sar_b210_msgs/msg/SarClockSync"
         qos: reliable
         qos_depth: 50
@@ -43,3 +46,4 @@ dataset_generator:
         type: "geometry_msgs/msg/Twist"
         qos: reliable
         qos_depth: 10
+        optional: true                  # a parked robot publishes none: must not gate the start

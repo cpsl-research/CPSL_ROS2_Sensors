@@ -34,6 +34,20 @@ def test_b210_preset_streams_do_not_gate():
     assert streams['b210_bursts']['optional'] is True
     assert streams['b210_clock_sync']['optional'] is True
     assert not streams['odom'].get('optional')
+    assert streams['cmd_vel']['optional'] is True
+    assert 'imu' not in streams
+
+
+def test_b210_preset_topics_use_device_namespace():
+    path = [p for p in CONFIGS if p.endswith('rover_pro_b210.yaml')][0]
+    with open(path) as f:
+        streams = yaml.safe_load(f)['dataset_generator'][
+            'ros__parameters']['streams']
+    b = streams['b210_bursts']
+    assert b['topic'] == 'B210_1/b210/bursts'
+    assert b['config_topic'] == 'B210_1/b210/config'
+    assert b['status_topic'] == 'B210_1/b210/status'
+    assert streams['b210_clock_sync']['topic'] == 'B210_1/b210/clock_sync'
 
 
 def test_optional_key_accepted():
