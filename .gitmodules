@@ -16,3 +16,8 @@
 [submodule "src/CPSL_TI_Radar"]
 	path = src/CPSL_TI_Radar
 	url = https://github.com/davidmhunt/CPSL_TI_Radar.git
+[submodule "src/xsens_mti_ros2_driver"]
+	path = src/xsens_mti_ros2_driver
+	url = https://github.com/xsenssupport/Xsens_MTi_ROS_Driver_and_Ntrip_Client.git
+	branch = ros2
+	ignore = dirty

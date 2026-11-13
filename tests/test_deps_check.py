@@ -51,7 +51,7 @@ def first_package(script):
 
 def test_every_script_is_covered():
     assert {"dataset.sh", "leapmotion.sh", "livox.sh", "ouster.sh", "radar.sh", "realsense.sh",
-            "usb_cam.sh", "vicon.sh"} <= set(SCRIPTS)
+            "usb_cam.sh", "vicon.sh", "xsens.sh"} <= set(SCRIPTS)
 
 
 @pytest.mark.parametrize("script", SCRIPTS)

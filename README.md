@@ -11,7 +11,7 @@ First install ROS 2 Jazzy desktop and set up `rosdep` (`sudo rosdep init`, `rosd
 ```bash
 git clone https://github.com/cpsl-research/CPSL_ROS2_Sensors
 cd CPSL_ROS2_Sensors
-bash scripts/install.sh --sensors realsense      # or radar,livox,ouster,realsense,leapmotion,vicon,usb_cam
+bash scripts/install.sh --sensors realsense      # or radar,livox,ouster,realsense,leapmotion,vicon,usb_cam,xsens
 source /opt/ros/jazzy/setup.bash
 source install/setup.bash                        # in every new terminal
 ros2 launch cpsl_ros2_sensors_bringup default_template_bringup.launch.py realsense_enable:=true
@@ -41,6 +41,7 @@ docker compose -f docker/docker-compose.cpu.yaml run --rm cpsl_sensors
 | Ouster | `src/ouster-ros` | `<ns>/ouster/points`, `imu`, `scan` | [04](tutorials/04_ouster_setup.md) |
 | Intel RealSense | `realsense2_camera` (apt, librealsense from source) | `<ns>/camera/<camera_name>/color/image_raw`, `depth/image_rect_raw`, `color/camera_info` | [02](tutorials/02_realsense_setup.md) |
 | USB camera | `usb_cam` (apt) | `<ns>/image_raw` | `--sensors usb_cam` |
+| Xsens MTi IMU/AHRS | `src/xsens_mti_ros2_driver` | `/imu/data`, `/filter/quaternion`, `/imu/acceleration` (absolute names) | `--sensors xsens` |
 | Leap Motion | `src/CPSL_ROS2_LeapMotion` | `<ns>/left_hand_joints`, `right_hand_joints`, `leap_image/left`, `leap_image/right` | [05](tutorials/05_leap_motion_setup.md) |
 | Vicon | `src/ros2-vicon-bridge` | poses under the `vicon` tf namespace | launch arg `vicon_enable` |
 
