@@ -6,7 +6,7 @@
 #   bash scripts/install.sh [--sensors <list>] \
 #                           [--ouster-hostname <host>] [--skip-build]
 #
-# --sensors   Comma-separated subset of: radar,livox,ouster,realsense,leapmotion,vicon,usb_cam
+# --sensors   Comma-separated subset of: radar,livox,ouster,realsense,leapmotion,vicon,usb_cam,xsens
 #             Default: radar,livox
 # --ouster-hostname  Hostname or IP of the Ouster sensor
 # --skip-build  Skip the colcon build step
@@ -31,7 +31,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-VALID_SENSORS="radar livox ouster realsense leapmotion vicon usb_cam"
+VALID_SENSORS="radar livox ouster realsense leapmotion vicon usb_cam xsens"
 for s in $(echo "$SENSORS" | tr ',' ' '); do
     if ! echo "$VALID_SENSORS" | grep -qw "$s"; then
         echo "ERROR: unknown sensor '$s'. Valid options: $VALID_SENSORS"
@@ -61,6 +61,7 @@ SUBMODULE_PATHS=(
     "src/ros2-vicon-bridge"
     "src/CPSL_ROS2_LeapMotion"
     "submodules/leapc-python-bindings"
+    "src/xsens_mti_ros2_driver"
 )
 SUBMODULE_SENSORS=(
     "radar"
@@ -69,6 +70,7 @@ SUBMODULE_SENSORS=(
     "vicon"
     "leapmotion"
     "leapmotion"
+    "xsens"
 )
 
 for i in "${!SUBMODULE_PATHS[@]}"; do
@@ -186,6 +188,13 @@ if contains "$SENSORS" usb_cam; then
     echo "  Log out and back in so the video group takes effect."
 fi
 
+# xsens ────────────────────────────────────────────────────────────────────────
+if contains "$SENSORS" xsens; then
+    echo "--- xsens ---"
+    sudo usermod -a -G dialout "$USER"
+    echo "  Log out and back in so the dialout group takes effect."
+fi
+
 # realsense, leapmotion, vicon: system dependencies only, installed in Step 4
 # (the Leap Motion python bindings in Step 5). Nothing host-specific to add.
 
@@ -210,8 +219,10 @@ if [[ "$SKIP_BUILD" == false ]]; then
             --cmake-args -DCMAKE_BUILD_TYPE=Release
     fi
 
+    # The Xsens repo also holds an RTK `ntrip` package that an AHRS does not need.
     python -m colcon build \
         --base-paths src \
+        --packages-skip ntrip \
         --symlink-install
 else
     header "Step 8: Colcon build (SKIPPED)"
