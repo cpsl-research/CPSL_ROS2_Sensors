@@ -21,3 +21,6 @@
 	url = https://github.com/xsenssupport/Xsens_MTi_ROS_Driver_and_Ntrip_Client.git
 	branch = ros2
 	ignore = dirty
+[submodule "src/sar_b210"]
+	path = src/sar_b210
+	url = https://github.com/cpsl-research/sar_b210.git

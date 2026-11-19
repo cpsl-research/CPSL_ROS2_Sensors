@@ -6,7 +6,7 @@
 #   bash scripts/install.sh [--sensors <list>] \
 #                           [--ouster-hostname <host>] [--skip-build]
 #
-# --sensors   Comma-separated subset of: radar,livox,ouster,realsense,leapmotion,vicon,usb_cam,xsens
+# --sensors   Comma-separated subset of: radar,livox,ouster,realsense,leapmotion,vicon,usb_cam,xsens,b210
 #             Default: radar,livox
 # --ouster-hostname  Hostname or IP of the Ouster sensor
 # --skip-build  Skip the colcon build step
@@ -31,7 +31,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-VALID_SENSORS="radar livox ouster realsense leapmotion vicon usb_cam xsens"
+VALID_SENSORS="radar livox ouster realsense leapmotion vicon usb_cam xsens b210"
 for s in $(echo "$SENSORS" | tr ',' ' '); do
     if ! echo "$VALID_SENSORS" | grep -qw "$s"; then
         echo "ERROR: unknown sensor '$s'. Valid options: $VALID_SENSORS"
@@ -62,6 +62,7 @@ SUBMODULE_PATHS=(
     "src/CPSL_ROS2_LeapMotion"
     "submodules/leapc-python-bindings"
     "src/xsens_mti_ros2_driver"
+    "src/sar_b210"
 )
 SUBMODULE_SENSORS=(
     "radar"
@@ -71,6 +72,7 @@ SUBMODULE_SENSORS=(
     "leapmotion"
     "leapmotion"
     "xsens"
+    "b210"
 )
 
 for i in "${!SUBMODULE_PATHS[@]}"; do
