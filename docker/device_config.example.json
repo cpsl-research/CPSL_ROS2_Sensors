@@ -3,5 +3,11 @@
   "realsense": {
     "role": "REALSENSE",
     "id": ""
+  },
+  "xsens": {
+    "port": "/dev/serial/by-id/usb-Xsens_*-port0",
+    "baudrate": 115200,
+    "frame_id": "imu_link",
+    "output_rate_hz": 100
   }
 }

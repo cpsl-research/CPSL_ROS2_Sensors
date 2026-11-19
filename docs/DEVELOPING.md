@@ -35,7 +35,7 @@ UAV URDF mounts (`cpsl_uav_*.urdf.xml`) assume `base_link` is FLU (x forward, y 
 
 ## 3. `scripts/deps/`: system dependencies, one script per driver
 
-`scripts/deps/<driver>.sh` (`radar`, `livox`, `ouster`, `realsense`, `leapmotion`, `vicon`, `usb_cam`, plus `dataset` for the recorder's `python3-h5py`) is the **only** place a driver's system dependencies are listed. The contract, from `scripts/deps/_common.sh:1-12`:
+`scripts/deps/<driver>.sh` (`radar`, `livox`, `ouster`, `realsense`, `leapmotion`, `vicon`, `usb_cam`, `xsens`, plus `dataset` for the recorder's `python3-h5py`) is the **only** place a driver's system dependencies are listed. The contract, from `scripts/deps/_common.sh:1-12`:
 
 - system dependencies only: apt packages, and SDKs built under `/opt` and installed to `/usr/local`. Nothing in the workspace, the shell rc file, group membership or sensor IPs; `install.sh` owns those;
 - run as root with no `sudo` inside (`install.sh` calls `sudo bash scripts/deps/<driver>.sh`; the Dockerfile runs it directly);

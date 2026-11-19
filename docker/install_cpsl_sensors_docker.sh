@@ -53,10 +53,10 @@ else
 fi
 
 # Validate SENSORS
-VALID_SENSORS="radar livox ouster realsense leapmotion vicon all"
+VALID_SENSORS="radar b210 livox ouster realsense leapmotion vicon all"
 for s in $(echo "$SENSORS" | tr ',' ' '); do
     if ! echo "$VALID_SENSORS" | grep -qw "$s"; then
-        echo "ERROR: unknown sensor '$s'. Valid options: radar, livox, ouster, realsense, leapmotion, vicon, all"
+        echo "ERROR: unknown sensor '$s'. Valid options: radar, b210, livox, ouster, realsense, leapmotion, vicon, all"
         exit 1
     fi
 done
@@ -198,6 +198,12 @@ if [[ "$SKIP_BUILD" == false ]]; then
     if contains "$IF_SENSORS" "radar"; then
         echo "Updating radar submodule..."
         git submodule update --init src/CPSL_TI_Radar && git -C src/CPSL_TI_Radar submodule update --init CPSL_TI_Radar_cpp/include/json || echo "Warning: git submodule update failed (not a git repository?)"
+    fi
+    if contains "$IF_SENSORS" "b210"; then
+        # b210 is opt-in (not part of "all"). Host-side udev/memlock setup is sar_b210's own
+        # doctor: scripts/deps/b210.sh --host (run by hand with sudo, not here).
+        echo "Updating b210 submodule..."
+        git submodule update --init src/sar_b210 || echo "Warning: git submodule update failed (not a git repository?)"
     fi
     if contains "$IF_SENSORS" "livox"; then
         echo "Updating livox submodule..."
